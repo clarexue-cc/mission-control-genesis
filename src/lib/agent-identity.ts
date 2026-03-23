@@ -294,7 +294,7 @@ const KNOWN_AGENTS: Record<string, AgentIdentity> = {
     quickActionTarget: 'chat',
     icon: 'Sun',
     tier: 'primary',
-    runtime: 'Perplexity Computer via OpenClaw',
+    runtime: 'External provider via OpenClaw',
   },
 
   'afternoon-intel': {
@@ -305,18 +305,18 @@ const KNOWN_AGENTS: Record<string, AgentIdentity> = {
     quickActionTarget: 'chat',
     icon: 'CloudSun',
     tier: 'primary',
-    runtime: 'Perplexity Computer via OpenClaw',
+    runtime: 'External provider via OpenClaw',
   },
 
   'perplexity-computer': {
-    roleTitle: 'Perplexity Computer',
-    oneLiner: 'Your morning intelligence engine. Pulls email, calendar, ClickUp, and Granola meeting context to generate your daily brief and Gmail drafts.',
-    capabilities: ['Morning Brief', 'Gmail Drafts', 'Email Triage', 'Meeting Context', 'ClickUp Cross-reference'],
-    quickAction: 'Go to Perplexity Computer',
+    roleTitle: 'External Intelligence Agent',
+    oneLiner: 'Example external research workspace. Connect your preferred provider and scheduled workflows to populate this card with real activity.',
+    capabilities: ['Research Briefs', 'Draft Generation', 'Inbox Triage', 'Meeting Context', 'Cross-Tool Sync'],
+    quickAction: 'Open external workspace',
     quickActionTarget: 'https://www.perplexity.ai',
     icon: 'Monitor',
     tier: 'external',
-    runtime: 'Perplexity Computer (external)',
+    runtime: 'External platform',
   },
 
   'email-scanner': {
@@ -457,152 +457,63 @@ export interface OperationSchedule {
 }
 
 export const OPERATION_SCHEDULES: OperationSchedule[] = [
-  // ── Perplexity Computer ──
+  // ── External Intelligence Examples ──
   {
-    time: '7:15 AM CT',
-    days: 'Mon\u2013Fri',
-    description: 'Morning brief + Gmail drafts',
-    agent: 'Perplexity Computer',
+    time: '8:00 AM',
+    days: 'Mon–Fri',
+    description: 'Daily external research brief generation',
+    agent: 'External Intelligence Agent',
     icon: 'Monitor',
     source: 'external',
     isStatic: true,
   },
   {
-    time: '2:00 PM CT',
-    days: 'Mon\u2013Fri',
-    description: 'Afternoon email scan + drafts',
-    agent: 'Perplexity Computer',
+    time: '2:00 PM',
+    days: 'Mon–Fri',
+    description: 'Afternoon update and draft preparation',
+    agent: 'External Intelligence Agent',
     icon: 'Monitor',
     source: 'external',
     isStatic: true,
   },
 
-  // ── OpenClaw Autonomous Loops ──
-  {
-    time: '9:00 AM CT',
-    days: 'Mon\u2013Fri',
-    description: 'Stale commitment watchdog',
-    agent: 'OpenClaw',
-    icon: 'Shield',
-    source: 'openclaw',
-    isStatic: true,
-  },
-  {
-    time: '9:00 AM CT',
-    days: 'Mon\u2013Fri',
-    description: 'Intelligence Council \u2014 morning session',
-    agent: 'OpenClaw',
-    icon: 'Shield',
-    source: 'openclaw',
-    isStatic: true,
-  },
-  {
-    time: '11:30 AM CT',
-    days: 'Mon\u2013Fri',
-    description: 'Ali engineering sync prep',
-    agent: 'OpenClaw',
-    icon: 'Shield',
-    source: 'openclaw',
-    isStatic: true,
-  },
-  {
-    time: '6:00 PM CT',
-    days: 'Mon\u2013Fri',
-    description: 'End-of-day wrap',
-    agent: 'OpenClaw',
-    icon: 'Shield',
-    source: 'openclaw',
-    isStatic: true,
-  },
-  {
-    time: '5:00 PM CT',
-    days: 'Mon\u2013Fri',
-    description: 'Intelligence Council \u2014 evening session',
-    agent: 'OpenClaw',
-    icon: 'Shield',
-    source: 'openclaw',
-    isStatic: true,
-  },
+  // ── Gateway Runtime Examples ──
   {
     time: 'Every 15 min',
     days: 'Always',
-    description: 'Pre-meeting intelligence brief',
-    agent: 'OpenClaw',
+    description: 'Gateway health and queue watchdog',
+    agent: 'OpenClaw Runtime',
     icon: 'Shield',
     source: 'openclaw',
     isStatic: true,
   },
-
-  // ── Twin Agents ──
-  {
-    time: '5:30 PM CT',
-    days: 'Mon\u2013Fri',
-    description: 'Daily engineering summary from ClickUp doc',
-    agent: 'Engineering Summary',
-    icon: 'BarChart3',
-    source: 'twin',
-    isStatic: false,
-  },
-
-  // ── OpenClaw Always-On ──
   {
     time: 'Every 30 min',
     days: 'Always',
-    description: 'OpenClaw heartbeat',
-    agent: 'OpenClaw',
+    description: 'Background heartbeat verification',
+    agent: 'OpenClaw Runtime',
     icon: 'HeartPulse',
     source: 'openclaw',
     isStatic: true,
   },
 
-  // ── Airweave ──
+  // ── Coordination Examples ──
   {
-    time: 'Every 5 min',
+    time: 'Every hour',
     days: 'Daily',
-    description: 'Airweave ClickUp + GitHub sync',
-    agent: 'Airweave',
-    icon: 'Brain',
-    source: 'external',
-    isStatic: true,
-  },
-
-  // ── jarvisv2 Crons ──
-  {
-    time: 'Every 15 min',
-    days: 'Daily',
-    description: 'Email intelligence sync',
-    agent: 'jarvisv2',
-    icon: 'Mail',
-    source: 'jarvisv2',
-    isStatic: true,
-  },
-  {
-    time: 'Every 1 min',
-    days: 'Always',
-    description: 'Due actions executor',
-    agent: 'jarvisv2',
-    icon: 'Zap',
-    source: 'jarvisv2',
-    isStatic: true,
+    description: 'Cross-agent task summary and sync',
+    agent: 'Coordinator',
+    icon: 'BarChart3',
+    source: 'twin',
+    isStatic: false,
   },
   {
     time: 'On webhook',
     days: 'Always',
-    description: 'Zoom \u2192 meeting notes \u2192 ClickUp',
-    agent: 'jarvisv2 + Twin',
+    description: 'Incoming event routing and workflow trigger',
+    agent: 'Automation Router',
     icon: 'Webhook',
     source: 'jarvisv2',
-    isStatic: true,
-  },
-
-  // ── Granola ──
-  {
-    time: 'During meetings',
-    days: 'As scheduled',
-    description: 'Live meeting transcription',
-    agent: 'Granola',
-    icon: 'Mic',
-    source: 'external',
     isStatic: true,
   },
 ]

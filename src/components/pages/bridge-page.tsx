@@ -117,7 +117,7 @@ function getLastRunAt(agent: Agent): string | null {
  * Fleet tiers:
  *   Operator  — JARVIS main (OpenClaw). Pinned hero card.
  *   Primary   — Twin agents at build.twin.so. The workhorses.
- *   External  — Perplexity Computer, etc. Static cards, no live heartbeat.
+ *   External  — External platform cards. Static cards, no live heartbeat.
  *   Dev Tools — Local Claude Code sub-agents. Collapsed by default.
  *   Hidden    — dispatch_twin, dogfood. Not shown.
  *
@@ -197,7 +197,7 @@ export function BridgePage() {
     [cronJobs]
   )
 
-  const totalVisible = fleetGroups.operator.length + fleetGroups.primary.length + fleetGroups.external.length + fleetGroups.devtools.length + 1 /* Perplexity Computer static */
+  const totalVisible = fleetGroups.operator.length + fleetGroups.primary.length + fleetGroups.external.length + fleetGroups.devtools.length + 1 /* external static card */
 
   return (
     <div className="flex h-full">
@@ -275,7 +275,7 @@ export function BridgePage() {
               </div>
             )}
 
-            {/* ═══ EXTERNAL INTELLIGENCE — Perplexity Computer, etc. ═══ */}
+            {/* ═══ EXTERNAL INTELLIGENCE ═══ */}
             <div className="mb-8">
               <div className="mb-4 flex items-center gap-3">
                 <h2 className="font-heading text-lg font-semibold text-foreground">
@@ -286,7 +286,7 @@ export function BridgePage() {
                 </span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {/* Static Perplexity Computer card */}
+                {/* Static external intelligence card */}
                 <PerplexityComputerCard />
                 {/* Any external-tier agents from the store */}
                 {fleetGroups.external.map(agent => (
@@ -919,7 +919,7 @@ function OperationScheduleRow({ schedule }: { schedule: OperationSchedule }) {
   )
 }
 
-// ─── Perplexity Computer Static Card ───
+// ─── External Intelligence Static Card ───
 
 function PerplexityComputerCard() {
   const identity = getAgentIdentity('perplexity-computer')
@@ -952,11 +952,11 @@ function PerplexityComputerCard() {
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-xs text-foreground">
             <Clock className="w-3 h-3 text-muted-foreground shrink-0" />
-            <span>7:15 AM CT Mon&ndash;Fri &mdash; Morning brief + Gmail drafts</span>
+            <span>8:00 AM Mon&ndash;Fri &mdash; External research brief</span>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-foreground">
             <Clock className="w-3 h-3 text-muted-foreground shrink-0" />
-            <span>2:00 PM CT Mon&ndash;Fri &mdash; Afternoon email scan + drafts</span>
+            <span>2:00 PM Mon&ndash;Fri &mdash; Afternoon update and draft prep</span>
           </div>
         </div>
       </div>
