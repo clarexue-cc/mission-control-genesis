@@ -15,6 +15,8 @@ interface NavItem {
   icon: React.ReactNode
   priority: boolean // Show in mobile bottom bar
   essential?: boolean // Visible in Essential interface mode (default false)
+  href?: string
+  target?: string
   children?: NavItem[] // Nested sub-items (expandable parent)
 }
 
@@ -23,6 +25,8 @@ interface NavGroup {
   label?: string // undefined = no header (core group)
   items: NavItem[]
 }
+
+const tracesUrl = process.env.NEXT_PUBLIC_LANGFUSE_URL || 'http://192.168.1.116:3001'
 
 const navGroups: NavGroup[] = [
   {
@@ -42,6 +46,7 @@ const navGroups: NavGroup[] = [
     label: 'OBSERVE',
     items: [
       { id: 'activity', label: 'Activity', icon: <ActivityIcon />, priority: true, essential: true },
+      { id: 'traces', label: 'Traces', icon: <ActivityIcon />, priority: false, href: tracesUrl, target: '_blank' },
       { id: 'logs', label: 'Logs', icon: <LogsIcon />, priority: false, essential: true },
       { id: 'cost-tracker', label: 'Cost Tracker', icon: <TokensIcon />, priority: false },
       { id: 'nodes', label: 'Nodes', icon: <NodesIcon />, priority: false },
@@ -480,7 +485,53 @@ function NavButton({ item, active, expanded, onClick, onPrefetch, nested }: {
   onPrefetch?: () => void
   nested?: boolean
 }) {
+  const buttonContents = (
+    <>
+      {active && (
+        <span className="absolute left-0 w-0.5 h-5 bg-void-cyan rounded-r glow-cyan" />
+      )}
+      <div className={`shrink-0 ${nested ? 'w-4 h-4' : 'w-5 h-5'}`}>{item.icon}</div>
+      {expanded && <span className={`truncate ${nested ? 'text-xs' : 'text-sm'}`}>{item.label}</span>}
+      {!expanded && (
+        <span className="absolute left-full ml-2 px-2 py-1 text-xs font-medium bg-popover text-popover-foreground border border-border rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
+          {item.label}
+        </span>
+      )}
+    </>
+  )
+
+  const buttonClassName = expanded
+    ? `w-full flex items-center gap-2 px-2 h-auto rounded-lg text-left justify-start relative ${
+        nested ? 'py-1' : 'py-1.5'
+      } ${
+        active
+          ? 'bg-primary/15 text-primary hover:bg-primary/20'
+          : ''
+      }`
+    : `rounded-lg group relative ${
+        active
+          ? 'bg-primary/15 text-primary hover:bg-primary/20'
+          : ''
+      }`
+
   if (expanded) {
+    if (item.href) {
+      return (
+        <Button
+          asChild
+          variant="ghost"
+          onMouseEnter={onPrefetch}
+          onFocus={onPrefetch}
+          aria-current={active ? 'page' : undefined}
+          className={buttonClassName}
+        >
+          <a href={item.href} target={item.target || '_blank'} rel="noopener noreferrer">
+            {buttonContents}
+          </a>
+        </Button>
+      )
+    }
+
     return (
       <Button
         variant="ghost"
@@ -488,19 +539,28 @@ function NavButton({ item, active, expanded, onClick, onPrefetch, nested }: {
         onMouseEnter={onPrefetch}
         onFocus={onPrefetch}
         aria-current={active ? 'page' : undefined}
-        className={`w-full flex items-center gap-2 px-2 h-auto rounded-lg text-left justify-start relative ${
-          nested ? 'py-1' : 'py-1.5'
-        } ${
-          active
-            ? 'bg-primary/15 text-primary hover:bg-primary/20'
-            : ''
-        }`}
+        className={buttonClassName}
       >
-        {active && (
-          <span className="absolute left-0 w-0.5 h-5 bg-void-cyan rounded-r glow-cyan" />
-        )}
-        <div className={`shrink-0 ${nested ? 'w-4 h-4' : 'w-5 h-5'}`}>{item.icon}</div>
-        <span className={`truncate ${nested ? 'text-xs' : 'text-sm'}`}>{item.label}</span>
+        {buttonContents}
+      </Button>
+    )
+  }
+
+  if (item.href) {
+    return (
+      <Button
+        asChild
+        variant="ghost"
+        size="icon-lg"
+        onMouseEnter={onPrefetch}
+        onFocus={onPrefetch}
+        title={item.label}
+        aria-current={active ? 'page' : undefined}
+        className={buttonClassName}
+      >
+        <a href={item.href} target={item.target || '_blank'} rel="noopener noreferrer">
+          {buttonContents}
+        </a>
       </Button>
     )
   }
@@ -514,21 +574,9 @@ function NavButton({ item, active, expanded, onClick, onPrefetch, nested }: {
       onFocus={onPrefetch}
       title={item.label}
       aria-current={active ? 'page' : undefined}
-      className={`rounded-lg group relative ${
-        active
-          ? 'bg-primary/15 text-primary hover:bg-primary/20'
-          : ''
-      }`}
+      className={buttonClassName}
     >
-      <div className="w-5 h-5">{item.icon}</div>
-      {/* Tooltip */}
-      <span className="absolute left-full ml-2 px-2 py-1 text-xs font-medium bg-popover text-popover-foreground border border-border rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
-        {item.label}
-      </span>
-      {/* Active indicator */}
-      {active && (
-        <span className="absolute left-0 w-0.5 h-5 bg-primary rounded-r" />
-      )}
+      {buttonContents}
     </Button>
   )
 }
@@ -550,19 +598,37 @@ function MobileBottomBar({ activeTab, navigateToPanel, groups, items }: {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border safe-area-bottom">
         <div className="flex items-center justify-around px-1 h-14">
           {priorityItems.map((item) => (
-            <Button
-              key={item.id}
-              variant="ghost"
-              onClick={() => navigateToPanel(item.id)}
-              className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg min-w-[48px] min-h-[48px] h-auto ${
-                activeTab === item.id
-                  ? 'text-primary hover:text-primary'
-                  : ''
-              }`}
-            >
-              <div className="w-5 h-5">{item.icon}</div>
-              <span className="text-[10px] font-medium truncate">{item.label}</span>
-            </Button>
+            item.href ? (
+              <Button
+                key={item.id}
+                asChild
+                variant="ghost"
+                className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg min-w-[48px] min-h-[48px] h-auto ${
+                  activeTab === item.id
+                    ? 'text-primary hover:text-primary'
+                    : ''
+                }`}
+              >
+                <a href={item.href} target={item.target || '_blank'} rel="noopener noreferrer">
+                  <div className="w-5 h-5">{item.icon}</div>
+                  <span className="text-[10px] font-medium truncate">{item.label}</span>
+                </a>
+              </Button>
+            ) : (
+              <Button
+                key={item.id}
+                variant="ghost"
+                onClick={() => navigateToPanel(item.id)}
+                className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg min-w-[48px] min-h-[48px] h-auto ${
+                  activeTab === item.id
+                    ? 'text-primary hover:text-primary'
+                    : ''
+                }`}
+              >
+                <div className="w-5 h-5">{item.icon}</div>
+                <span className="text-[10px] font-medium truncate">{item.label}</span>
+              </Button>
+            )
           ))}
           {/* More button */}
           <Button
@@ -665,22 +731,45 @@ function MobileBottomSheet({ open, onClose, activeTab, navigateToPanel, groups }
               {/* 2-column grid — flatten nested children for mobile */}
               <div className="grid grid-cols-2 gap-1.5">
                 {group.items.flatMap(item => item.children ? item.children : [item]).map((item) => (
-                  <Button
-                    key={item.id}
-                    variant="ghost"
-                    onClick={() => {
-                      navigateToPanel(item.id)
-                      handleClose()
-                    }}
-                    className={`flex items-center gap-2.5 px-3 min-h-[48px] h-auto rounded-lg justify-start ${
-                      activeTab === item.id
-                        ? 'bg-primary/15 text-primary hover:bg-primary/20'
-                        : 'text-foreground'
-                    }`}
-                  >
-                    <div className="w-5 h-5 shrink-0">{item.icon}</div>
-                    <span className="text-xs font-medium truncate">{item.label}</span>
-                  </Button>
+                  item.href ? (
+                    <Button
+                      key={item.id}
+                      asChild
+                      variant="ghost"
+                      className={`flex items-center gap-2.5 px-3 min-h-[48px] h-auto rounded-lg justify-start ${
+                        activeTab === item.id
+                          ? 'bg-primary/15 text-primary hover:bg-primary/20'
+                          : 'text-foreground'
+                      }`}
+                    >
+                      <a
+                        href={item.href}
+                        target={item.target || '_blank'}
+                        rel="noopener noreferrer"
+                        onClick={handleClose}
+                      >
+                        <div className="w-5 h-5 shrink-0">{item.icon}</div>
+                        <span className="text-xs font-medium truncate">{item.label}</span>
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button
+                      key={item.id}
+                      variant="ghost"
+                      onClick={() => {
+                        navigateToPanel(item.id)
+                        handleClose()
+                      }}
+                      className={`flex items-center gap-2.5 px-3 min-h-[48px] h-auto rounded-lg justify-start ${
+                        activeTab === item.id
+                          ? 'bg-primary/15 text-primary hover:bg-primary/20'
+                          : 'text-foreground'
+                      }`}
+                    >
+                      <div className="w-5 h-5 shrink-0">{item.icon}</div>
+                      <span className="text-xs font-medium truncate">{item.label}</span>
+                    </Button>
+                  )
                 ))}
               </div>
             </div>
