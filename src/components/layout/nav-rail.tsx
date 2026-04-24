@@ -48,6 +48,7 @@ const navGroups: NavGroup[] = [
       { id: 'activity', label: 'Activity', icon: <ActivityIcon />, priority: true, essential: true },
       { id: 'traces', label: 'Traces', icon: <ActivityIcon />, priority: false, href: tracesUrl, target: '_blank' },
       { id: 'boundary', label: 'Boundary', icon: <ShieldIcon />, priority: false },
+      { id: 'hook-logs', label: 'Hook Logs', icon: <HookLogsIcon />, priority: false },
       { id: 'logs', label: 'Logs', icon: <LogsIcon />, priority: false, essential: true },
       { id: 'cost-tracker', label: 'Cost Tracker', icon: <TokensIcon />, priority: false },
       { id: 'nodes', label: 'Nodes', icon: <NodesIcon />, priority: false },
@@ -127,7 +128,7 @@ const gatewayOnlyPanels = new Set([
   'gateways', 'gateway-config', 'channels', 'nodes', 'exec-approvals',
   ...getPluginNavItems().filter(pi => pi.gatewayOnly).map(pi => pi.id),
 ])
-const adminOnlyPanels = new Set<string>(['boundary'])
+const adminOnlyPanels = new Set<string>(['boundary', 'hook-logs'])
 
 export function NavRail() {
   const { activeTab, connection, dashboardMode, currentUser, activeTenant, tenants, osUsers, setActiveTenant, fetchTenants, fetchOsUsers, activeProject, projects, setActiveProject, fetchProjects, sidebarExpanded, collapsedGroups, toggleSidebar, toggleGroup, defaultOrgName, interfaceMode, setInterfaceMode } = useMissionControl()
@@ -1587,6 +1588,16 @@ function ShieldIcon() {
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M8 1.25l5.25 2.2v4.2c0 3.1-1.94 5.97-5.25 7.1-3.31-1.13-5.25-4-5.25-7.1v-4.2L8 1.25z" />
       <path d="M5.75 8.25l1.5 1.5 3-3" />
+    </svg>
+  )
+}
+
+function HookLogsIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="12" height="12" rx="1.5" />
+      <path d="M5 5h6M5 8h3M5 11h5" />
+      <path d="M11.5 7.5l1.5 1.5-1.5 1.5" />
     </svg>
   )
 }
