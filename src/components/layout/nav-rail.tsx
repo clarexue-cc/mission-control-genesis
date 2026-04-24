@@ -43,6 +43,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'activity', label: 'Activity', icon: <ActivityIcon />, priority: true, essential: true },
       { id: 'logs', label: 'Logs', icon: <LogsIcon />, priority: false, essential: true },
+      { id: 'tests', label: 'Tests', icon: <TestsIcon />, priority: false },
       { id: 'cost-tracker', label: 'Cost Tracker', icon: <TokensIcon />, priority: false },
       { id: 'nodes', label: 'Nodes', icon: <NodesIcon />, priority: false },
       { id: 'exec-approvals', label: 'Approvals', icon: <ApprovalsIcon />, priority: false },
@@ -122,7 +123,7 @@ const gatewayOnlyPanels = new Set([
   'gateways', 'gateway-config', 'channels', 'nodes', 'exec-approvals',
   ...getPluginNavItems().filter(pi => pi.gatewayOnly).map(pi => pi.id),
 ])
-const adminOnlyPanels = new Set<string>([])
+const adminOnlyPanels = new Set<string>(['tests'])
 
 export function NavRail() {
   const { activeTab, connection, dashboardMode, currentUser, activeTenant, tenants, osUsers, setActiveTenant, fetchTenants, fetchOsUsers, activeProject, projects, setActiveProject, fetchProjects, sidebarExpanded, collapsedGroups, toggleSidebar, toggleGroup, defaultOrgName, interfaceMode, setInterfaceMode } = useMissionControl()
@@ -1277,6 +1278,17 @@ function LogsIcon() {
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" />
       <path d="M5 5h6M5 8h6M5 11h3" />
+    </svg>
+  )
+}
+
+function TestsIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.5 2.5h7l1.5 1.5v9.5h-10v-11z" />
+      <path d="M11.5 2.5v2h2" />
+      <path d="M5.5 7.25l1.25 1.25 2-2" />
+      <path d="M5.5 11h5" />
     </svg>
   )
 }
