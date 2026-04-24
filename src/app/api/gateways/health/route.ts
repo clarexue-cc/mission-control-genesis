@@ -126,7 +126,9 @@ function isBlockedUrl(urlStr: string, userConfiguredHosts: Set<string>): boolean
   }
 }
 
-function buildGatewayProbeUrl(host: string, port: number): string | null {
+const GATEWAY_HEALTH_PATHS = ['/healthz', '/api/health']
+
+function buildGatewayProbeUrlWithPath(host: string, port: number, path: string): string | null {
   const rawHost = String(host || '').trim()
   if (!rawHost) return null
 
@@ -144,7 +146,7 @@ function buildGatewayProbeUrl(host: string, port: number): string | null {
       if (!parsed.port && Number.isFinite(port) && port > 0) {
         parsed.port = String(port)
       }
-      parsed.pathname = parsed.pathname.replace(/\/+$/, '') + '/api/health'
+      parsed.pathname = parsed.pathname.replace(/\/+$/, '') + path
       return parsed.toString()
     } catch {
       return null
@@ -152,7 +154,13 @@ function buildGatewayProbeUrl(host: string, port: number): string | null {
   }
 
   if (!Number.isFinite(port) || port <= 0) return null
-  return `http://${rawHost}:${port}/api/health`
+  return `http://${rawHost}:${port}${path}`
+}
+
+function buildGatewayProbeUrls(host: string, port: number): string[] {
+  return GATEWAY_HEALTH_PATHS
+    .map((path) => buildGatewayProbeUrlWithPath(host, port, path))
+    .filter((url): url is string => Boolean(url))
 }
 
 /**
@@ -191,15 +199,16 @@ export async function POST(request: NextRequest) {
 
   for (const gw of gateways) {
     const probedAt = Math.floor(Date.now() / 1000)
-    const probeUrl = buildGatewayProbeUrl(gw.host, gw.port)
-    if (!probeUrl) {
+    const probeUrls = buildGatewayProbeUrls(gw.host, gw.port)
+    if (probeUrls.length === 0) {
       const error = 'Invalid gateway address'
       insertLogStmt.run(gw.id, 'error', null, probedAt, error)
       results.push({ id: gw.id, name: gw.name, status: 'error', latency: null, agents: [], sessions_count: 0, error })
       continue
     }
 
-    if (isBlockedUrl(probeUrl, configuredHosts)) {
+    const blockedUrl = probeUrls.find((url) => isBlockedUrl(url, configuredHosts))
+    if (blockedUrl) {
       const error = 'Blocked URL'
       insertLogStmt.run(gw.id, 'error', null, probedAt, error)
       results.push({ id: gw.id, name: gw.name, status: 'error', latency: null, agents: [], sessions_count: 0, error })
@@ -208,13 +217,29 @@ export async function POST(request: NextRequest) {
 
     const start = Date.now()
     try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 5000)
+      let res: Response | null = null
+      let lastError: string | null = null
 
-      const res = await fetch(probeUrl, {
-        signal: controller.signal,
-      })
-      clearTimeout(timeout)
+      for (const probeUrl of probeUrls) {
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 5000)
+        try {
+          const candidate = await fetch(probeUrl, {
+            signal: controller.signal,
+          })
+          res = candidate
+          if (candidate.ok) break
+          lastError = `HTTP ${candidate.status}`
+        } catch (err: any) {
+          lastError = err.name === "AbortError" ? "timeout" : (err.message || "connection failed")
+        } finally {
+          clearTimeout(timeout)
+        }
+      }
+
+      if (!res) {
+        throw new Error(lastError || "connection failed")
+      }
 
       const latency = Date.now() - start
       const status = res.ok ? "online" : "error"
@@ -223,7 +248,7 @@ export async function POST(request: NextRequest) {
         ? 'OpenClaw 2026.3.2+ defaults tools.profile=messaging; Mission Control should enforce coding profile when spawning.'
         : undefined
 
-      const errorMessage = res.ok ? null : `HTTP ${res.status}`
+      const errorMessage = res.ok ? null : (lastError || `HTTP ${res.status}`)
       insertLogStmt.run(gw.id, status, latency, probedAt, errorMessage)
 
       results.push({
