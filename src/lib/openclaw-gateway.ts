@@ -40,8 +40,14 @@ export function parseGatewayJsonOutput(raw: string): unknown | null {
 export async function callOpenClawGateway<T = unknown>(
   method: string,
   params: unknown,
-  timeoutMs = 10000,
+  timeoutMsOrOptions: number | { timeoutMs?: number; env?: NodeJS.ProcessEnv } = 10000,
 ): Promise<T> {
+  const timeoutMs =
+    typeof timeoutMsOrOptions === 'number'
+      ? timeoutMsOrOptions
+      : timeoutMsOrOptions.timeoutMs ?? 10000
+  const env = typeof timeoutMsOrOptions === 'number' ? undefined : timeoutMsOrOptions.env
+
   const result = await runOpenClaw(
     [
       'gateway',
@@ -53,7 +59,7 @@ export async function callOpenClawGateway<T = unknown>(
       JSON.stringify(params ?? {}),
       '--json',
     ],
-    { timeoutMs: timeoutMs + 2000 },
+    { timeoutMs: timeoutMs + 2000, ...(env ? { env } : {}) },
   )
 
   const payload = parseGatewayJsonOutput(result.stdout)

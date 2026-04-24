@@ -13,6 +13,7 @@ import { existsSync, readFileSync, statSync } from 'fs'
 import { resolveWithin } from './paths'
 import { logger } from './logger'
 import { parseJsonRelaxed } from './json-relaxed'
+import { resolveGatewayConfigSources, type GatewayConfigSource } from './gateway-registry'
 
 interface OpenClawAgent {
   id: string
@@ -61,6 +62,10 @@ export interface SyncDiff {
   newAgents: string[]
   updatedAgents: string[]
   onlyInMC: string[]
+}
+
+export interface SyncOptions {
+  gatewayId?: number | null
 }
 
 function parseIdentityFromFile(content: string): { name?: string; theme?: string; emoji?: string; content?: string } {
@@ -131,21 +136,41 @@ function getConfigPath(): string | null {
   return config.openclawConfigPath || null
 }
 
-function resolveAgentWorkspacePath(workspace: string): string {
-  if (isAbsolute(workspace)) return resolve(workspace)
-  if (!config.openclawStateDir) {
+function resolveAgentWorkspacePath(workspace: string, source?: GatewayConfigSource | null): string {
+  if (isAbsolute(workspace)) {
+    const containerRoot = source?.containerWorkspaceDir
+    const workspaceRoot = source?.workspaceRoot
+    if (containerRoot && workspaceRoot) {
+      const normalizedWorkspace = workspace.replace(/\/+$/, '') || '/'
+      const normalizedRoot = containerRoot.replace(/\/+$/, '') || '/'
+      if (normalizedWorkspace === normalizedRoot || normalizedWorkspace.startsWith(`${normalizedRoot}/`)) {
+        const relative = normalizedWorkspace === normalizedRoot
+          ? ''
+          : normalizedWorkspace.slice(normalizedRoot.length + 1)
+        return resolveWithin(workspaceRoot, relative)
+      }
+    }
+    return resolve(workspace)
+  }
+
+  const stateDir = source?.stateDir || config.openclawStateDir
+  if (!stateDir) {
     throw new Error('OPENCLAW_STATE_DIR not configured')
   }
-  return resolveWithin(config.openclawStateDir, workspace)
+  return resolveWithin(stateDir, workspace)
 }
 
 const MAX_WORKSPACE_FILE_BYTES = 1024 * 1024 // 1 MB
 
 /** Safely read a file from an agent's workspace directory */
-function readWorkspaceFile(workspace: string | undefined, filename: string): string | null {
+function readWorkspaceFile(
+  workspace: string | undefined,
+  filename: string,
+  source?: GatewayConfigSource | null,
+): string | null {
   if (!workspace) return null
   try {
-    const safeWorkspace = resolveAgentWorkspacePath(workspace)
+    const safeWorkspace = resolveAgentWorkspacePath(workspace, source)
     const safePath = resolveWithin(safeWorkspace, filename)
     if (existsSync(safePath)) {
       const size = statSync(safePath).size
@@ -161,13 +186,13 @@ function readWorkspaceFile(workspace: string | undefined, filename: string): str
   return null
 }
 
-export function enrichAgentConfigFromWorkspace(configData: any): any {
+export function enrichAgentConfigFromWorkspace(configData: any, source?: GatewayConfigSource | null): any {
   if (!configData || typeof configData !== 'object') return configData
   const workspace = typeof configData.workspace === 'string' ? configData.workspace : undefined
   if (!workspace) return configData
 
-  const identityFile = readWorkspaceFile(workspace, 'identity.md')
-  const toolsFile = readWorkspaceFile(workspace, 'TOOLS.md')
+  const identityFile = readWorkspaceFile(workspace, 'identity.md', source)
+  const toolsFile = readWorkspaceFile(workspace, 'TOOLS.md', source)
 
   const mergedIdentity = {
     ...parseIdentityFromFile(identityFile || ''),
@@ -186,8 +211,8 @@ export function enrichAgentConfigFromWorkspace(configData: any): any {
 }
 
 /** Read and parse openclaw.json agents list */
-async function readOpenClawAgents(): Promise<OpenClawAgent[]> {
-  const configPath = getConfigPath()
+async function readOpenClawAgents(source?: GatewayConfigSource | null): Promise<OpenClawAgent[]> {
+  const configPath = source?.configPath || getConfigPath()
   if (!configPath) throw new Error('OPENCLAW_CONFIG_PATH not configured')
 
   const { readFile } = require('fs/promises')
@@ -197,7 +222,7 @@ async function readOpenClawAgents(): Promise<OpenClawAgent[]> {
 }
 
 /** Extract MC-friendly fields from an OpenClaw agent config */
-function mapAgentToMC(agent: OpenClawAgent): {
+function mapAgentToMC(agent: OpenClawAgent, source?: GatewayConfigSource | null): {
   name: string
   role: string
   config: any
@@ -217,25 +242,32 @@ function mapAgentToMC(agent: OpenClawAgent): {
     workspace: agent.workspace,
     agentDir: agent.agentDir,
     isDefault: agent.default || false,
-  })
+    ...(source?.gateway
+      ? {
+          gateway: {
+            id: source.gateway.id,
+            name: source.gateway.name,
+            host: source.gateway.host,
+            port: source.gateway.port,
+          },
+        }
+      : {}),
+  }, source)
 
   // Read soul.md from the agent's workspace if available
-  const soul_content = readWorkspaceFile(agent.workspace, 'soul.md')
+  const soul_content = readWorkspaceFile(agent.workspace, 'soul.md', source)
 
   return { name, role, config: configData, soul_content }
 }
 
 /** Sync agents from openclaw.json into the MC database */
-export async function syncAgentsFromConfig(actor: string = 'system'): Promise<SyncResult> {
-  let agents: OpenClawAgent[]
-  try {
-    agents = await readOpenClawAgents()
-  } catch (err: any) {
-    return { synced: 0, created: 0, updated: 0, agents: [], error: err.message }
-  }
-
-  if (agents.length === 0) {
-    return { synced: 0, created: 0, updated: 0, agents: [] }
+export async function syncAgentsFromConfig(
+  actor: string = 'system',
+  options: SyncOptions = {},
+): Promise<SyncResult> {
+  const resolved = resolveGatewayConfigSources(options.gatewayId ?? null)
+  if (resolved.error) {
+    return { synced: 0, created: 0, updated: 0, agents: [], error: resolved.error }
   }
 
   const db = getDatabase()
@@ -253,37 +285,53 @@ export async function syncAgentsFromConfig(actor: string = 'system'): Promise<Sy
     UPDATE agents SET role = ?, config = ?, soul_content = ?, updated_at = ? WHERE name = ?
   `)
 
+  let synced = 0
+  const sourceErrors: string[] = []
+
   db.transaction(() => {
-    for (const agent of agents) {
-      const mapped = mapAgentToMC(agent)
-      const configJson = JSON.stringify(mapped.config)
-      const existing = findByName.get(mapped.name) as any
+    for (const source of resolved.sources) {
+      let agents: OpenClawAgent[] = []
+      try {
+        agents = parseJsonRelaxed<any>(readFileSync(source.configPath, 'utf-8'))?.agents?.list || []
+      } catch (err: any) {
+        sourceErrors.push(`${source.gatewayName || source.configPath}: ${err.message || 'read failed'}`)
+        continue
+      }
 
-      if (existing) {
-        // Check if config or soul_content actually changed
-        const existingConfig = existing.config || '{}'
-        const existingSoul = existing.soul_content || null
-        const configChanged = existingConfig !== configJson || existing.role !== mapped.role
-        const soulChanged = mapped.soul_content !== null && mapped.soul_content !== existingSoul
+      synced += agents.length
+      for (const agent of agents) {
+        const mapped = mapAgentToMC(agent, source)
+        const configJson = JSON.stringify(mapped.config)
+        const existing = findByName.get(mapped.name) as any
 
-        if (configChanged || soulChanged) {
-          // Only overwrite soul_content if we read a new value from workspace
-          const soulToWrite = mapped.soul_content ?? existingSoul
-          updateAgent.run(mapped.role, configJson, soulToWrite, now, mapped.name)
-          results.push({ id: agent.id, name: mapped.name, action: 'updated' })
-          updated++
+        if (existing) {
+          // Check if config or soul_content actually changed
+          const existingConfig = existing.config || '{}'
+          const existingSoul = existing.soul_content || null
+          const configChanged = existingConfig !== configJson || existing.role !== mapped.role
+          const soulChanged = mapped.soul_content !== null && mapped.soul_content !== existingSoul
+
+          if (configChanged || soulChanged) {
+            // Only overwrite soul_content if we read a new value from workspace
+            const soulToWrite = mapped.soul_content ?? existingSoul
+            updateAgent.run(mapped.role, configJson, soulToWrite, now, mapped.name)
+            results.push({ id: agent.id, name: mapped.name, action: 'updated' })
+            updated++
+          } else {
+            results.push({ id: agent.id, name: mapped.name, action: 'unchanged' })
+          }
         } else {
-          results.push({ id: agent.id, name: mapped.name, action: 'unchanged' })
+          insertAgent.run(mapped.name, mapped.role, mapped.soul_content, now, now, configJson)
+          results.push({ id: agent.id, name: mapped.name, action: 'created' })
+          created++
         }
-      } else {
-        insertAgent.run(mapped.name, mapped.role, mapped.soul_content, now, now, configJson)
-        results.push({ id: agent.id, name: mapped.name, action: 'created' })
-        created++
       }
     }
   })()
 
-  const synced = agents.length
+  if (synced === 0 && sourceErrors.length > 0) {
+    return { synced: 0, created: 0, updated: 0, agents: [], error: sourceErrors.join('; ') }
+  }
 
   // Log audit event
   if (created > 0 || updated > 0) {
@@ -302,11 +350,9 @@ export async function syncAgentsFromConfig(actor: string = 'system'): Promise<Sy
 }
 
 /** Preview the diff between openclaw.json and MC database without writing */
-export async function previewSyncDiff(): Promise<SyncDiff> {
-  let agents: OpenClawAgent[]
-  try {
-    agents = await readOpenClawAgents()
-  } catch {
+export async function previewSyncDiff(options: SyncOptions = {}): Promise<SyncDiff> {
+  const resolved = resolveGatewayConfigSources(options.gatewayId ?? null)
+  if (resolved.error) {
     return { inConfig: 0, inMC: 0, newAgents: [], updatedAgents: [], onlyInMC: [] }
   }
 
@@ -318,17 +364,23 @@ export async function previewSyncDiff(): Promise<SyncDiff> {
   const updatedAgents: string[] = []
   const configNames = new Set<string>()
 
-  for (const agent of agents) {
-    const mapped = mapAgentToMC(agent)
-    configNames.add(mapped.name)
+  let inConfig = 0
+  for (const source of resolved.sources) {
+    const agents = await readOpenClawAgents(source).catch(() => [])
+    inConfig += agents.length
 
-    const existing = allMCAgents.find(a => a.name === mapped.name)
-    if (!existing) {
-      newAgents.push(mapped.name)
-    } else {
-      const configJson = JSON.stringify(mapped.config)
-      if (existing.config !== configJson || existing.role !== mapped.role) {
-        updatedAgents.push(mapped.name)
+    for (const agent of agents) {
+      const mapped = mapAgentToMC(agent, source)
+      configNames.add(mapped.name)
+
+      const existing = allMCAgents.find(a => a.name === mapped.name)
+      if (!existing) {
+        newAgents.push(mapped.name)
+      } else {
+        const configJson = JSON.stringify(mapped.config)
+        if (existing.config !== configJson || existing.role !== mapped.role) {
+          updatedAgents.push(mapped.name)
+        }
       }
     }
   }
@@ -338,7 +390,7 @@ export async function previewSyncDiff(): Promise<SyncDiff> {
     .filter(name => !configNames.has(name))
 
   return {
-    inConfig: agents.length,
+    inConfig,
     inMC: allMCAgents.length,
     newAgents,
     updatedAgents,
