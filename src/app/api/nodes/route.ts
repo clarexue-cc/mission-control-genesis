@@ -1,26 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
-import { config } from '@/lib/config'
 import { logger } from '@/lib/logger'
 import { callOpenClawGateway } from '@/lib/openclaw-gateway'
+import {
+  buildGatewayProcessEnv,
+  getRegisteredGatewayById,
+  listRegisteredGateways,
+  resolveGatewayConfigSource,
+  type GatewayRecord,
+} from '@/lib/gateway-registry'
 
 const GATEWAY_TIMEOUT = 5000
 
-/** Probe the gateway HTTP /health endpoint to check reachability. */
-async function isGatewayReachable(): Promise<boolean> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), GATEWAY_TIMEOUT)
+function buildGatewayHttpUrl(gateway: GatewayRecord, endpointPath: string): string | null {
+  const rawHost = String(gateway.host || '').trim()
+  if (!rawHost) return null
+  const hasProtocol =
+    rawHost.startsWith('http://') ||
+    rawHost.startsWith('https://') ||
+    rawHost.startsWith('ws://') ||
+    rawHost.startsWith('wss://')
+
   try {
-    const res = await fetch(
-      `http://${config.gatewayHost}:${config.gatewayPort}/health`,
-      { signal: controller.signal },
-    )
-    return res.ok
+    if (hasProtocol) {
+      const parsed = new URL(rawHost)
+      if (parsed.protocol === 'ws:') parsed.protocol = 'http:'
+      if (parsed.protocol === 'wss:') parsed.protocol = 'https:'
+      if (!parsed.port && gateway.port) parsed.port = String(gateway.port)
+      parsed.pathname = endpointPath
+      return parsed.toString()
+    }
+    return `http://${rawHost}:${gateway.port}${endpointPath}`
   } catch {
-    return false
-  } finally {
-    clearTimeout(timeout)
+    return null
   }
+}
+
+/** Probe a registered gateway's HTTP health endpoints to check reachability. */
+async function isGatewayReachable(gateway: GatewayRecord): Promise<boolean> {
+  for (const endpointPath of ['/healthz', '/health', '/api/health']) {
+    const url = buildGatewayHttpUrl(gateway, endpointPath)
+    if (!url) continue
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), GATEWAY_TIMEOUT)
+    try {
+      const res = await fetch(url, { signal: controller.signal })
+      if (res.ok) return true
+    } catch {
+      // Try the next compatible health path.
+    } finally {
+      clearTimeout(timeout)
+    }
+  }
+  return false
+}
+
+function selectGateways(gatewayId: number | null): { gateways: GatewayRecord[]; error?: string; status?: number } {
+  if (gatewayId != null) {
+    const gateway = getRegisteredGatewayById(gatewayId)
+    if (!gateway) return { gateways: [], error: `Gateway ${gatewayId} not found`, status: 404 }
+    return { gateways: [gateway] }
+  }
+  return { gateways: listRegisteredGateways() }
+}
+
+function parseGatewayId(request: NextRequest, body?: Record<string, unknown>): number | null | 'invalid' {
+  const raw = body?.gatewayId ?? request.nextUrl.searchParams.get('gatewayId')
+  if (raw == null || raw === '') return null
+  const gatewayId = Number(raw)
+  if (!Number.isInteger(gatewayId) || gatewayId < 1) return 'invalid'
+  return gatewayId
 }
 
 export async function GET(request: NextRequest) {
@@ -28,51 +78,88 @@ export async function GET(request: NextRequest) {
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const action = request.nextUrl.searchParams.get('action') || 'list'
+  const gatewayId = parseGatewayId(request)
+  if (gatewayId === 'invalid') {
+    return NextResponse.json({ error: 'gatewayId must be a positive integer' }, { status: 400 })
+  }
+  const selection = selectGateways(gatewayId)
+  if (selection.error) {
+    return NextResponse.json({ error: selection.error }, { status: selection.status || 400 })
+  }
 
   if (action === 'list') {
-    try {
-      const connected = await isGatewayReachable()
+    const nodes: unknown[] = []
+    const gateways: Array<{ gatewayId: number; name: string; connected: boolean; nodes: number }> = []
+
+    for (const gateway of selection.gateways) {
+      const connected = await isGatewayReachable(gateway)
       if (!connected) {
-        return NextResponse.json({ nodes: [], connected: false })
+        gateways.push({ gatewayId: gateway.id, name: gateway.name, connected: false, nodes: 0 })
+        continue
       }
 
       try {
-        const data = await callOpenClawGateway<{ nodes?: unknown[] }>('node.list', {}, GATEWAY_TIMEOUT)
-        return NextResponse.json({ nodes: data?.nodes ?? [], connected: true })
+        const source = resolveGatewayConfigSource(gateway)
+        const data = await callOpenClawGateway<{ nodes?: unknown[] }>('node.list', {}, {
+          timeoutMs: GATEWAY_TIMEOUT,
+          env: buildGatewayProcessEnv(gateway, source),
+        })
+        const gatewayNodes = Array.isArray(data?.nodes) ? data.nodes : []
+        nodes.push(...gatewayNodes.map((node) => (
+          node && typeof node === 'object' && !Array.isArray(node)
+            ? { gatewayId: gateway.id, gatewayName: gateway.name, ...(node as Record<string, unknown>) }
+            : node
+        )))
+        gateways.push({ gatewayId: gateway.id, name: gateway.name, connected: true, nodes: gatewayNodes.length })
       } catch (rpcErr) {
         // Gateway is reachable but openclaw CLI unavailable (e.g. Docker) or
         // node.list not supported — return connected=true with empty node list
-        logger.warn({ err: rpcErr }, 'node.list RPC failed, returning empty node list')
-        return NextResponse.json({ nodes: [], connected: true })
+        logger.warn({ err: rpcErr, gateway: gateway.name }, 'node.list RPC failed, returning empty node list')
+        gateways.push({ gatewayId: gateway.id, name: gateway.name, connected: true, nodes: 0 })
       }
-    } catch (err) {
-      logger.warn({ err }, 'Gateway unreachable for node listing')
-      return NextResponse.json({ nodes: [], connected: false })
     }
+
+    return NextResponse.json({
+      nodes,
+      connected: gateways.some((gateway) => gateway.connected),
+      gateways,
+    })
   }
 
   if (action === 'devices') {
-    try {
-      const connected = await isGatewayReachable()
+    const devices: unknown[] = []
+    const gateways: Array<{ gatewayId: number; name: string; connected: boolean; devices: number }> = []
+
+    for (const gateway of selection.gateways) {
+      const connected = await isGatewayReachable(gateway)
       if (!connected) {
-        return NextResponse.json({ devices: [] })
+        gateways.push({ gatewayId: gateway.id, name: gateway.name, connected: false, devices: 0 })
+        continue
       }
 
       try {
         const data = await callOpenClawGateway<{ devices?: unknown[] }>(
           'device.pair.list',
           {},
-          GATEWAY_TIMEOUT,
+          {
+            timeoutMs: GATEWAY_TIMEOUT,
+            env: buildGatewayProcessEnv(gateway, resolveGatewayConfigSource(gateway)),
+          },
         )
-        return NextResponse.json({ devices: data?.devices ?? [] })
+        const gatewayDevices = Array.isArray(data?.devices) ? data.devices : []
+        devices.push(...gatewayDevices.map((device) => (
+          device && typeof device === 'object' && !Array.isArray(device)
+            ? { gatewayId: gateway.id, gatewayName: gateway.name, ...(device as Record<string, unknown>) }
+            : device
+        )))
+        gateways.push({ gatewayId: gateway.id, name: gateway.name, connected: true, devices: gatewayDevices.length })
       } catch (rpcErr) {
-        logger.warn({ err: rpcErr }, 'device.pair.list RPC failed, returning empty device list')
-        return NextResponse.json({ devices: [] })
+        logger.warn({ err: rpcErr, gateway: gateway.name }, 'device.pair.list RPC failed, returning empty device list')
+        gateways.push({ gatewayId: gateway.id, name: gateway.name, connected: true, devices: 0 })
       }
-    } catch (err) {
-      logger.warn({ err }, 'Gateway unreachable for device listing')
-      return NextResponse.json({ devices: [] })
     }
+
+    return NextResponse.json({ devices, gateways })
   }
 
   return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 })
@@ -103,6 +190,18 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
+  const gatewayId = parseGatewayId(request, body)
+  if (gatewayId === 'invalid') {
+    return NextResponse.json({ error: 'gatewayId must be a positive integer' }, { status: 400 })
+  }
+  const selection = selectGateways(gatewayId)
+  if (selection.error) {
+    return NextResponse.json({ error: selection.error }, { status: selection.status || 400 })
+  }
+  const gateway = selection.gateways.find((item) => item.is_primary === 1) || selection.gateways[0]
+  if (!gateway) {
+    return NextResponse.json({ error: 'No gateway configured' }, { status: 400 })
+  }
 
   const action = body.action as string
   if (!action || !VALID_DEVICE_ACTIONS.includes(action as DeviceAction)) {
@@ -130,7 +229,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await callOpenClawGateway(spec.method, params, GATEWAY_TIMEOUT)
+    const result = await callOpenClawGateway(spec.method, params, {
+      timeoutMs: GATEWAY_TIMEOUT,
+      env: buildGatewayProcessEnv(gateway, resolveGatewayConfigSource(gateway)),
+    })
     return NextResponse.json(result)
   } catch (err: unknown) {
     logger.error({ err }, 'Gateway device action failed')
