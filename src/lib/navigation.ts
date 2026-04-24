@@ -6,6 +6,7 @@ import { startNavigationTiming } from '@/lib/navigation-metrics'
 import { useMissionControl } from '@/store'
 
 export function panelHref(panel: string): string {
+  if (panel === 'boundary') return '/panels/boundary'
   return panel === 'overview' ? '/' : `/${panel}`
 }
 

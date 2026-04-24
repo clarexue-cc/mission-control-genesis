@@ -29,6 +29,7 @@ import { SuperAdminPanel } from '@/components/panels/super-admin-panel'
 import { OfficePanel } from '@/components/panels/office-panel'
 import { GitHubSyncPanel } from '@/components/panels/github-sync-panel'
 import { SkillsPanel } from '@/components/panels/skills-panel'
+import { BoundaryEditorPanel } from '@/components/panels/boundary-editor'
 import { LocalAgentsDocPanel } from '@/components/panels/local-agents-doc-panel'
 import { ChannelsPanel } from '@/components/panels/channels-panel'
 import { DebugPanel } from '@/components/panels/debug-panel'
@@ -91,7 +92,11 @@ export default function Home() {
 
   // Sync URL → Zustand activeTab
   const pathname = usePathname()
-  const panelFromUrl = pathname === '/' ? 'overview' : pathname.slice(1)
+  const panelFromUrl = pathname === '/'
+    ? 'overview'
+    : pathname.startsWith('/panels/')
+      ? pathname.slice('/panels/'.length)
+      : pathname.slice(1)
   const normalizedPanel = panelFromUrl === 'sessions' ? 'chat' : panelFromUrl
 
   useEffect(() => {
@@ -557,6 +562,8 @@ function ContentRouter({ tab }: { tab: string }) {
       return <OfficePanel />
     case 'skills':
       return <SkillsPanel />
+    case 'boundary':
+      return <BoundaryEditorPanel />
     case 'channels':
       if (isLocal) return <LocalModeUnavailable panel={tab} />
       return <ChannelsPanel />
