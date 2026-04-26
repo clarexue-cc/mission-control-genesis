@@ -450,12 +450,14 @@ export async function getReadyToShipReport(options: { tenant?: unknown; profile?
   }
 }
 
-function ascii(value: string): string {
-  return value.replace(/[^\x20-\x7E]/g, '?')
-}
-
-function escapePdfText(value: string): string {
-  return ascii(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)')
+function utf16BeHex(value: string): string {
+  const buffer = Buffer.from(value, 'utf16le')
+  for (let index = 0; index < buffer.length; index += 2) {
+    const lowByte = buffer[index]
+    buffer[index] = buffer[index + 1]
+    buffer[index + 1] = lowByte
+  }
+  return buffer.toString('hex').toUpperCase()
 }
 
 export function createReadyToShipPdf(report: ReadyToShipReport): Uint8Array {
@@ -479,7 +481,7 @@ export function createReadyToShipPdf(report: ReadyToShipReport): Uint8Array {
     '14 TL',
     ...lines.flatMap((line, index) => [
       index === 0 ? '/F1 14 Tf' : index === 1 ? '/F1 10 Tf' : '',
-      `(${escapePdfText(line)}) Tj`,
+      `<${utf16BeHex(line)}> Tj`,
       'T*',
     ].filter(Boolean)),
     'ET',
@@ -489,8 +491,9 @@ export function createReadyToShipPdf(report: ReadyToShipReport): Uint8Array {
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    '<< /Type /Font /Subtype /Type0 /BaseFont /STSong-Light /Encoding /UniGB-UCS2-H /DescendantFonts [6 0 R] >>',
     `<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}\nendstream`,
+    '<< /Type /Font /Subtype /CIDFontType0 /BaseFont /STSong-Light /CIDSystemInfo << /Registry (Adobe) /Ordering (GB1) /Supplement 2 >> /DW 1000 >>',
   ]
 
   let pdf = '%PDF-1.4\n'

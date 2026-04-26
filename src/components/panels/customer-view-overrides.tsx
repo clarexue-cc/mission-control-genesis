@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import type { CustomerVisiblePanel } from '@/lib/rbac'
 
 interface CustomerPanelCopy {
@@ -29,12 +31,50 @@ const panelCopy: Record<CustomerVisiblePanel, CustomerPanelCopy> = {
     show_what: ['告警时间', '告警摘要', '建议操作', '是否需要你回复'],
   },
   channels: {
-    display_name: '频道',
-    description: '你的服务消息和专属管家联系入口',
-    empty_state: '服务频道已就绪。',
-    show_what: ['管家联系方式', '常见问题', '提交反馈入口', '服务通知'],
+    display_name: '渠道管理',
+    description: '管理 Agent 向你发消息的方式',
+    empty_state: '还没有绑定任何消息渠道，联系你的管家来设置。',
+    show_what: ['渠道开关（飞书 / Telegram / 邮件）', '绑定状态', '消息预览', '测试发送按钮'],
   },
 }
+
+type CustomerChannelId = 'lark' | 'telegram' | 'email'
+
+interface CustomerChannel {
+  id: CustomerChannelId
+  name: string
+  description: string
+  bound: boolean
+  defaultEnabled: boolean
+  preview: string
+}
+
+const customerChannels: CustomerChannel[] = [
+  {
+    id: 'lark',
+    name: '飞书',
+    description: '通过飞书机器人接收消息',
+    bound: true,
+    defaultEnabled: true,
+    preview: '今日日报已生成，重点内容已同步到你的飞书。',
+  },
+  {
+    id: 'telegram',
+    name: 'Telegram',
+    description: '通过 Telegram Bot 接收消息',
+    bound: false,
+    defaultEnabled: false,
+    preview: '绑定 Telegram 后会在这里预览最新消息。',
+  },
+  {
+    id: 'email',
+    name: '邮件',
+    description: '通过邮件接收通知',
+    bound: true,
+    defaultEnabled: true,
+    preview: '告警与定时任务摘要会同步发送到已绑定邮箱。',
+  },
+]
 
 const panelClassName = 'rounded-lg border border-border bg-card/70'
 
@@ -143,21 +183,106 @@ function CustomerAlerts({ copy }: { copy: CustomerPanelCopy }) {
 }
 
 function CustomerChannels({ copy }: { copy: CustomerPanelCopy }) {
+  const [enabledChannels, setEnabledChannels] = useState<Record<CustomerChannelId, boolean>>(() => (
+    customerChannels.reduce((acc, channel) => {
+      acc[channel.id] = channel.bound && channel.defaultEnabled
+      return acc
+    }, {} as Record<CustomerChannelId, boolean>)
+  ))
+  const [testResult, setTestResult] = useState<string | null>(null)
+  const allOff = customerChannels.every(channel => !enabledChannels[channel.id])
+
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-      <section className={`${panelClassName} p-5`}>
-        <h2 className="text-sm font-semibold text-foreground">联系管家</h2>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <div className="rounded-lg border border-border bg-background/70 p-4">
-            <div className="text-sm font-medium text-foreground">专属管家</div>
-            <div className="mt-1 text-xs text-muted-foreground">工作日 10:00-19:00 响应</div>
+      <div className="space-y-4">
+        <section className={`${panelClassName} p-5`}>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-sm font-semibold text-foreground">消息渠道</h2>
+            <p className="text-xs text-muted-foreground">选择 Agent 通知你的方式，可同时开启多个渠道</p>
           </div>
-          <div className="rounded-lg border border-border bg-background/70 p-4">
-            <div className="text-sm font-medium text-foreground">服务反馈</div>
-            <div className="mt-1 text-xs text-muted-foreground">遇到问题可以直接提交反馈。</div>
+          <div className="mt-4 grid gap-3">
+            {customerChannels.map(channel => {
+              const enabled = enabledChannels[channel.id]
+              return (
+                <div key={channel.id} className="rounded-lg border border-border bg-background/70 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-sm font-medium text-foreground">{channel.name}</h3>
+                        <span className={`rounded-md border px-2 py-0.5 text-2xs ${
+                          channel.bound
+                            ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200'
+                            : 'border-amber-500/25 bg-amber-500/10 text-amber-200'
+                        }`}>
+                          {channel.bound ? '已绑定' : '未绑定'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{channel.description}</p>
+                      {!channel.bound && (
+                        <p className="mt-2 text-xs text-amber-200">未绑定 {channel.name}，联系管家开通。</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={enabled}
+                      aria-label={`${enabled ? '关闭' : '开启'} ${channel.name}`}
+                      disabled={!channel.bound}
+                      onClick={() => {
+                        setEnabledChannels(current => ({ ...current, [channel.id]: !current[channel.id] }))
+                        setTestResult(null)
+                      }}
+                      className={`inline-flex h-8 w-16 shrink-0 items-center rounded-full border px-1 transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                        enabled
+                          ? 'border-primary/40 bg-primary/30 justify-end'
+                          : 'border-border bg-secondary/60 justify-start'
+                      }`}
+                    >
+                      <span className="h-6 w-6 rounded-full bg-foreground shadow-sm" />
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <span className={`text-xs ${enabled ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {enabled ? '已开启' : '已关闭'}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={!channel.bound || !enabled}
+                      onClick={() => setTestResult(`测试消息已发送，请检查 ${channel.name}`)}
+                    >
+                      发送测试消息
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        </div>
-      </section>
+          {allOff && (
+            <div className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-3 text-xs text-amber-100">
+              当前所有渠道均已关闭，你将无法收到 Agent 的主动通知。
+            </div>
+          )}
+        </section>
+
+        <section className={`${panelClassName} p-5`}>
+          <h2 className="text-sm font-semibold text-foreground">消息预览</h2>
+          <div className="mt-4 rounded-lg border border-border bg-background/70 p-4">
+            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>AI 助手</span>
+              <span>刚刚</span>
+            </div>
+            <p className="mt-2 text-sm text-foreground">
+              {customerChannels.find(channel => enabledChannels[channel.id])?.preview || '暂无消息记录'}
+            </p>
+          </div>
+          {testResult && (
+            <div className="mt-3 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-3 text-xs text-emerald-100">
+              {testResult}
+            </div>
+          )}
+        </section>
+      </div>
       <CustomerWhatIsVisible copy={copy} />
     </div>
   )

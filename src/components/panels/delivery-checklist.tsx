@@ -100,6 +100,13 @@ const overallMeta: Record<OverallStatus, { label: string; className: string }> =
 const panelClassName = 'rounded-lg border border-border bg-card/70'
 const inputClassName = 'h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/10'
 const statusOrder: CheckStatus[] = ['pass', 'warn', 'fail', 'not_run']
+const actionPanelLabels: Record<ReadyToShipCheck['action_panel'], string> = {
+  boundary: 'Boundary',
+  tests: 'Tests',
+  delivery: 'Delivery',
+  alerts: 'Alerts',
+  channels: 'Channels',
+}
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error || 'Unknown error')
@@ -324,7 +331,7 @@ export function DeliveryChecklistPanel() {
                         <div className="flex flex-wrap items-center gap-2">
                           {check.action_panel !== 'delivery' && (
                             <Button variant="ghost" size="sm" onClick={() => navigateToPanel(check.action_panel)}>
-                              Jump to {check.action_panel === 'boundary' ? 'Boundary' : check.action_panel === 'tests' ? 'Tests' : check.action_panel}
+                              Jump to {actionPanelLabels[check.action_panel]}
                             </Button>
                           )}
                           {check.metric && (
