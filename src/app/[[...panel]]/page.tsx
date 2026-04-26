@@ -32,6 +32,8 @@ import { GitHubSyncPanel } from '@/components/panels/github-sync-panel'
 import { SkillsPanel } from '@/components/panels/skills-panel'
 import { TestConsolePanel } from '@/components/panels/test-console'
 import { BoundaryEditorPanel } from '@/components/panels/boundary-editor'
+import { DeliveryChecklistPanel } from '@/components/panels/delivery-checklist'
+import { CustomerHeaderBar, CustomerViewOverrides } from '@/components/panels/customer-view-overrides'
 import { LocalAgentsDocPanel } from '@/components/panels/local-agents-doc-panel'
 import { ChannelsPanel } from '@/components/panels/channels-panel'
 import { DebugPanel } from '@/components/panels/debug-panel'
@@ -61,6 +63,7 @@ import { panelHref, useNavigateToPanel } from '@/lib/navigation'
 import { clearOnboardingDismissedThisSession, clearOnboardingReplayFromStart, getOnboardingSessionDecision, markOnboardingReplayFromStart, readOnboardingDismissedThisSession } from '@/lib/onboarding-session'
 import { Button } from '@/components/ui/button'
 import { useMissionControl } from '@/store'
+import { canAccessPanel, isCustomerRole, readEffectiveRoleFromBrowser, type EffectiveRole } from '@/lib/rbac'
 
 interface GatewaySummary {
   id: number
@@ -117,9 +120,19 @@ export default function Home() {
     }
   }, [panelFromUrl, normalizedPanel, router, setActiveTab, setChatPanelOpen])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const nextRole = readEffectiveRoleFromBrowser(window.location.search)
+    setEffectiveRole(nextRole)
+    if (isCustomerRole(nextRole) && !canAccessPanel(nextRole, normalizedPanel)) {
+      router.replace('/?role=customer')
+    }
+  }, [normalizedPanel, pathname, router])
+
   // Connect to SSE for real-time local DB events (tasks, agents, chat, etc.)
   useServerEvents()
   const [isClient, setIsClient] = useState(false)
+  const [effectiveRole, setEffectiveRole] = useState<EffectiveRole>('admin')
   const [stepStatuses, setStepStatuses] = useState<Record<string, 'pending' | 'done'>>(
     () => Object.fromEntries(STEP_KEYS.map(k => [k, 'pending']))
   )
@@ -407,6 +420,9 @@ export default function Home() {
     return <Loader variant="page" steps={isClient ? initSteps : undefined} />
   }
 
+  const isCustomerView = isCustomerRole(effectiveRole)
+  const onboardingActive = showOnboarding && !isCustomerView
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:text-sm focus:font-medium">
@@ -414,28 +430,34 @@ export default function Home() {
       </a>
 
       {/* Left: Icon rail navigation (hidden on mobile, shown as bottom bar instead) */}
-      {!showOnboarding && <NavRail />}
+      {!onboardingActive && <NavRail effectiveRole={effectiveRole} />}
 
       {/* Center: Header + Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {!showOnboarding && (
+        {!onboardingActive && (
           <>
-            <HeaderBar />
-            <LocalModeBanner />
-            <UpdateBanner />
-            <OpenClawUpdateBanner />
-            <OpenClawDoctorBanner />
+            {isCustomerView ? (
+              <CustomerHeaderBar panel={activeTab} />
+            ) : (
+              <>
+                <HeaderBar />
+                <LocalModeBanner />
+                <UpdateBanner />
+                <OpenClawUpdateBanner />
+                <OpenClawDoctorBanner />
+              </>
+            )}
           </>
         )}
         <main
           id="main-content"
-          className={`flex-1 overflow-auto pb-16 md:pb-0 ${showOnboarding ? 'pointer-events-none select-none blur-[2px] opacity-30' : ''}`}
+          className={`flex-1 overflow-auto pb-16 md:pb-0 ${onboardingActive ? 'pointer-events-none select-none blur-[2px] opacity-30' : ''}`}
           role="main"
-          aria-hidden={showOnboarding}
+          aria-hidden={onboardingActive}
         >
           <div aria-live="polite" className="flex flex-col min-h-full">
             <ErrorBoundary key={activeTab}>
-              <ContentRouter tab={activeTab} />
+              <ContentRouter tab={activeTab} effectiveRole={effectiveRole} />
             </ErrorBoundary>
           </div>
 {/* Footer removed — attribution moved to nav sidebar */}
@@ -443,14 +465,14 @@ export default function Home() {
       </div>
 
       {/* Right: Live feed (hidden on mobile) */}
-      {!showOnboarding && liveFeedOpen && (
+      {!onboardingActive && !isCustomerView && liveFeedOpen && (
         <div className="hidden lg:flex h-full">
           <LiveFeed />
         </div>
       )}
 
       {/* Floating button to reopen LiveFeed when closed */}
-      {!showOnboarding && !liveFeedOpen && (
+      {!onboardingActive && !isCustomerView && !liveFeedOpen && (
         <button
           onClick={toggleLiveFeed}
           className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-30 w-6 h-12 items-center justify-center bg-card border border-r-0 border-border rounded-l-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200"
@@ -463,20 +485,20 @@ export default function Home() {
       )}
 
       {/* Chat panel overlay */}
-      {!showOnboarding && <ChatPanel />}
+      {!onboardingActive && !isCustomerView && <ChatPanel />}
 
       {/* Global exec approval overlay (shown regardless of active panel) */}
-      {!showOnboarding && <ExecApprovalOverlay />}
+      {!onboardingActive && !isCustomerView && <ExecApprovalOverlay />}
 
       {/* Global Project Manager Modal */}
-      {!showOnboarding && showProjectManagerModal && (
+      {!onboardingActive && !isCustomerView && showProjectManagerModal && (
         <ProjectManagerModal
           onClose={() => setShowProjectManagerModal(false)}
           onChanged={async () => { await fetchProjects() }}
         />
       )}
 
-      <OnboardingWizard />
+      {!isCustomerView && <OnboardingWizard />}
     </div>
   )
 }
@@ -485,12 +507,18 @@ const ESSENTIAL_PANELS = new Set([
   'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings',
 ])
 
-function ContentRouter({ tab }: { tab: string }) {
+function ContentRouter({ tab, effectiveRole }: { tab: string; effectiveRole: EffectiveRole }) {
   const tp = useTranslations('page')
   const { dashboardMode, interfaceMode, setInterfaceMode } = useMissionControl()
   const navigateToPanel = useNavigateToPanel()
   const isLocal = dashboardMode === 'local'
   const panelName = tab.replace(/-/g, ' ')
+  const isCustomerView = isCustomerRole(effectiveRole)
+
+  if (isCustomerView) {
+    if (!canAccessPanel(effectiveRole, tab)) return <CustomerViewOverrides panel="overview" />
+    return <CustomerViewOverrides panel={tab} />
+  }
 
   // Guard: show nudge for non-essential panels in essential mode
   if (interfaceMode === 'essential' && !ESSENTIAL_PANELS.has(tab)) {
@@ -556,6 +584,8 @@ function ContentRouter({ tab }: { tab: string }) {
       return <TestConsolePanel />
     case 'boundary':
       return <BoundaryEditorPanel />
+    case 'delivery':
+      return <DeliveryChecklistPanel />
     case 'cron':
       return <CronManagementPanel />
     case 'memory':
