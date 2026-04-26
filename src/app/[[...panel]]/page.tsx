@@ -30,6 +30,7 @@ import { SuperAdminPanel } from '@/components/panels/super-admin-panel'
 import { OfficePanel } from '@/components/panels/office-panel'
 import { GitHubSyncPanel } from '@/components/panels/github-sync-panel'
 import { SkillsPanel } from '@/components/panels/skills-panel'
+import { TestConsolePanel } from '@/components/panels/test-console'
 import { LocalAgentsDocPanel } from '@/components/panels/local-agents-doc-panel'
 import { ChannelsPanel } from '@/components/panels/channels-panel'
 import { DebugPanel } from '@/components/panels/debug-panel'
@@ -550,6 +551,8 @@ function ContentRouter({ tab }: { tab: string }) {
       return <ChatPagePanel />
     case 'logs':
       return <LogViewerPanel />
+    case 'tests':
+      return <TestConsolePanel />
     case 'cron':
       return <CronManagementPanel />
     case 'memory':
