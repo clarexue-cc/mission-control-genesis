@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { buildMissionControlCsp, buildNonceRequestHeaders } from '@/lib/csp'
 import { MC_SESSION_COOKIE_NAME, LEGACY_MC_SESSION_COOKIE_NAME } from '@/lib/session-cookie'
+import { RBAC_ROLE_COOKIE, canAccessPanel, normalizePanelForPath, resolveEffectiveRole } from '@/lib/rbac'
 
 /** Constant-time string comparison using Node.js crypto. */
 function safeCompare(a: string, b: string): boolean {
@@ -111,6 +112,15 @@ function addSecurityHeaders(response: NextResponse, _request: NextRequest, nonce
   const effectiveNonce = nonce || crypto.randomBytes(16).toString('base64')
   response.headers.set('Content-Security-Policy', buildMissionControlCsp({ nonce: effectiveNonce, googleEnabled }))
 
+  const queryRole = _request.nextUrl.searchParams.get('role')
+  if (queryRole === 'customer' || queryRole === 'admin') {
+    response.cookies.set(RBAC_ROLE_COOKIE, queryRole, {
+      path: '/',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7,
+    })
+  }
+
   return response
 }
 
@@ -178,6 +188,15 @@ export function proxy(request: NextRequest) {
     return addSecurityHeaders(response, request, nonce)
   }
 
+  const effectiveRole = resolveEffectiveRole({
+    queryRole: request.nextUrl.searchParams.get('role'),
+    cookieString: request.headers.get('cookie'),
+  })
+
+  if (effectiveRole === 'customer' && pathname.startsWith('/api/harness/')) {
+    return addSecurityHeaders(NextResponse.json({ error: 'Forbidden in customer view' }, { status: 403 }), request)
+  }
+
   // Check for session cookie
   const sessionToken = request.cookies.get(MC_SESSION_COOKIE_NAME)?.value || request.cookies.get(LEGACY_MC_SESSION_COOKIE_NAME)?.value
 
@@ -201,6 +220,15 @@ export function proxy(request: NextRequest) {
 
   // Page routes: redirect to login if no session
   if (sessionToken) {
+    if (effectiveRole === 'customer') {
+      const panel = normalizePanelForPath(pathname)
+      if (!canAccessPanel(effectiveRole, panel)) {
+        const redirectUrl = request.nextUrl.clone()
+        redirectUrl.pathname = '/'
+        redirectUrl.searchParams.set('role', 'customer')
+        return addSecurityHeaders(NextResponse.redirect(redirectUrl), request)
+      }
+    }
     const { response, nonce } = nextResponseWithNonce(request)
     return addSecurityHeaders(response, request, nonce)
   }

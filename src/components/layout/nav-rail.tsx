@@ -8,6 +8,8 @@ import { useNavigateToPanel, usePrefetchPanel } from '@/lib/navigation'
 import { Button } from '@/components/ui/button'
 import { APP_VERSION } from '@/lib/version'
 import { getPluginNavItems } from '@/lib/plugins'
+import { canAccessPanel, isCustomerRole, type EffectiveRole } from '@/lib/rbac'
+import { getCustomerPanelLabel } from '@/components/panels/customer-view-overrides'
 
 interface NavItem {
   id: string
@@ -45,6 +47,7 @@ const navGroups: NavGroup[] = [
       { id: 'logs', label: 'Logs', icon: <LogsIcon />, priority: false, essential: true },
       { id: 'tests', label: 'Tests', icon: <TestsIcon />, priority: false },
       { id: 'boundary', label: 'Boundary', icon: <BoundaryIcon />, priority: false },
+      { id: 'delivery', label: 'Delivery', icon: <DeliveryIcon />, priority: false },
       { id: 'cost-tracker', label: 'Cost Tracker', icon: <TokensIcon />, priority: false },
       { id: 'nodes', label: 'Nodes', icon: <NodesIcon />, priority: false },
       { id: 'exec-approvals', label: 'Approvals', icon: <ApprovalsIcon />, priority: false },
@@ -124,9 +127,9 @@ const gatewayOnlyPanels = new Set([
   'gateways', 'gateway-config', 'channels', 'nodes', 'exec-approvals',
   ...getPluginNavItems().filter(pi => pi.gatewayOnly).map(pi => pi.id),
 ])
-const adminOnlyPanels = new Set<string>(['tests', 'boundary'])
+const adminOnlyPanels = new Set<string>(['tests', 'boundary', 'delivery'])
 
-export function NavRail() {
+export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: EffectiveRole }) {
   const { activeTab, connection, dashboardMode, currentUser, activeTenant, tenants, osUsers, setActiveTenant, fetchTenants, fetchOsUsers, activeProject, projects, setActiveProject, fetchProjects, sidebarExpanded, collapsedGroups, toggleSidebar, toggleGroup, defaultOrgName, interfaceMode, setInterfaceMode } = useMissionControl()
   const navigateToPanel = useNavigateToPanel()
   const prefetchPanel = usePrefetchPanel()
@@ -144,6 +147,7 @@ export function NavRail() {
   }
   const isLocal = dashboardMode === 'local'
   const isAdmin = currentUser?.role === 'admin'
+  const isCustomer = isCustomerRole(effectiveRole)
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
 
   function toggleParent(id: string) {
@@ -184,6 +188,8 @@ export function NavRail() {
           if (filteredChildren.length === 0) return null
           return { ...i, children: filteredChildren }
         }
+        if (isCustomer && !canAccessPanel(effectiveRole, i.id)) return null
+        if (isCustomer) return i
         if (isLocal && gatewayOnlyPanels.has(i.id)) return null
         if (!isAdmin && adminOnlyPanels.has(i.id)) return null
         if (isEssential && !i.essential) return null
@@ -195,7 +201,7 @@ export function NavRail() {
   function translateItems(items: NavItem[]): NavItem[] {
     return items.map(item => ({
       ...item,
-      label: tLabel(item.id, item.label),
+      label: isCustomer ? getCustomerPanelLabel(item.id) : tLabel(item.id, item.label),
       children: item.children ? translateItems(item.children) : undefined,
     }))
   }
@@ -416,7 +422,7 @@ export function NavRail() {
         </div>
 
         {/* Promo banners */}
-        {sidebarExpanded && (
+        {sidebarExpanded && !isCustomer && (
           <div className="px-2 pb-2 space-y-2 shrink-0">
             <a
               href="https://x.com/nyk_builderz/status/2022996371922649192?s=20"
@@ -446,7 +452,7 @@ export function NavRail() {
         )}
 
         {/* Attribution */}
-        {sidebarExpanded && (
+        {sidebarExpanded && !isCustomer && (
           <div className="px-3 pb-1">
             <p className="text-[10px] text-muted-foreground/30 text-center">
               Built with care by{' '}
@@ -458,27 +464,29 @@ export function NavRail() {
         )}
 
         {/* Context switcher (profile-style, bottom of sidebar) */}
-        <ContextSwitcher
-          currentUser={currentUser}
-          isAdmin={isAdmin}
-          isLocal={isLocal}
-          isConnected={connection.isConnected}
-          tenants={tenants}
-          osUsers={osUsers}
-          activeTenant={activeTenant}
-          onSwitchTenant={setActiveTenant}
-          projects={projects}
-          activeProject={activeProject}
-          onSwitchProject={setActiveProject}
-          expanded={sidebarExpanded}
-          defaultOrgName={defaultOrgName}
-          navigateToPanel={navigateToPanel}
-          fetchTenants={fetchTenants}
-          fetchOsUsers={fetchOsUsers}
-          interfaceMode={interfaceMode}
-          setInterfaceMode={setInterfaceMode}
-          activeTab={activeTab}
-        />
+        {!isCustomer && (
+          <ContextSwitcher
+            currentUser={currentUser}
+            isAdmin={isAdmin}
+            isLocal={isLocal}
+            isConnected={connection.isConnected}
+            tenants={tenants}
+            osUsers={osUsers}
+            activeTenant={activeTenant}
+            onSwitchTenant={setActiveTenant}
+            projects={projects}
+            activeProject={activeProject}
+            onSwitchProject={setActiveProject}
+            expanded={sidebarExpanded}
+            defaultOrgName={defaultOrgName}
+            navigateToPanel={navigateToPanel}
+            fetchTenants={fetchTenants}
+            fetchOsUsers={fetchOsUsers}
+            interfaceMode={interfaceMode}
+            setInterfaceMode={setInterfaceMode}
+            activeTab={activeTab}
+          />
+        )}
       </nav>
 
       {/* Mobile: Bottom tab bar */}
@@ -1299,6 +1307,17 @@ function BoundaryIcon() {
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M8 1.5l5.5 2.25v3.7c0 3.15-2.2 5.95-5.5 7.05-3.3-1.1-5.5-3.9-5.5-7.05v-3.7L8 1.5z" />
       <path d="M5.5 8l1.65 1.65L10.75 6" />
+    </svg>
+  )
+}
+
+function DeliveryIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 2.5h7l2 2v9H4z" />
+      <path d="M10.8 2.5v2.3H13" />
+      <path d="M6.2 8.4l1.25 1.25 2.4-3" />
+      <path d="M6 12h4" />
     </svg>
   )
 }
