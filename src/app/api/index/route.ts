@@ -105,7 +105,7 @@ const endpoints: Endpoint[] = [
   { path: '/api/mentions', methods: ['GET'], description: 'Autocomplete for @mentions', tag: 'Search', auth: 'viewer' },
 
   // ── Logs ──────────────────────────────────────────
-  { path: '/api/logs', methods: ['GET'], description: 'Application logs', tag: 'Logs', auth: 'viewer' },
+  { path: '/api/logs', methods: ['GET'], description: 'Application and hook boundary logs', tag: 'Logs', auth: 'admin' },
 
   // ── Settings ──────────────────────────────────────
   { path: '/api/settings', methods: ['GET', 'PATCH'], description: 'System settings', tag: 'Settings', auth: 'viewer/admin' },

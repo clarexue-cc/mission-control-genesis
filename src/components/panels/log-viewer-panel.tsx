@@ -31,7 +31,7 @@ function downloadFile(content: string, filename: string, mime: string) {
 
 export function LogViewerPanel() {
   const t = useTranslations('logViewer')
-  const { logs, logFilters, setLogFilters, clearLogs, addLog } = useMissionControl()
+  const { logs, logFilters, setLogFilters, clearLogs, addLog, activeTenant } = useMissionControl()
   const [isAutoScroll, setIsAutoScroll] = useState(true)
   const [availableSources, setAvailableSources] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -72,6 +72,7 @@ export function LogViewerPanel() {
         ...(currentFilters.source && { source: currentFilters.source }),
         ...(currentFilters.search && { search: currentFilters.search }),
         ...(currentFilters.session && { session: currentFilters.session }),
+        ...(activeTenant?.slug && { tenant: activeTenant.slug }),
         ...(tail && currentLogs.length > 0 && { since: currentLogs[0]?.timestamp.toString() })
       })
 
@@ -109,17 +110,21 @@ export function LogViewerPanel() {
     } finally {
       setIsLoading(false)
     }
-  }, [addLog, clearLogs])
+  }, [activeTenant?.slug, addLog, clearLogs])
 
   const loadSources = useCallback(async () => {
     try {
-      const response = await fetch('/api/logs?action=sources')
+      const params = new URLSearchParams({
+        action: 'sources',
+        ...(activeTenant?.slug && { tenant: activeTenant.slug }),
+      })
+      const response = await fetch(`/api/logs?${params}`)
       const data = await response.json()
       setAvailableSources(data.sources || [])
     } catch (error) {
       log.error('Failed to load log sources:', error)
     }
-  }, [])
+  }, [activeTenant?.slug])
 
   // Try to fetch log file path from gateway status
   const loadLogFilePath = useCallback(async () => {
@@ -189,10 +194,28 @@ export function LogViewerPanel() {
     }
   }
 
+  const logMatchesClientSearch = (entry: typeof logs[number], search: string) => {
+    const needle = search.toLowerCase()
+    const fields = [
+      entry.message,
+      entry.source,
+      entry.session,
+      entry.rule_id,
+      entry.matched_rule,
+      entry.matched_rule_id,
+      entry.severity,
+      entry.action,
+      entry.tenant,
+      entry.details,
+      entry.data ? JSON.stringify(entry.data) : undefined,
+    ]
+    return fields.some(field => typeof field === 'string' && field.toLowerCase().includes(needle))
+  }
+
   const filteredLogs = logs.filter(entry => {
     if (logFilters.level && entry.level !== logFilters.level) return false
     if (logFilters.source && entry.source !== logFilters.source) return false
-    if (logFilters.search && !entry.message.toLowerCase().includes(logFilters.search.toLowerCase())) return false
+    if (logFilters.search && !logMatchesClientSearch(entry, logFilters.search)) return false
     if (logFilters.session && (!entry.session || !entry.session.includes(logFilters.session))) return false
     return true
   })
@@ -354,7 +377,7 @@ export function LogViewerPanel() {
       <div className="flex-1 bg-card border border-border rounded-lg overflow-hidden">
         <div 
           ref={logContainerRef}
-          className="h-full overflow-auto p-4 space-y-2 font-mono text-sm"
+          className="h-full overflow-auto p-4 font-mono text-sm"
         >
           {isLoading ? (
             <Loader variant="panel" label="Loading logs" />
@@ -363,46 +386,60 @@ export function LogViewerPanel() {
               {t('noLogs')}
             </div>
           ) : (
-            filteredLogs.map((log) => (
-              <div 
-                key={log.id} 
-                className={`border-l-4 pl-4 py-2 rounded-r-md ${getLogLevelBg(log.level)}`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 text-xs">
-                      <span className="text-muted-foreground">
-                        {new Date(log.timestamp).toLocaleTimeString()}
-                      </span>
-                      <span className={`font-medium uppercase ${getLogLevelColor(log.level)}`}>
-                        {log.level}
-                      </span>
-                      <span className="text-muted-foreground">
+            <div className="min-w-[960px]">
+              <div className="grid grid-cols-[150px_140px_160px_120px_100px_minmax(280px,1fr)] gap-3 border-b border-border px-3 pb-2 text-xs font-semibold uppercase text-muted-foreground">
+                <span>Timestamp</span>
+                <span>rule_id</span>
+                <span>matched_rule</span>
+                <span>severity</span>
+                <span>action</span>
+                <span>details</span>
+              </div>
+              <div className="divide-y divide-border/60">
+                {filteredLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className={`grid grid-cols-[150px_140px_160px_120px_100px_minmax(280px,1fr)] gap-3 px-3 py-3 ${getLogLevelBg(log.level)}`}
+                  >
+                    <span className="text-muted-foreground">
+                      {new Date(log.timestamp).toLocaleTimeString()}
+                    </span>
+                    <span className="break-words text-foreground">
+                      {log.rule_id || '-'}
+                    </span>
+                    <span className="break-words text-foreground">
+                      {log.matched_rule || '-'}
+                    </span>
+                    <span className={`font-medium uppercase ${getLogLevelColor(log.level)}`}>
+                      {log.severity || log.level}
+                    </span>
+                    <span className="break-words text-foreground">
+                      {log.action || '-'}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-xs text-muted-foreground">
                         [{log.source}]
-                      </span>
-                      {log.session && (
-                        <span className="text-muted-foreground">
-                          session:{log.session}
-                        </span>
+                        {log.tenant && <span> tenant:{log.tenant}</span>}
+                        {log.session && <span> session:{log.session}</span>}
+                      </div>
+                      <div className="mt-1 whitespace-pre-wrap break-words text-foreground">
+                        {log.details || log.message}
+                      </div>
+                      {log.data && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                            {t('additionalData')}
+                          </summary>
+                          <pre className="mt-1 max-h-52 overflow-auto text-xs text-muted-foreground">
+                            {JSON.stringify(log.data, null, 2)}
+                          </pre>
+                        </details>
                       )}
                     </div>
-                    <div className="mt-1 text-foreground break-words">
-                      {log.message}
-                    </div>
-                    {log.data && (
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-                          {t('additionalData')}
-                        </summary>
-                        <pre className="mt-1 text-xs text-muted-foreground overflow-auto">
-                          {JSON.stringify(log.data, null, 2)}
-                        </pre>
-                      </details>
-                    )}
                   </div>
-                </div>
+                ))}
               </div>
-            ))
+            </div>
           )}
         </div>
       </div>

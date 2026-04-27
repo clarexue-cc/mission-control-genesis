@@ -34,6 +34,13 @@ export interface LogEntry {
   source: string
   session?: string
   message: string
+  rule_id?: string
+  matched_rule?: string
+  matched_rule_id?: string
+  severity?: string
+  action?: string
+  tenant?: string
+  details?: string
   data?: JsonValue
 }
 
