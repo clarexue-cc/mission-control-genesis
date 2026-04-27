@@ -1,0 +1,9 @@
+Browser console snapshot around dry-run-4
+
+Observed in dev console logs:
+- React hydration mismatch warnings are present.
+- HMR remains connected.
+- No CSP unsafe-eval blocking error was observed in the P10 UI flow.
+
+STOP trigger is terminal/backend, not browser UI:
+POST /api/harness/run-test completed 200 with UI status completed pass:10 fail:0, then dev server emitted uncaughtException Invalid state: Controller is already closed.

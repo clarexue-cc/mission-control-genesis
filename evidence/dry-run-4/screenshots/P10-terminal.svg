@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1014" viewBox="0 0 1280 1014">
+<style>
+.bg{fill:#0b1020}.title{fill:#f8fafc;font:700 22px Menlo,Consolas,monospace}.line{fill:#dbeafe;font:14px Menlo,Consolas,monospace}.bad{fill:#fecaca}
+</style>
+<rect width="100%" height="100%" class="bg"/>
+<text x="32" y="38" class="title">P10 terminal evidence: backend uncaughtException</text>
+<text x="32" y="78" class="line">    at send (src/app/api/harness/run-test/route.ts:172:22)</text>
+<text x="32" y="100" class="line">    at ChildProcess.&lt;anonymous&gt; (src/app/api/harness/run-test/route.ts:254:9)</text>
+<text x="32" y="122" class="line">   98 |</text>
+<text x="32" y="144" class="line">   99 | function writeJson(controller: ReadableStreamDefaultController&lt;Uint8Array&gt;, encoder: TextEncoder, event: StreamEvent) {</text>
+<text x="32" y="166" class="line">&gt; 100 |   controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))</text>
+<text x="32" y="188" class="line">      |              ^</text>
+<text x="32" y="210" class="line">  101 | }</text>
+<text x="32" y="232" class="line">  102 |</text>
+<text x="32" y="254" class="line">  103 | function parseRunnerLine(line: string): unknown | null { {</text>
+<text x="32" y="276" class="line">  code: 'ERR_INVALID_STATE'</text>
+<text x="32" y="298" class="line">}</text>
+<text x="32" y="320" class="line">⨯ uncaughtException: TypeError: Invalid state: Controller is already closed</text>
+<text x="32" y="342" class="line">    at writeJson (src/app/api/harness/run-test/route.ts:100:14)</text>
+<text x="32" y="364" class="line">    at send (src/app/api/harness/run-test/route.ts:172:22)</text>
+<text x="32" y="386" class="line">    at ChildProcess.&lt;anonymous&gt; (src/app/api/harness/run-test/route.ts:254:9)</text>
+<text x="32" y="408" class="line">   98 |</text>
+<text x="32" y="430" class="line">   99 | function writeJson(controller: ReadableStreamDefaultController&lt;Uint8Array&gt;, encoder: TextEncoder, event: StreamEvent) {</text>
+<text x="32" y="452" class="line">&gt; 100 |   controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))</text>
+<text x="32" y="474" class="line">      |              ^</text>
+<text x="32" y="496" class="line">  101 | }</text>
+<text x="32" y="518" class="line">  102 |</text>
+<text x="32" y="540" class="line">  103 | function parseRunnerLine(line: string): unknown | null { {</text>
+<text x="32" y="562" class="line">  code: 'ERR_INVALID_STATE'</text>
+<text x="32" y="584" class="line">}</text>
+<text x="32" y="606" class="line">⨯ uncaughtException:  TypeError: Invalid state: Controller is already closed</text>
+<text x="32" y="628" class="line">    at writeJson (src/app/api/harness/run-test/route.ts:100:14)</text>
+<text x="32" y="650" class="line">    at send (src/app/api/harness/run-test/route.ts:172:22)</text>
+<text x="32" y="672" class="line">    at ChildProcess.&lt;anonymous&gt; (src/app/api/harness/run-test/route.ts:254:9)</text>
+<text x="32" y="694" class="line">   98 |</text>
+<text x="32" y="716" class="line">   99 | function writeJson(controller: ReadableStreamDefaultController&lt;Uint8Array&gt;, encoder: TextEncoder, event: StreamEvent) {</text>
+<text x="32" y="738" class="line">&gt; 100 |   controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))</text>
+<text x="32" y="760" class="line">      |              ^</text>
+<text x="32" y="782" class="line">  101 | }</text>
+<text x="32" y="804" class="line">  102 |</text>
+<text x="32" y="826" class="line">  103 | function parseRunnerLine(line: string): unknown | null { {</text>
+<text x="32" y="848" class="line">  code: 'ERR_INVALID_STATE'</text>
+<text x="32" y="870" class="line">}</text>
+<text x="32" y="892" class="line">[19:25:50.294] [32mINFO[39m (12123): [36mAgent sync complete[39m</text>
+<text x="32" y="914" class="line">    [35msynced[39m: 4</text>
+<text x="32" y="936" class="line">    [35mcreated[39m: 0</text>
+<text x="32" y="958" class="line">    [35mupdated[39m: 0</text>
+<text x="32" y="980" class="line"></text>
+</svg>

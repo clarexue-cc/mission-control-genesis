@@ -1,0 +1,80 @@
+ GET /api/super/os-users 200 in 54ms (compile: 13ms, proxy.ts: 4ms, render: 37ms)
+ GET /api/status?action=capabilities 200 in 57ms (compile: 8ms, proxy.ts: 3ms, render: 46ms)
+ GET /api/projects 200 in 58ms (compile: 52ms, proxy.ts: 4ms, render: 1348µs)
+ GET /api/projects 200 in 16ms (compile: 9ms, proxy.ts: 5ms, render: 1929µs)
+ GET /api/super/tenants 200 in 22ms (compile: 11ms, proxy.ts: 7ms, render: 3ms)
+ GET /api/super/os-users 200 in 65ms (compile: 11ms, proxy.ts: 10ms, render: 43ms)
+ GET /api/projects 200 in 14ms (compile: 8ms, proxy.ts: 5ms, render: 1612µs)
+ GET /api/projects 200 in 17ms (compile: 10ms, proxy.ts: 5ms, render: 2ms)
+ GET /api/sessions 200 in 7.9s (compile: 9ms, proxy.ts: 408ms, render: 7.5s)
+[19:22:51.567] [32mINFO[39m (12123): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[19:23:07.252] [32mINFO[39m (12123): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+ GET /api/openclaw/doctor 200 in 27.8s (compile: 12ms, proxy.ts: 5ms, render: 27.8s)
+ GET /api/openclaw/doctor 200 in 28.8s (compile: 10ms, proxy.ts: 6ms, render: 28.7s)
+[19:23:50.222] [32mINFO[39m (12123): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[19:24:06.764] [32mINFO[39m (12123): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[19:24:50.241] [32mINFO[39m (12123): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[19:25:06.829] [32mINFO[39m (12123): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+ GET /api/events 200 in 2.5min (compile: 13ms, proxy.ts: 11ms, render: 2.5min)
+ POST /api/harness/run-test 200 in 2.3min (compile: 1012ms, proxy.ts: 9ms, render: 2.3min)
+TypeError: Invalid state: Controller is already closed
+    at writeJson (src/app/api/harness/run-test/route.ts:100:14)
+    at send (src/app/api/harness/run-test/route.ts:172:22)
+    at ChildProcess.<anonymous> (src/app/api/harness/run-test/route.ts:254:9)
+   98 |
+   99 | function writeJson(controller: ReadableStreamDefaultController<Uint8Array>, encoder: TextEncoder, event: StreamEvent) {
+> 100 |   controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
+      |              ^
+  101 | }
+  102 |
+  103 | function parseRunnerLine(line: string): unknown | null { {
+  code: 'ERR_INVALID_STATE'
+}
+⨯ uncaughtException: TypeError: Invalid state: Controller is already closed
+    at writeJson (src/app/api/harness/run-test/route.ts:100:14)
+    at send (src/app/api/harness/run-test/route.ts:172:22)
+    at ChildProcess.<anonymous> (src/app/api/harness/run-test/route.ts:254:9)
+   98 |
+   99 | function writeJson(controller: ReadableStreamDefaultController<Uint8Array>, encoder: TextEncoder, event: StreamEvent) {
+> 100 |   controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
+      |              ^
+  101 | }
+  102 |
+  103 | function parseRunnerLine(line: string): unknown | null { {
+  code: 'ERR_INVALID_STATE'
+}
+⨯ uncaughtException:  TypeError: Invalid state: Controller is already closed
+    at writeJson (src/app/api/harness/run-test/route.ts:100:14)
+    at send (src/app/api/harness/run-test/route.ts:172:22)
+    at ChildProcess.<anonymous> (src/app/api/harness/run-test/route.ts:254:9)
+   98 |
+   99 | function writeJson(controller: ReadableStreamDefaultController<Uint8Array>, encoder: TextEncoder, event: StreamEvent) {
+> 100 |   controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
+      |              ^
+  101 | }
+  102 |
+  103 | function parseRunnerLine(line: string): unknown | null { {
+  code: 'ERR_INVALID_STATE'
+}
+[19:25:50.294] [32mINFO[39m (12123): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0

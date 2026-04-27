@@ -1,0 +1,3 @@
+https://gist.githubusercontent.com/clarexue-cc/12fa1ddbb17a84d2ad74cc9deb5a370e/raw/d69f4730b2f5d0fda9cedba9b53bf3c11b1ad9bb/P10.svg
+https://gist.githubusercontent.com/clarexue-cc/33b856bcf24bdf9fbef475697b47ac4b/raw/P10-console.svg
+https://gist.githubusercontent.com/clarexue-cc/5cb413ce7aaf9c303676a0c87b6f9d39/raw/P10-terminal.svg
