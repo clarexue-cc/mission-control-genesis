@@ -2,11 +2,12 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { resolveHarnessRoot } from '@/lib/harness-boundary'
 import { resolveWithin } from '@/lib/paths'
+import { TENANT_ID_RE, normalizeTenantId } from '@/lib/tenant-id'
 
 export const CUSTOMER_INTAKE_MAX_BYTES = 100 * 1024 * 1024
 
-const TENANT_ID_RE = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/
 const FALLBACK_ALLOWED_EXTENSIONS = new Set(['.md', '.txt', '.mp3', '.wav', '.m4a', '.aac', '.ogg', '.flac'])
+export { TENANT_ID_RE }
 
 export interface CustomerIntakeWriteInput {
   tenantId: string
@@ -28,11 +29,7 @@ export interface CustomerIntakeWriteResult {
 }
 
 export function normalizeCustomerTenantId(value: unknown): string {
-  const tenantId = typeof value === 'string' ? value.trim() : ''
-  if (!TENANT_ID_RE.test(tenantId)) {
-    throw new Error('Tenant ID must use lowercase letters, numbers, and hyphens')
-  }
-  return tenantId
+  return normalizeTenantId(value)
 }
 
 export function isAllowedCustomerIntakeFile(fileName: string, fileType: string): boolean {

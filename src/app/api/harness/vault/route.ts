@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
-import { normalizeBoundaryTenant } from '@/lib/harness-boundary'
+import { normalizeBoundaryTemplateTenant } from '@/lib/harness-boundary'
 import { readVaultFile, readVaultTree } from '@/lib/harness-vault'
 import { isCustomerRole, readRoleFromCookieString } from '@/lib/rbac'
 
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   let tenant
   try {
-    tenant = normalizeBoundaryTenant(request.nextUrl.searchParams.get('tenant') || 'ceo-assistant-v1')
+    tenant = normalizeBoundaryTemplateTenant(request.nextUrl.searchParams.get('tenant') || 'ceo-assistant-v1')
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Invalid tenant' }, { status: 400 })
   }

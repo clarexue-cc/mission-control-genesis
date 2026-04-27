@@ -506,7 +506,7 @@ export default function Home() {
 }
 
 const ESSENTIAL_PANELS = new Set([
-  'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings',
+  'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings', 'boundary',
 ])
 
 function ContentRouter({ tab, effectiveRole }: { tab: string; effectiveRole: EffectiveRole }) {
