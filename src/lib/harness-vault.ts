@@ -1,9 +1,7 @@
-import 'server-only'
-
 import { constants } from 'node:fs'
 import { access, readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
-import { BOUNDARY_TENANTS, type BoundaryTenant, resolveHarnessRoot } from '@/lib/harness-boundary'
+import { BOUNDARY_TENANTS, normalizeBoundaryTenant, type BoundaryTenant, resolveHarnessRoot } from '@/lib/harness-boundary'
 import { resolveWithin } from '@/lib/paths'
 
 export interface VaultTreeNode {
@@ -66,6 +64,20 @@ function isHiddenName(name: string): boolean {
 
 function toPosixPath(value: string): string {
   return value.split(path.sep).join('/')
+}
+
+function normalizeVaultLogicalPath(logicalPath: string): string {
+  if (path.isAbsolute(logicalPath) || path.win32.isAbsolute(logicalPath) || logicalPath.includes('\0')) {
+    throw new Error('Invalid vault path')
+  }
+
+  const normalizedPath = logicalPath.replace(/\\/g, '/')
+  const segments = normalizedPath.split('/').filter(Boolean)
+  if (!segments.length || segments.some(segment => segment === '.' || segment === '..')) {
+    throw new Error('Invalid vault path')
+  }
+
+  return segments.join('/')
 }
 
 function obsidianDeeplink(obsidianPath: string | null): string | null {
@@ -191,6 +203,7 @@ async function resolveIntakeFile(tenant: BoundaryTenant, fileName: string): Prom
 }
 
 export async function readVaultTree(tenant: BoundaryTenant, maxDepth = 6) {
+  tenant = normalizeBoundaryTenant(tenant)
   const sources = await getVaultSources(tenant)
   const roots: VaultTreeNode[] = []
 
@@ -242,10 +255,8 @@ export async function readVaultTree(tenant: BoundaryTenant, maxDepth = 6) {
 }
 
 export async function readVaultFile(tenant: BoundaryTenant, logicalPath: string): Promise<VaultFileContent> {
-  const normalizedPath = toPosixPath(logicalPath).replace(/^\/+/, '')
-  if (!normalizedPath || normalizedPath.includes('..')) {
-    throw new Error('Invalid vault path')
-  }
+  tenant = normalizeBoundaryTenant(tenant)
+  const normalizedPath = normalizeVaultLogicalPath(logicalPath)
 
   if (normalizedPath === 'intake-raw.md' || normalizedPath === 'intake-analysis.md') {
     const resolved = await resolveIntakeFile(tenant, normalizedPath)

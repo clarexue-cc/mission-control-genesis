@@ -96,7 +96,7 @@ async function getHermesState() {
     const heartbeatAgeSeconds = stats ? Math.max(0, Math.floor((now - stats.mtime.getTime()) / 1000)) : null
     const health: HermesTargetStatus['health'] = !stats
       ? 'missing'
-      : heartbeatAgeSeconds > STALE_SECONDS
+      : heartbeatAgeSeconds !== null && heartbeatAgeSeconds > STALE_SECONDS
         ? 'stale'
         : 'fresh'
     const parsed = parseLogForAgent(agentDir, logTail)
@@ -144,7 +144,7 @@ async function runHermesScript(script: string, args: string[]) {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = requireRole(request, 'admin')
+  const auth = requireRole(request, 'operator')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
   if (isCustomerRole(readRoleFromCookieString(request.headers.get('cookie')))) {
     return NextResponse.json({ error: 'Customer role cannot access Hermes internals' }, { status: 403 })
