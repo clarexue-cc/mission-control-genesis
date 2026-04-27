@@ -1,0 +1,88 @@
+
+===== /tmp/mc-e2e-3002-dryrun2-real.log =====
+pile: 8ms, proxy.ts: 6ms, render: 772ms)
+ GET /api/status?action=capabilities 200 in 789ms (compile: 5ms, proxy.ts: 6ms, render: 778ms)
+ GET /api/onboarding 200 in 11ms (compile: 4ms, proxy.ts: 4ms, render: 1976µs)
+ GET /api/agents?limit=1 200 in 13ms (compile: 7ms, proxy.ts: 4ms, render: 1787µs)
+ GET /api/agent-runtimes 200 in 708ms (compile: 9ms, proxy.ts: 4ms, render: 694ms)
+ GET /api/status?action=capabilities 200 in 711ms (compile: 705ms, proxy.ts: 4ms, render: 2ms)
+ GET /api/sessions 200 in 4.3s (compile: 458ms, proxy.ts: 6ms, render: 3.9s)
+[18:07:28.329] [32mINFO[39m (11800): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[18:07:41.038] [32mINFO[39m (11800): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+ GET /api/events 200 in 44s (compile: 11ms, proxy.ts: 7ms, render: 44s)
+ HEAD /login 200 in 54ms (compile: 7ms, proxy.ts: 7ms, render: 40ms)
+[18:07:52.773] [32mINFO[39m (11800): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[18:08:28.794] [32mINFO[39m (11800): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+ GET /login 200 in 35ms (compile: 7ms, proxy.ts: 1476µs, render: 27ms)
+ GET /api/setup 200 in 6ms (compile: 1632µs, proxy.ts: 2ms, render: 2ms)
+ POST /api/auth/login 200 in 120ms (compile: 1474µs, proxy.ts: 1581µs, render: 117ms)
+ GET / 200 in 69ms (compile: 8ms, proxy.ts: 1234µs, render: 60ms)
+ GET /api/onboarding 200 in 15ms (compile: 6ms, proxy.ts: 7ms, render: 3ms)
+ GET /api/agents 200 in 24ms (compile: 8ms, proxy.ts: 8ms, render: 7ms)
+ GET /api/auth/me 200 in 32ms (compile: 23ms, proxy.ts: 4ms, render: 4ms)
+ GET /api/releases/check 200 in 38ms (compile: 27ms, proxy.ts: 5ms, render: 6ms)
+ GET /api/status?action=capabilities 200 in 512ms (compile: 37ms, proxy.ts: 6ms, render: 469ms)
+ GET /api/openclaw/version 200 in 517ms (compile: 34ms, proxy.ts: 6ms, render: 478ms)
+ GET /api/sessions 200 in 2.6s (compile: 8ms, proxy.ts: 464ms, render: 2.1s)
+ GET /api/projects 200 in 2.6s (compile: 2.1s, proxy.ts: 464ms, render: 9ms)
+ GET /api/memory/graph?agent=all 200 in 2.6s (compile: 2.1s, proxy.ts: 465ms, render: 7ms)
+ GET /api/skills 200 in 2.2s (compile: 2.2s, proxy.ts: 8ms, render: 3ms)
+ GET /api/gateways 200 in 7ms (compile: 1997µs, proxy.ts: 3ms, render: 2ms)
+ POST /api/gateways/connect 200 in 8ms (compile: 1564µs, proxy.ts: 4ms, render: 3ms)
+ GET /api/onboarding 200 in 10ms (compile: 5ms, proxy.ts: 4ms, render: 1413µs)
+ GET /api/agent-runtimes 200 in 832ms (compile: 8ms, proxy.ts: 4ms, render: 820ms)
+ GET /api/sessions 200 in 2.5s (compile: 834ms, proxy.ts: 5ms, render: 1676ms)
+ GET /api/agents/comms?limit=200 200 in 2.5s (compile: 2.5s, proxy.ts: 6ms, render: 3ms)
+ GET /api/sessions/transcript/aggregate?limit=200 200 in 39ms (compile: 7ms, proxy.ts: 11ms, render: 22ms)
+ GET /api/activities?type=agent_memory_updated,agent_memory_cleared,memory_file_saved,memory_file_created,memory_file_deleted&limit=50 200 in 43ms (compile: 30ms, proxy.ts: 12ms, render: 1270µs)
+ GET /api/status?action=capabilities 200 in 45ms (compile: 29ms, proxy.ts: 11ms, render: 5ms)
+ GET /api/agents?limit=1 200 in 42ms (compile: 31ms, proxy.ts: 7ms, render: 3ms)
+ GET /api/onboarding 200 in 18ms (compile: 6ms, proxy.ts: 9ms, render: 3ms)
+ GET /api/agent-runtimes 200 in 827ms (compile: 11ms, proxy.ts: 9ms, render: 807ms)
+ GET /api/agents?limit=1 200 in 830ms (compile: 817ms, proxy.ts: 11ms, render: 3ms)
+ GET /api/status?action=capabilities 200 in 833ms (compile: 819ms, proxy.ts: 5ms, render: 8ms)
+ GET /api/status?action=dashboard 200 in 3.4s (compile: 829ms, proxy.ts: 5ms, render: 2.6s)
+ GET /api/onboarding 200 in 16ms (compile: 3ms, proxy.ts: 11ms, render: 1638µs)
+ GET /api/agent-runtimes 200 in 946ms (compile: 3ms, proxy.ts: 9ms, render: 933ms)
+ GET /api/onboarding 200 in 6ms (compile: 2ms, proxy.ts: 2ms, render: 1839µs)
+ GET /api/agent-runtimes 200 in 784ms (compile: 4ms, proxy.ts: 1684µs, render: 778ms)
+[18:08:41.160] [32mINFO[39m (11800): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+ GET /api/events 200 in 14.1s (compile: 2.2s, proxy.ts: 9ms, render: 11.9s)
+ GET /boundary 200 in 88ms (compile: 12ms, proxy.ts: 3ms, render: 74ms)
+ GET /api/auth/me 200 in 16ms (compile: 6ms, proxy.ts: 6ms, render: 4ms)
+ GET /api/onboarding 200 in 23ms (compile: 18ms, proxy.ts: 4ms, render: 1492µs)
+ GET /api/agents 200 in 28ms (compile: 21ms, proxy.ts: 4ms, render: 4ms)
+ GET /api/sessions 200 in 2.1s (compile: 24ms, proxy.ts: 5ms, render: 2.1s)
+ GET /api/projects 200 in 2.1s (compile: 2.1s, proxy.ts: 5ms, render: 4ms)
+ GET /api/status?action=capabilities 200 in 2.1s (compile: 12ms, proxy.ts: 4ms, render: 2.1s)
+ GET /api/memory/graph?agent=all 200 in 16ms (compile: 5ms, proxy.ts: 7ms, render: 4ms)
+ GET /api/skills 200 in 16ms (compile: 8ms, proxy.ts: 6ms, render: 1743µs)
+ GET /api/gateways 200 in 19ms (compile: 12ms, proxy.ts: 6ms, render: 1415µs)
+ POST /api/gateways/connect 200 in 4ms (compile: 1147µs, proxy.ts: 1303µs, render: 1903µs)
+ GET /api/onboarding 200 in 7ms (compile: 3ms, proxy.ts: 3ms, render: 1484µs)
+ GET /api/agents?limit=1 200 in 11ms (compile: 7ms, proxy.ts: 3ms, render: 1421µs)
+ GET /api/agent-runtimes 200 in 828ms (compile: 9ms, proxy.ts: 3ms, render: 817ms)
+ GET /api/status?action=capabilities 200 in 834ms (compile: 5ms, proxy.ts: 3ms, render: 827ms)
+ GET /api/onboarding 200 in 9ms (compile: 3ms, proxy.ts: 3ms, render: 3ms)
+ GET /api/agents?limit=1 200 in 12ms (compile: 6ms, proxy.ts: 3ms, render: 2ms)
+ GET /api/agent-runtimes 200 in 760ms (compile: 9ms, proxy.ts: 3ms, render: 748ms)
+ GET /api/status?action=capabilities 200 in 764ms (compile: 758ms, proxy.ts: 3ms, render: 2ms)
+[18:08:52.972] [32mINFO[39m (11800): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0

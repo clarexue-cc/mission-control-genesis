@@ -1,0 +1,572 @@
+{
+  "bodyText": "((e, i, s, u, m, a, l, h)=>{\n    let d = document.documentElement, w = [\n        \"light\",\n        \"dark\"\n    ];\n    function p(n) {\n        (Array.isArray(e) ? e : [\n            e\n        ]).forEach((y)=>{\n            let k = y === \"class\", S = k && a ? m.map((f)=>a[f] || f) : m;\n            k ? (d.classList.remove(...S), d.classList.add(a && a[n] ? a[n] : n)) : d.setAttribute(y, n);\n        }), R(n);\n    }\n    function R(n) {\n        h && w.includes(n) && (d.style.colorScheme = n);\n    }\n    function c() {\n        return window.matchMedia(\"(prefers-color-scheme: dark)\").matches ? \"dark\" : \"light\";\n    }\n    if (u) p(u);\n    else try {\n        let n = localStorage.getItem(i) || s, y = l && n === \"system\" ? c() : n;\n        p(y);\n    } catch (n) {}\n})(\"class\",\"theme\",\"void\",null,[\"void\",\"midnight-blue\",\"synthwave\",\"solarized-dark\",\"catppuccin\",\"dracula\",\"nord\",\"vercel\",\"retro-terminal\",\"light\",\"paper\"],null,false,true)Skip to main contentboundary is available in Full mode.Switch to FullGo to Overviewself.__next_r=\"EQGA-VOBZ-6hMHH33viY_\"(self.__next_f=self.__next_f||[]).push([0])self.__next_f.push([1,\"7:I[\\\"[project]/node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js [app-client] (ecmascript)\\\",[\\\"/_next/static/chunks/a191e_next_dist_8899ec64._.js\\\",\\\"/_next/static/chunks/src_app_icon_png_mjs_12876c73._.js\\\"],\\\"SegmentViewNode\\\"]\\n9:\\\"$Sreact.fragment\\\"\\n1a:I[\\\"[project]/node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/client/components/layout-router.js [app-client] (ecmascript)\\\",[\\\"/_next/static/chunks/a191e_next_dist_8899ec64._.js\\\",\\\"/_next/static/chunks/src_app_icon_png_mjs_12876c73._.js\\\"],\\\"default\\\"]\\n1c:I[\\\"[project]/node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/client/components/render-from-template-context.js [app-client] (ecmascript)\\\",[\\\"/_next/static/chunks/a191e_next_dist_8899ec64._.js\\\",\\\"/_next/static/chunks/src_app_icon_png_mjs_12876c73._.js\\\"],\\\"default\\\"]\\n20:I[\\\"[project]/node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/client/components/client-page.js [app-client] (ecmascript)\\\",[\\\"/_next/static/chunks/a191e_next_dist_8899ec64._.js\\\",\\\"/_next/static/chunks/src_app_icon_png_mjs_12876c73._.js\\\"],\\\"ClientPageRoot\\\"]\\n\"])self.__next_f.push([1,\"21:I[\\\"[project]/src/app/[[...panel]]/page.tsx [app-client] (ecmascript)\\\",[\\\"/_next/static/chunks/node_modules__pnpm_398ca922._.js\\\",\\\"/_next/static/chunks/src_c51d6035._.js\\\",\\\"/_next/static/chunks/src_app_layout_tsx_80986142._.js\\\",\\\"/_next/static/chunks/node_modules__pnpm_8284714a._.js\\\"",
+  "consoleEvents": [
+    {
+      "type": "error",
+      "text": "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-CmlGe1QO4acaum9d1RKsVg==' 'strict-dynamic' 'unsafe-eval' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-ebcY/7CQ5kx8VGD84hTdQq9LsEQK3ueK2HGnjkVgiWo='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+      "location": {
+        "url": "http://127.0.0.1:3002/login",
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[HMR] connected",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "error",
+      "text": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>\n      <AppDevOverlayErrorBoundary globalError={[...]}>\n        <ReplaySsrOnlyErrors>\n        <DevRootHTTPAccessFallbackBoundary>\n          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>\n            <HTTPAccessFallbackErrorBoundary pathname=\"/login\" notFound={<NotAllowedRootHTTPFallbackError>} ...>\n              <RedirectBoundary>\n                <RedirectErrorBoundary router={{...}}>\n                  <Head>\n                  <__next_root_layout_boundary__>\n                    <SegmentViewNode type=\"layout\" pagePath=\"layout.tsx\">\n                      <SegmentTrieNode>\n                      <link>\n                      <script>\n                      <script>\n                      <script>\n                      <RootLayout>\n                        <html lang=\"en\" dir=\"ltr\" className=\"dark\" suppressHydrationWarning={true}>\n                          <head>\n                            <script\n+                             nonce=\"CmlGe1QO4acaum9d1RKsVg==\"\n-                             nonce=\"\"\n                              dangerouslySetInnerHTML={{__html:\"(function(...\"}}\n                            >\n                          ...\n                  ...\n",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 3127,
+        "columnNumber": 31
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] rebuilding",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] done in 113ms",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "error",
+      "text": "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-lbl/HpZdEFWSeB+9DA2GWg==' 'strict-dynamic' 'unsafe-eval' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-ebcY/7CQ5kx8VGD84hTdQq9LsEQK3ueK2HGnjkVgiWo='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+      "location": {
+        "url": "http://127.0.0.1:3002/",
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[HMR] connected",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "error",
+      "text": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>\n      <AppDevOverlayErrorBoundary globalError={[...]}>\n        <ReplaySsrOnlyErrors>\n        <DevRootHTTPAccessFallbackBoundary>\n          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>\n            <HTTPAccessFallbackErrorBoundary pathname=\"/\" notFound={<NotAllowedRootHTTPFallbackError>} ...>\n              <RedirectBoundary>\n                <RedirectErrorBoundary router={{...}}>\n                  <Head>\n                  <__next_root_layout_boundary__>\n                    <SegmentViewNode type=\"layout\" pagePath=\"layout.tsx\">\n                      <SegmentTrieNode>\n                      <link>\n                      <script>\n                      <script>\n                      <script>\n                      <RootLayout>\n                        <html lang=\"en\" dir=\"ltr\" className=\"dark\" suppressHydrationWarning={true}>\n                          <head>\n                            <script\n+                             nonce=\"lbl/HpZdEFWSeB+9DA2GWg==\"\n-                             nonce=\"\"\n                              dangerouslySetInnerHTML={{__html:\"(function(...\"}}\n                            >\n                          ...\n                  ...\n",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 3127,
+        "columnNumber": 31
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] rebuilding",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] done in 2137ms",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "%c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "%cThis is a browser feature intended for developers.\n\nIf someone told you to copy-paste something here to enable a feature or \"hack\" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "%cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "info",
+      "text": "[INFO] WebSocket: Connected to ws://127.0.0.1:18789",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Waiting for connect challenge",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "info",
+      "text": "[INFO] WebSocket: Received connect challenge, sending handshake",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "info",
+      "text": "[INFO] WebSocket: Sending connect handshake",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: res",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "info",
+      "text": "[INFO] WebSocket: Handshake complete",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] rebuilding",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] done in 2497ms",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] rebuilding",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] done in 846ms",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] rebuilding",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] done in 948ms",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] rebuilding",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] done in 785ms",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "warning",
+      "text": "[WARN] SSE: Reconnecting in 1358ms (attempt 1/20)",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "error",
+      "text": "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-+w3AtDAORnIYsoA4/BmkNg==' 'strict-dynamic' 'unsafe-eval' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-ebcY/7CQ5kx8VGD84hTdQq9LsEQK3ueK2HGnjkVgiWo='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.",
+      "location": {
+        "url": "http://127.0.0.1:3002/boundary",
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[HMR] connected",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "error",
+      "text": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>\n      <AppDevOverlayErrorBoundary globalError={[...]}>\n        <ReplaySsrOnlyErrors>\n        <DevRootHTTPAccessFallbackBoundary>\n          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>\n            <HTTPAccessFallbackErrorBoundary pathname=\"/boundary\" notFound={<NotAllowedRootHTTPFallbackError>} ...>\n              <RedirectBoundary>\n                <RedirectErrorBoundary router={{...}}>\n                  <Head>\n                  <__next_root_layout_boundary__>\n                    <SegmentViewNode type=\"layout\" pagePath=\"layout.tsx\">\n                      <SegmentTrieNode>\n                      <link>\n                      <script>\n                      <script>\n                      <script>\n                      <RootLayout>\n                        <html lang=\"en\" dir=\"ltr\" className=\"dark\" suppressHydrationWarning={true}>\n                          <head>\n                            <script\n+                             nonce=\"+w3AtDAORnIYsoA4/BmkNg==\"\n-                             nonce=\"\"\n                              dangerouslySetInnerHTML={{__html:\"(function(...\"}}\n                            >\n                          ...\n                  ...\n",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 3127,
+        "columnNumber": 31
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] rebuilding",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] done in 2107ms",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "info",
+      "text": "[INFO] WebSocket: Connected to ws://127.0.0.1:18789",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Waiting for connect challenge",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "info",
+      "text": "[INFO] WebSocket: Received connect challenge, sending handshake",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "info",
+      "text": "[INFO] WebSocket: Sending connect handshake",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: res",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "info",
+      "text": "[INFO] WebSocket: Handshake complete",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] rebuilding",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] done in 871ms",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] rebuilding",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "log",
+      "text": "[Fast Refresh] done in 756ms",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[DEBUG] WebSocket: Gateway frame: event",
+      "location": {
+        "url": "http://127.0.0.1:3002/_next/static/chunks/a191e_next_dist_0da38164._.js",
+        "lineNumber": 2297,
+        "columnNumber": 27
+      }
+    }
+  ]
+}
