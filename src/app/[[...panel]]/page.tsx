@@ -128,8 +128,12 @@ export default function Home() {
     setEffectiveRole(nextRole)
     if (isCustomerRole(nextRole) && !canAccessPanel(nextRole, normalizedPanel)) {
       router.replace('/?role=customer')
+      return
     }
-  }, [normalizedPanel, pathname, router])
+    if (isCustomerRole(nextRole) && panelFromUrl === 'tasks' && !new URLSearchParams(window.location.search).has('role')) {
+      router.replace('/tasks?role=customer')
+    }
+  }, [normalizedPanel, panelFromUrl, router])
 
   // Connect to SSE for real-time local DB events (tasks, agents, chat, etc.)
   useServerEvents()

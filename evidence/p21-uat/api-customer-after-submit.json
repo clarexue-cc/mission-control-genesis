@@ -1,0 +1,67 @@
+{
+  "status": 200,
+  "body": {
+    "ok": true,
+    "tenant_id": "tenant-tg-001",
+    "tasks": [
+      {
+        "id": "uat_146995ab-f6f9-4539-9fbe-3e9750d12455",
+        "tenant_id": "tenant-tg-001",
+        "title": "P21 UAT acceptance 1777298288124",
+        "description": "请验收 customer 视角 UAT 面板：确认任务可见、填写提交 input、勾选反馈表并提交评分。",
+        "status": "open",
+        "created_by": "testadmin",
+        "created_at": "2026-04-27T13:58:11.592Z",
+        "customer_status": "submitted",
+        "submitted_at": "2026-04-27T13:58:14.274Z",
+        "latest_submission": {
+          "id": "uats_a1f3cccf-95ca-47ce-841e-513f84686b1b",
+          "task_id": "uat_146995ab-f6f9-4539-9fbe-3e9750d12455",
+          "tenant_id": "tenant-tg-001",
+          "submitted_by": "testadmin",
+          "response_text": "已完成验收：customer /tasks 能看到 UAT 任务，提交 input 与反馈表可用。",
+          "feedback_options": [
+            "可以上线"
+          ],
+          "feedback_notes": "P21 UAT flow verified on local :3027.",
+          "rating": 5,
+          "submitted_at": "2026-04-27T13:58:14.274Z"
+        }
+      },
+      {
+        "id": "uat_697e75bf-28dc-4231-bc50-865fa4562f91",
+        "tenant_id": "tenant-tg-001",
+        "title": "P21 UAT acceptance 1777298239289",
+        "description": "请验收 customer 视角 UAT 面板：确认任务可见、填写提交 input、勾选反馈表并提交评分。",
+        "status": "open",
+        "created_by": "testadmin",
+        "created_at": "2026-04-27T13:57:22.838Z",
+        "customer_status": "submitted",
+        "submitted_at": "2026-04-27T13:57:33.063Z",
+        "latest_submission": {
+          "id": "uats_eae8c4e5-6462-46ff-8eed-5198a3e566c0",
+          "task_id": "uat_697e75bf-28dc-4231-bc50-865fa4562f91",
+          "tenant_id": "tenant-tg-001",
+          "submitted_by": "testadmin",
+          "response_text": "已完成验收：customer /tasks 能看到 UAT 任务，提交 input 与反馈表可用。",
+          "feedback_options": [
+            "可以上线"
+          ],
+          "feedback_notes": "P21 UAT flow verified on local :3027.",
+          "rating": 5,
+          "submitted_at": "2026-04-27T13:57:33.063Z"
+        }
+      },
+      {
+        "id": "uat_64e24b06-9608-4166-81a5-835aeb55ce22",
+        "tenant_id": "tenant-tg-001",
+        "title": "P21 UAT acceptance 1777298175460",
+        "description": "请验收 customer 视角 UAT 面板：确认任务可见、填写提交 input、勾选反馈表并提交评分。",
+        "status": "open",
+        "created_by": "testadmin",
+        "created_at": "2026-04-27T13:56:35.407Z",
+        "customer_status": "open"
+      }
+    ]
+  }
+}

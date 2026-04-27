@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type { CustomerVisiblePanel } from '@/lib/rbac'
+import { CustomerUatTasksPanel } from '@/components/panels/customer-uat-tasks-panel'
 
 interface CustomerPanelCopy {
   display_name: string
@@ -35,6 +36,12 @@ const panelCopy: Record<CustomerVisiblePanel, CustomerPanelCopy> = {
     description: '管理 Agent 向你发消息的方式',
     empty_state: '还没有绑定任何消息渠道，联系你的管家来设置。',
     show_what: ['渠道开关（飞书 / Telegram / 邮件）', '绑定状态', '消息预览', '测试发送按钮'],
+  },
+  tasks: {
+    display_name: 'UAT 任务',
+    description: '查看验收任务并提交反馈',
+    empty_state: '暂无需要验收的任务。',
+    show_what: ['任务标题', '任务描述', '提交 input', '反馈表', '评分与提交时间'],
   },
 }
 
@@ -120,6 +127,7 @@ export function CustomerViewOverrides({ panel }: { panel: string }) {
       {activePanel === 'cron' && <CustomerCron copy={copy} />}
       {activePanel === 'alerts' && <CustomerAlerts copy={copy} />}
       {activePanel === 'channels' && <CustomerChannels copy={copy} />}
+      {activePanel === 'tasks' && <CustomerUatTasksPanel />}
     </div>
   )
 }

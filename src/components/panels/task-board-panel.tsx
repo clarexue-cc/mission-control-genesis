@@ -15,6 +15,7 @@ import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { Button } from '@/components/ui/button'
 import { ProjectManagerModal } from '@/components/modals/project-manager-modal'
 import { SessionMessage, shouldShowTimestamp, type SessionTranscriptMessage } from '@/components/chat/session-message'
+import { AdminUatControlPanel } from '@/components/panels/customer-uat-tasks-panel'
 
 const log = createClientLogger('TaskBoard')
 
@@ -391,7 +392,7 @@ interface SpawnFormData {
 export function TaskBoardPanel() {
   const t = useTranslations('taskBoard')
   const statusColumns = STATUS_COLUMN_KEYS.map(col => ({ ...col, title: t(col.titleKey as any) }))
-  const { tasks: storeTasks, setTasks: storeSetTasks, selectedTask, setSelectedTask, activeProject, availableModels, spawnRequests, addSpawnRequest, updateSpawnRequest, dashboardMode } = useMissionControl()
+  const { tasks: storeTasks, setTasks: storeSetTasks, selectedTask, setSelectedTask, activeProject, availableModels, spawnRequests, addSpawnRequest, updateSpawnRequest, dashboardMode, currentUser } = useMissionControl()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -929,6 +930,8 @@ export function TaskBoardPanel() {
           </Button>
         </div>
       )}
+
+      {currentUser?.role === 'admin' && <AdminUatControlPanel />}
 
       {/* Kanban Board */}
       <div className="flex-1 min-h-0 flex gap-4 p-4 overflow-x-auto" role="region" aria-label={t('taskBoard')}>

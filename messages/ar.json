@@ -741,6 +741,8 @@
   },
   "taskBoard": {
     "title": "لوحة المهام",
+    "taskBoard": "لوحة المهام",
+    "loadingTasks": "جارٍ تحميل المهام...",
     "allProjects": "جميع المشاريع",
     "projects": "المشاريع",
     "close": "إغلاق",

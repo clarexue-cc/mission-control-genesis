@@ -741,6 +741,8 @@
   },
   "taskBoard": {
     "title": "タスクボード",
+    "taskBoard": "タスクボード",
+    "loadingTasks": "タスクを読込中...",
     "allProjects": "すべてのプロジェクト",
     "projects": "プロジェクト",
     "close": "閉じる",

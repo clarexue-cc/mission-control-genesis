@@ -741,6 +741,8 @@
   },
   "taskBoard": {
     "title": "Доска задач",
+    "taskBoard": "Доска задач",
+    "loadingTasks": "Загрузка задач...",
     "allProjects": "Все проекты",
     "projects": "Проекты",
     "close": "Закрыть",
