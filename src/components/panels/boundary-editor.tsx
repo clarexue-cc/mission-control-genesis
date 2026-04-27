@@ -21,6 +21,8 @@ const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
 
 type RuleTab = 'forbidden' | 'drift'
 type ToastKind = 'success' | 'error' | 'info'
+type BoundaryMode = 'full' | 'mock-fallback'
+type ReloadStrategy = 'reload' | 'restart' | 'mock-fallback'
 
 interface BoundaryRulesResponse {
   tenant: string
@@ -32,14 +34,17 @@ interface BoundaryRulesResponse {
   rules: BoundaryRules | null
   parse_error: string | null
   writable: boolean
-  reload_strategy: 'reload' | 'restart'
+  reload_strategy: ReloadStrategy
+  mode?: BoundaryMode
+  note?: string
   error?: string
 }
 
 interface ReloadResponse {
   success?: boolean
   hash?: string
-  method?: string
+  method?: ReloadStrategy
+  mode?: BoundaryMode
   latency_ms?: number
   note?: string
   error?: string
@@ -101,7 +106,9 @@ export function BoundaryEditorPanel() {
   const [hash, setHash] = useState<string | null>(null)
   const [writable, setWritable] = useState(false)
   const [exists, setExists] = useState(false)
-  const [reloadStrategy, setReloadStrategy] = useState<'reload' | 'restart'>('reload')
+  const [reloadStrategy, setReloadStrategy] = useState<ReloadStrategy>('reload')
+  const [mode, setMode] = useState<BoundaryMode>('full')
+  const [modeNote, setModeNote] = useState('')
   const [expandedRules, setExpandedRules] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<ToastState | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -179,6 +186,8 @@ export function BoundaryEditorPanel() {
       setWritable(body.writable)
       setExists(body.exists)
       setReloadStrategy(body.reload_strategy)
+      setMode(body.mode || 'full')
+      setModeNote(body.note || '')
       setEditorValue(body.content)
       setSavedValue(body.content)
 
@@ -252,7 +261,7 @@ export function BoundaryEditorPanel() {
       const response = await fetch('/api/harness/boundary-reload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenant, content: normalized, hash }),
+        body: JSON.stringify({ tenant, content: normalized, ...(hash ? { hash } : {}) }),
       })
       const body = await response.json() as ReloadResponse
       if (!response.ok) throw new Error(body.error || 'Failed to save boundary rules')
@@ -262,11 +271,13 @@ export function BoundaryEditorPanel() {
       setSavedValue(normalized)
       setHash(body.hash || null)
       setExists(true)
+      if (body.mode) setMode(body.mode)
+      if (body.note) setModeNote(body.note)
       setValidationError(null)
       showToast({
         kind: 'success',
-        title: '已 reload',
-        detail: `${tenant} boundary-rules.json saved${body.latency_ms !== undefined ? ` in ${body.latency_ms}ms` : ''}`,
+        title: body.method === 'mock-fallback' ? '已 reload (mock-fallback)' : '已 reload',
+        detail: body.note || `${tenant} boundary rules saved${body.latency_ms !== undefined ? ` in ${body.latency_ms}ms` : ''}`,
       })
     } catch (error) {
       showToast({
@@ -295,6 +306,7 @@ export function BoundaryEditorPanel() {
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             <span className="rounded-md border border-border px-2.5 py-1">Path: {filePath || '-'}</span>
             <span className="rounded-md border border-border px-2.5 py-1">{exists ? 'On disk' : 'Generated draft'}</span>
+            <span className="rounded-md border border-border px-2.5 py-1">Mode: {mode}</span>
             <span className="rounded-md border border-border px-2.5 py-1">Apply: {reloadStrategy}</span>
             <span className="rounded-md border border-border px-2.5 py-1">{dirty ? 'Unsaved changes' : 'In sync'}</span>
           </div>
@@ -338,6 +350,12 @@ export function BoundaryEditorPanel() {
       {!writable && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
           Mission Control cannot write this boundary file from the current process.
+        </div>
+      )}
+
+      {mode === 'mock-fallback' && (
+        <div className="rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
+          {modeNote || 'Dev mock fallback is active; writes are saved locally for dry run validation.'}
         </div>
       )}
 

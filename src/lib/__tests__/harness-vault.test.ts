@@ -11,6 +11,10 @@ vi.mock('@/lib/harness-boundary', () => ({
     if (typeof value === 'string' && tenants.includes(value as any)) return value
     throw new Error(`tenant must be one of: ${tenants.join(', ')}`)
   },
+  normalizeBoundaryTemplateTenant: (value: unknown) => {
+    if (typeof value === 'string' && tenants.includes(value as any)) return value
+    throw new Error(`tenant must be one of: ${tenants.join(', ')}`)
+  },
   resolveHarnessRoot: async () => process.env.MC_HARNESS_ROOT,
 }))
 

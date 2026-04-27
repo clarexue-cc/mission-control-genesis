@@ -1,7 +1,7 @@
 import { constants } from 'node:fs'
 import { access, readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
-import { BOUNDARY_TENANTS, normalizeBoundaryTenant, type BoundaryTenant, resolveHarnessRoot } from '@/lib/harness-boundary'
+import { BOUNDARY_TENANTS, normalizeBoundaryTemplateTenant, type BoundaryTenant, resolveHarnessRoot } from '@/lib/harness-boundary'
 import { resolveWithin } from '@/lib/paths'
 
 export interface VaultTreeNode {
@@ -203,7 +203,7 @@ async function resolveIntakeFile(tenant: BoundaryTenant, fileName: string): Prom
 }
 
 export async function readVaultTree(tenant: BoundaryTenant, maxDepth = 6) {
-  tenant = normalizeBoundaryTenant(tenant)
+  tenant = normalizeBoundaryTemplateTenant(tenant)
   const sources = await getVaultSources(tenant)
   const roots: VaultTreeNode[] = []
 
@@ -255,7 +255,7 @@ export async function readVaultTree(tenant: BoundaryTenant, maxDepth = 6) {
 }
 
 export async function readVaultFile(tenant: BoundaryTenant, logicalPath: string): Promise<VaultFileContent> {
-  tenant = normalizeBoundaryTenant(tenant)
+  tenant = normalizeBoundaryTemplateTenant(tenant)
   const normalizedPath = normalizeVaultLogicalPath(logicalPath)
 
   if (normalizedPath === 'intake-raw.md' || normalizedPath === 'intake-analysis.md') {

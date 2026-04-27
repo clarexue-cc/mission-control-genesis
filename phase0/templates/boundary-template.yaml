@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-04-27",
+  "forbidden_patterns": [
+    {
+      "id": "MOCK-NO-SECRET-EXFIL",
+      "category": "data-safety",
+      "patterns": [
+        "api key",
+        "password",
+        "secret"
+      ],
+      "pattern": "(api key|password|secret)",
+      "label": "Block sensitive data exfiltration",
+      "severity": "high",
+      "action": "block",
+      "response_template": "This request is blocked by the dry-run boundary policy."
+    }
+  ],
+  "drift_patterns": [
+    {
+      "id": "MOCK-DRIFT-PLACEHOLDER",
+      "category": "quality",
+      "pattern": "\\{\\{[A-Za-z0-9_.-]+\\}\\}"
+    }
+  ]
+}

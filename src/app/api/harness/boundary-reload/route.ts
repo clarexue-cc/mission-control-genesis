@@ -20,7 +20,7 @@ export const runtime = 'nodejs'
 const requestSchema = z.object({
   tenant: z.string().min(1),
   content: z.string().min(1, 'content is required'),
-  hash: z.string().min(1).optional(),
+  hash: z.string().min(1).nullable().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -66,10 +66,10 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const previousRaw = await readBoundaryRulesFile(tenant)
+  const previousRaw = await readBoundaryRulesFile(tenant, currentState.mode)
   try {
-    await writeBoundaryRulesFile(tenant, normalizedRaw)
-    const finalize = await finalizeBoundaryRulesUpdate(tenant, normalizedRaw)
+    await writeBoundaryRulesFile(tenant, normalizedRaw, currentState.mode)
+    const finalize = await finalizeBoundaryRulesUpdate(tenant, normalizedRaw, currentState.mode)
     const hash = computeBoundaryRulesHash(normalizedRaw)
 
     try {
@@ -87,15 +87,16 @@ export async function POST(request: NextRequest) {
       success: true,
       tenant,
       method: finalize.method,
+      mode: currentState.mode,
       latency_ms: finalize.latency_ms,
       hash,
       note: finalize.note,
     })
   } catch (error: any) {
     if (previousRaw !== null) {
-      await writeBoundaryRulesFile(tenant, previousRaw).catch(() => {})
+      await writeBoundaryRulesFile(tenant, previousRaw, currentState.mode).catch(() => {})
     } else {
-      await deleteBoundaryRulesFile(tenant).catch(() => {})
+      await deleteBoundaryRulesFile(tenant, currentState.mode).catch(() => {})
     }
     return NextResponse.json(
       { error: error?.message || 'Failed to apply boundary rules update' },
