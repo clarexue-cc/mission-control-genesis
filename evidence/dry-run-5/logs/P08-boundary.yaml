@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-04-27",
+  "forbidden_patterns": [
+    {
+      "id": "forbidden-ezh7il",
+      "category": "custom",
+      "patterns": [
+        "example trigger"
+      ],
+      "pattern": "example trigger",
+      "label": "demo-dry-run-4 boundary smoke rule",
+      "severity": "medium",
+      "action": "block",
+      "response_template": "This request is blocked by the current boundary rules."
+    },
+    {
+      "id": "forbidden-546seh",
+      "category": "dry-run",
+      "patterns": [
+        "demo-dry-run-4-boundary-official"
+      ],
+      "pattern": "demo-dry-run-4-boundary-official",
+      "label": "demo-dry-run-4 boundary P8 official rule",
+      "severity": "medium",
+      "action": "block",
+      "response_template": "已阻止 demo-dry-run-4 boundary P8 official rule。"
+    },
+    {
+      "id": "forbidden-dryrun5",
+      "category": "dry-run",
+      "patterns": [
+        "demo-dry-run-5-boundary-official"
+      ],
+      "pattern": "demo-dry-run-5-boundary-official",
+      "label": "demo-dry-run-5 boundary P8 rule",
+      "severity": "medium",
+      "action": "block",
+      "response_template": "Blocked by demo-dry-run-5 boundary dry-run rule."
+    }
+  ],
+  "drift_patterns": []
+}

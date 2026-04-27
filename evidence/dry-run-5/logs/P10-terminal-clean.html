@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#0b1020;color:#d8dee9;font-family:Menlo,Consolas,monospace}main{padding:28px}h1{font-size:20px;color:#8fbcbb}pre{font-size:15px;line-height:1.55;white-space:pre-wrap}.ok{color:#a3be8c}</style></head><body><main><h1>P10 terminal clean log</h1><pre>P10 terminal cleanliness check
+command: grep -i "controller is already closed" /tmp/mc-e2e-3002-dry-run-5.log | wc -l
+matches:        0
+
+recent run-test log lines:
+1051: POST /api/harness/run-test 200 in 2.7min (compile: 1047ms, proxy.ts: 4ms, render: 2.7min)
+1140: POST /api/harness/run-test 200 in 3.1s (compile: 13ms, proxy.ts: 20ms, render: 3.1s)
+</pre><p class="ok">controller closed matches = 0</p></main></body></html>

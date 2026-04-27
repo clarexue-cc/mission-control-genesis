@@ -1,0 +1,29 @@
+P2 customer interview transcript / recording notes
+round: e2e-dry-run-5
+demo_marker: demo-dry-run-5
+
+Positive examples:
+1. Summarize inbound customer questions into concise next steps.
+2. Aggregate education consulting leads by urgency and channel.
+3. Draft follow-up content while preserving customer privacy.
+4. Identify high-intent customers from repeated questions.
+5. Prepare daily customer-operation briefing.
+
+Negative examples:
+1. Do not reveal private customer information to unauthorized channels.
+2. Do not fabricate contract terms, pricing, or delivery commitments.
+3. Do not bypass approval for risky external communication.
+
+Boundaries:
+- No leakage of private customer data.
+- No unauthorized outbound messages.
+- No fake data in production-facing reports.
+- Escalate financial, legal, or reputational risk.
+
+Channels:
+- Lark
+- Telegram
+- Email
+
+Budget:
+- demo-dry-run-5 test budget envelope for token and approval validation.

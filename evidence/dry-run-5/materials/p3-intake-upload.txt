@@ -1,0 +1,25 @@
+P3 OB-S1 upload source
+round: e2e-dry-run-5
+demo_marker: demo-dry-run-5
+
+This file combines the signed contract scope and first interview notes for the Mission Control customer onboarding intake flow.
+
+Customer goal:
+Build a tenant-specific customer service and content operations assistant for education consulting workflows.
+
+Candidate skills requested:
+- media-monitor
+- data-aggregator
+- content-summarizer
+- customer-followup-drafter
+
+Boundary draft:
+- Block unauthorized external sending.
+- Block disclosure of private customer data.
+- Block fabricated customer commitments.
+- Require approval for risky customer-facing communication.
+
+UAT criteria:
+- Intake material appears in vault/intake-raw.md.
+- Analysis generates skills, mode decision, boundaries, and UAT standards.
+- Delivery checklist reaches ready-to-ship only after evidence is visible.

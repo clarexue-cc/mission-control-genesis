@@ -1,0 +1,7 @@
+P10 terminal cleanliness check
+command: grep -i "controller is already closed" /tmp/mc-e2e-3002-dry-run-5.log | wc -l
+matches:        0
+
+recent run-test log lines:
+1051: POST /api/harness/run-test 200 in 2.7min (compile: 1047ms, proxy.ts: 4ms, render: 2.7min)
+1140: POST /api/harness/run-test 200 in 3.1s (compile: 13ms, proxy.ts: 20ms, render: 3.1s)

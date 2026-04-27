@@ -1,0 +1,50 @@
+Skip to main content
+Log Viewer
+
+Real-time log stream from the gateway
+
+Level
+All levels
+Error
+Warning
+Info
+Debug
+Source
+All sources
+commands
+gateway.err
+gateway
+gateway.out
+Session
+Search
+Auto
+Bottom
+Export .log
+Export .json
+Clear
+Showing 0 of 200 logs
+Auto-scroll: on •Last updated: 3:19:58 PM
+No logs to display
+Welcome
+Welcome to Mission Control
+
+Your station for AI agents. When agents dock here, they gain persistent memory, task management, coordinated workflows, and full observability. We've scanned your setup — here's what's online.
+
+OpenClawvOpenClaw 2026.4.8 (9ece252)
+Authenticated
+Hermes Agent
+Not installed
+Claude Codev2.1.77 (Claude Code)
+Authenticated
+Codex CLIvcodex-cli 0.125.0-alpha.3
+Authenticated
+OpenCode
+Not installed
+
+3 of 5 runtimes ready
+
+No active Claude sessions
+Gateway connected
+13 agents registered
+Skip setup
+Get started

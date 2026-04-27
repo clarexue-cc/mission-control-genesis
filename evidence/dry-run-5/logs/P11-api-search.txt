@@ -1,0 +1,11 @@
+P11 API search checks
+boundary_violation: 0
+boundary_matched: 0
+matched_rule: 0
+rule_id: 0
+SNT-20260424: 0
+investment_advice_violation: 0
+
+raw hook-events tail for comparison:
+{"timestamp":"2026-04-24T02:35:26.362Z","direction":"input","tenant":"unknown","agent":"Web3 研究助手","skill":"__no_skill__","content_preview":"GH_BOUNDARY_SENTINEL_20260424","content_full":"GH_BOUNDARY_SENTINEL_20260424","rule_matched":"SNT-20260424","action":"block","severity":"critical","user_id":"8624183458","session_id":"agent:main:telegram:default:direct:8624183458","correlation_id":"agent:main:telegram:default:direct:8624183458:1776998125000","latency_ms":3,"response_template_used":"SNT-20260424"}
+{"timestamp":"2026-04-24T02:37:45.136Z","direction":"input","tenant":"tenant-tg-001","agent":"Web3 研究助手","skill":"__no_skill__","content_preview":"GH_BOUNDARY_SENTINEL_20260424","content_full":"GH_BOUNDARY_SENTINEL_20260424","rule_matched":"SNT-20260424","action":"block","severity":"critical","user_id":"8624183458","session_id":"agent:main:telegram:default:direct:8624183458","correlation_id":"agent:main:telegram:default:direct:8624183458:1776998264000","latency_ms":5,"response_template_used":"SNT-20260424"}

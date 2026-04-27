@@ -1,0 +1,108 @@
+error: Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-I9i50RCdxKoEOu13c4kVwg==' 'strict-dynamic' 'unsafe-eval' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-ebcY/7CQ5kx8VGD84hTdQq9LsEQK3ueK2HGnjkVgiWo='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked.
+info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+log: [HMR] connected
+error: A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+%s%s https://react.dev/link/hydration-mismatch 
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/logs" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="layout.tsx">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <script>
+                      <script>
+                      <RootLayout>
+                        <html lang="en" dir="ltr" className="dark" suppressHydrationWarning={true}>
+                          <head>
+                            <script
++                             nonce="I9i50RCdxKoEOu13c4kVwg=="
+-                             nonce=""
+                              dangerouslySetInnerHTML={{__html:"(function(..."}}
+                            >
+                          ...
+                  ...
+
+debug: [DEBUG] LogViewer: Store has 0 logs, filtered to 0
+debug: [DEBUG] LogViewer: Store has 0 logs, filtered to 0
+debug: [DEBUG] LogViewer: Initial load started
+debug: [DEBUG] LogViewer: Loading logs (tail=false)
+debug: [DEBUG] LogViewer: Fetching /api/logs?action=recent&limit=200
+debug: [DEBUG] LogViewer: Loading logs (tail=true)
+debug: [DEBUG] LogViewer: Fetching /api/logs?action=tail&limit=200
+log: %c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;
+log: %cThis is a browser feature intended for developers.
+
+If someone told you to copy-paste something here to enable a feature or "hack" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;
+log: %cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;
+debug: [DEBUG] LogViewer: Initial load started
+debug: [DEBUG] LogViewer: Loading logs (tail=false)
+debug: [DEBUG] LogViewer: Fetching /api/logs?action=recent&limit=200
+info: [INFO] WebSocket: Connected to ws://127.0.0.1:18789
+debug: [DEBUG] WebSocket: Waiting for connect challenge
+debug: [DEBUG] LogViewer: Store has 0 logs, filtered to 0
+debug: [DEBUG] LogViewer: Store has 0 logs, filtered to 0
+debug: [DEBUG] WebSocket: Gateway frame: event
+info: [INFO] WebSocket: Received connect challenge, sending handshake
+info: [INFO] WebSocket: Sending connect handshake
+debug: [DEBUG] LogViewer: Store has 0 logs, filtered to 0
+debug: [DEBUG] LogViewer: Store has 0 logs, filtered to 0
+debug: [DEBUG] LogViewer: Received 200 logs from API
+debug: [DEBUG] LogViewer: Clearing existing logs and loading 200 logs
+debug: [DEBUG] LogViewer: Successfully added 200 logs to store
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 200
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 200
+log: [Fast Refresh] rebuilding
+debug: [DEBUG] WebSocket: Gateway frame: res
+info: [INFO] WebSocket: Handshake complete
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 200
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 200
+debug: [DEBUG] LogViewer: Received 146 logs from API
+debug: [DEBUG] LogViewer: Added 146 new logs (tail mode)
+debug: [DEBUG] LogViewer: Store has 346 logs, filtered to 346
+debug: [DEBUG] LogViewer: Store has 346 logs, filtered to 346
+debug: [DEBUG] WebSocket: Gateway frame: event
+log: [Fast Refresh] done in 838ms
+debug: [DEBUG] LogViewer: Store has 346 logs, filtered to 346
+debug: [DEBUG] LogViewer: Store has 346 logs, filtered to 346
+debug: [DEBUG] LogViewer: Store has 346 logs, filtered to 346
+debug: [DEBUG] LogViewer: Store has 346 logs, filtered to 346
+log: [Fast Refresh] rebuilding
+log: [Fast Refresh] done in 746ms
+debug: [DEBUG] LogViewer: Received 200 logs from API
+debug: [DEBUG] LogViewer: Clearing existing logs and loading 200 logs
+debug: [DEBUG] LogViewer: Successfully added 200 logs to store
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 200
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 200
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 200
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 200
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 200
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 200
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 0
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 0
+debug: [DEBUG] LogViewer: Loading logs (tail=false)
+debug: [DEBUG] LogViewer: Fetching /api/logs?action=recent&limit=200&search=boundary_violation
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 0
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 0
+debug: [DEBUG] LogViewer: Received 0 logs from API
+debug: [DEBUG] LogViewer: No logs received from API
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 0
+debug: [DEBUG] LogViewer: Store has 200 logs, filtered to 0

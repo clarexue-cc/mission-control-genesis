@@ -1,0 +1,37 @@
+22 阶段开跑 Preflight 自检
+生成时间：2026-04-27T12:13:31.653Z
+
+✅ #1 PR clarexue-cc/mission-control-genesis #8 is merged
+   实际值：state=closed, merged=true, mergeCommit=2a67cffad9693f8548852ac0f7932a31c4bda2cc, base=main, source=gh api
+   期望值：merged=true
+
+✅ #2 PR #8 mergeCommit matches Phase 1b MC commit
+   实际值：state=closed, merged=true, mergeCommit=2a67cffad9693f8548852ac0f7932a31c4bda2cc, base=main, source=gh api
+   期望值：merged=true, mergeCommit contains 2a67cffad9693f8548852ac0f7932a31c4bda2cc
+
+✅ #3 PR timoyashar982-star/genesis-harness #70 is merged
+   实际值：state=closed, merged=true, mergeCommit=ed8bfd225e512e247b4f74e10f082df28cd9bc82, base=main, source=gh api
+   期望值：merged=true
+
+✅ #4 PR timoyashar982-star/genesis-harness #68 is merged with expected commit
+   实际值：state=closed, merged=true, mergeCommit=d91f85be58f88e8421ebcd987819afb69fbe47e1, base=main, source=gh api
+   期望值：merged=true, mergeCommit contains d91f85be58f88e8421ebcd987819afb69fbe47e1
+
+✅ #5 mc-e2e-test exists, clean, and contains PR #8 merge commit
+   实际值：exists=true, branch=main, HEAD=deabae685add224e38e43300bd57741d63689086, clean=true, containsMergeCommit=true
+   期望值：exists=true, branch=main, clean=true, HEAD contains 2a67cffad9693f8548852ac0f7932a31c4bda2cc
+
+✅ #6 Mission Control :3002 returns HTTP 2xx after redirects
+   实际值：GET http://127.0.0.1:3002 -> final HTTP 200, finalUrl=http://127.0.0.1:3002/login, redirected=true, 46ms
+   期望值：follow redirects and final HTTP status in [200, 299]
+
+✅ #7 clare-admin login API succeeds
+   实际值：POST http://127.0.0.1:3002/api/auth/login -> HTTP 200, success=true, user.username=clare-admin, endpointSource=/Users/clare/Desktop/mc-e2e-test/openapi.json
+   期望值：HTTP 200 and success=true or user payload for clare-admin
+
+✅ #8 Obsidian openclaw vault has required agent folders
+   实际值：entries=.obsidian, Agent-HarnessTester, Agent-Hermes, Agent-Kid, Agent-Main, Agent-MediaIntel, Agent-Shared, Agent-TEMPLATE, Agent-Web3Research, index.md, skills, 欢迎.md
+   期望值：contains Agent-Shared, Agent-Main, Agent-MediaIntel, Agent-Web3Research, skills
+
+8/8 通过
+GO：22 阶段允许开测
