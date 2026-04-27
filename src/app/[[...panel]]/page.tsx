@@ -9,6 +9,7 @@ import { Dashboard } from '@/components/dashboard/dashboard'
 import { LogViewerPanel } from '@/components/panels/log-viewer-panel'
 import { CronManagementPanel } from '@/components/panels/cron-management-panel'
 import { MemoryBrowserPanel } from '@/components/panels/memory-browser-panel'
+import { VaultBrowserPanel } from '@/components/panels/vault-browser-panel'
 import { CostTrackerPanel } from '@/components/panels/cost-tracker-panel'
 import { TaskBoardPanel } from '@/components/panels/task-board-panel'
 import { ActivityFeedPanel } from '@/components/panels/activity-feed-panel'
@@ -41,6 +42,7 @@ import { SecurityAuditPanel } from '@/components/panels/security-audit-panel'
 import { NodesPanel } from '@/components/panels/nodes-panel'
 import { ExecApprovalPanel } from '@/components/panels/exec-approval-panel'
 import { SystemMonitorPanel } from '@/components/panels/system-monitor-panel'
+import { HermesControlPanel } from '@/components/panels/hermes-control-panel'
 import { ChatPagePanel } from '@/components/panels/chat-page-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { STORAGE_GATEWAY_URL } from '@/lib/device-identity'
@@ -588,6 +590,8 @@ function ContentRouter({ tab, effectiveRole }: { tab: string; effectiveRole: Eff
       return <DeliveryChecklistPanel />
     case 'cron':
       return <CronManagementPanel />
+    case 'vault':
+      return <VaultBrowserPanel />
     case 'memory':
       return <MemoryBrowserPanel />
     case 'cost-tracker':
@@ -623,6 +627,8 @@ function ContentRouter({ tab, effectiveRole }: { tab: string; effectiveRole: Eff
       return <OfficePanel />
     case 'monitor':
       return <SystemMonitorPanel />
+    case 'hermes':
+      return <HermesControlPanel />
     case 'skills':
       return <SkillsPanel />
     case 'channels':
