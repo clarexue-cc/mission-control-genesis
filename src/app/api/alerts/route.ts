@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import { getDatabase } from '@/lib/db'
+import { getAggregatedHermesAlerts, type AggregatedAlertEvent } from '@/lib/hermes-alerts'
 import { mutationLimiter } from '@/lib/rate-limit'
 import { createAlertSchema, validateBody } from '@/lib/validation'
+
+export const runtime = 'nodejs'
 
 interface AlertRule {
   id: number
@@ -23,6 +26,61 @@ interface AlertRule {
   updated_at: number
 }
 
+interface AlertNotificationRow {
+  id: number
+  type: string
+  title: string
+  message: string
+  source_type?: string | null
+  source_id?: number | null
+  read_at?: number | null
+  created_at: number
+}
+
+function notificationSeverity(row: AlertNotificationRow): AggregatedAlertEvent['severity'] {
+  const text = `${row.title} ${row.message}`.toLowerCase()
+  if (text.includes('critical') || text.includes('blocked') || text.includes('卡死')) return 'critical'
+  if (text.includes('warn') || text.includes('warning') || text.includes('告警')) return 'warning'
+  return 'info'
+}
+
+function notificationSource(row: AlertNotificationRow): AggregatedAlertEvent['source'] {
+  const source = row.source_type?.toLowerCase() || ''
+  if (source.includes('test')) return 'test'
+  return 'system'
+}
+
+function readNotificationAlertEvents(db: ReturnType<typeof getDatabase>, workspaceId: number): AggregatedAlertEvent[] {
+  try {
+    const rows = db.prepare(`
+      SELECT id, type, title, message, source_type, source_id, read_at, created_at
+      FROM notifications
+      WHERE workspace_id = ? AND (type = 'alert' OR source_type IN ('alert_rule', 'test', 'harness_test'))
+      ORDER BY created_at DESC
+      LIMIT 50
+    `).all(workspaceId) as AlertNotificationRow[]
+
+    return rows.map(row => {
+      const source = notificationSource(row)
+      return {
+        id: `notification-${row.id}`,
+        timestamp: row.created_at * 1000,
+        severity: notificationSeverity(row),
+        title: row.title,
+        message: row.message,
+        source,
+        source_label: source === 'test' ? 'Test alerts' : 'System alerts',
+        source_type: row.source_type || 'notification',
+        source_id: row.source_id ?? row.id,
+        acknowledged: Boolean(row.read_at),
+        jump_href: source === 'test' ? '/tests' : '/notifications',
+      }
+    })
+  } catch {
+    return []
+  }
+}
+
 /**
  * GET /api/alerts - List all alert rules
  */
@@ -33,12 +91,24 @@ export async function GET(request: NextRequest) {
   const db = getDatabase()
   const workspaceId = auth.user.workspace_id ?? 1
   try {
+    const { searchParams } = new URL(request.url)
+    const tenant = searchParams.get('tenant')
+    const includeAlerts = searchParams.get('include_alerts') !== 'false'
     const rules = db
       .prepare('SELECT * FROM alert_rules WHERE workspace_id = ? ORDER BY created_at DESC')
       .all(workspaceId) as AlertRule[]
-    return NextResponse.json({ rules })
-  } catch {
-    return NextResponse.json({ rules: [] })
+    const alerts = includeAlerts
+      ? [
+          ...await getAggregatedHermesAlerts({ tenant, limit: 50 }),
+          ...readNotificationAlertEvents(db, workspaceId),
+        ].sort((a, b) => b.timestamp - a.timestamp).slice(0, 80)
+      : []
+    return NextResponse.json({ rules, alerts })
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Invalid tenant') {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+    return NextResponse.json({ rules: [], alerts: [] })
   }
 }
 
