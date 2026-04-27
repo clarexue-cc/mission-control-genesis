@@ -7,7 +7,7 @@ import { Loader } from '@/components/ui/loader'
 type HermesTarget = {
   tenant: string
   agent_dir: string
-  status: 'running' | 'stopped'
+  health: 'fresh' | 'stale' | 'missing'
   context_path: string
   context_exists: boolean
   heartbeat_age_seconds: number | null
@@ -46,6 +46,12 @@ function formatDate(value: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleString()
+}
+
+function healthClassName(health: HermesTarget['health']) {
+  if (health === 'fresh') return 'bg-green-500/15 text-green-300'
+  if (health === 'stale') return 'bg-amber-500/15 text-amber-300'
+  return 'bg-red-500/15 text-red-300'
 }
 
 export function HermesControlPanel() {
@@ -134,7 +140,7 @@ export function HermesControlPanel() {
 
       <div className="grid gap-4 lg:grid-cols-4">
         <section className={`${panelClassName} p-4`}>
-          <p className="text-xs text-muted-foreground">Daemon</p>
+          <p className="text-xs text-muted-foreground">Daemon status</p>
           <p className={`mt-2 text-xl font-semibold ${state?.daemon_running ? 'text-green-300' : 'text-red-300'}`}>
             {state?.daemon_running ? 'running' : 'stopped'}
           </p>
@@ -161,14 +167,14 @@ export function HermesControlPanel() {
         <section className={`${panelClassName} overflow-hidden`}>
           <div className="border-b border-border p-4">
             <h2 className="text-sm font-semibold text-foreground">Guarded Tenants</h2>
-            <p className="mt-1 text-xs text-muted-foreground">running/stopped, last check, last alert, and heartbeat age</p>
+            <p className="mt-1 text-xs text-muted-foreground">heartbeat health, last check, last alert, and heartbeat age</p>
           </div>
           <div className="overflow-auto">
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="border-b border-border bg-secondary/20 text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">Tenant</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Health</th>
                   <th className="px-4 py-3">Heartbeat</th>
                   <th className="px-4 py-3">Last check</th>
                   <th className="px-4 py-3">Last alert</th>
@@ -182,12 +188,14 @@ export function HermesControlPanel() {
                       <div className="text-xs text-muted-foreground">{target.agent_dir}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`rounded px-2 py-1 text-xs ${target.status === 'running' ? 'bg-green-500/15 text-green-300' : 'bg-red-500/15 text-red-300'}`}>
-                        {target.status}
+                      <span className={`rounded px-2 py-1 text-xs ${healthClassName(target.health)}`}>
+                        {target.health}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className={target.stale ? 'text-amber-300' : 'text-green-300'}>{formatAge(target.heartbeat_age_seconds)}</div>
+                      <div className={target.health === 'fresh' ? 'text-green-300' : target.health === 'stale' ? 'text-amber-300' : 'text-red-300'}>
+                        {formatAge(target.heartbeat_age_seconds)}
+                      </div>
                       <div className="text-xs text-muted-foreground">{formatDate(target.last_heartbeat_at)}</div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{target.last_check_at || 'never'}</td>

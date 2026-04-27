@@ -12,7 +12,7 @@ export const runtime = 'nodejs'
 interface HermesTargetStatus {
   tenant: string
   agent_dir: string
-  status: 'running' | 'stopped'
+  health: 'fresh' | 'stale' | 'missing'
   context_path: string
   context_exists: boolean
   heartbeat_age_seconds: number | null
@@ -94,18 +94,23 @@ async function getHermesState() {
     const contextPath = path.join(VAULT_ROOT, agentDir, 'working-context.md')
     const stats = await stat(contextPath).catch(() => null)
     const heartbeatAgeSeconds = stats ? Math.max(0, Math.floor((now - stats.mtime.getTime()) / 1000)) : null
+    const health: HermesTargetStatus['health'] = !stats
+      ? 'missing'
+      : heartbeatAgeSeconds > STALE_SECONDS
+        ? 'stale'
+        : 'fresh'
     const parsed = parseLogForAgent(agentDir, logTail)
     targets.push({
       tenant: displayTenant(agentDir),
       agent_dir: agentDir,
-      status: daemonRunning ? 'running' : 'stopped',
+      health,
       context_path: contextPath,
       context_exists: Boolean(stats),
       heartbeat_age_seconds: heartbeatAgeSeconds,
       last_heartbeat_at: stats ? stats.mtime.toISOString() : null,
       last_check_at: parsed.lastCheckAt,
       last_alert: parsed.lastAlert,
-      stale: heartbeatAgeSeconds !== null ? heartbeatAgeSeconds > STALE_SECONDS : true,
+      stale: health !== 'fresh',
     })
   }
 
