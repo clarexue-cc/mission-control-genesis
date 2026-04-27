@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readFile, readdir, stat } from 'fs/promises'
+import { readFile, readdir } from 'fs/promises'
 import { join } from 'path'
 import { config } from '@/lib/config'
 import { requireRole } from '@/lib/auth'
 import { readLimiter, mutationLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
-
-const LOGS_PATH = config.logsDir
+import { HOOK_EVENT_SOURCE, discoverHookEventFiles, readHookEventFile } from '@/lib/hook-events'
 
 interface LogEntry {
   id: string
@@ -16,6 +15,13 @@ interface LogEntry {
   session?: string
   message: string
   data?: any
+  rule_id?: string
+  matched_rule?: string
+  matched_rule_id?: string
+  severity?: string
+  action?: string
+  tenant?: string
+  details?: string
 }
 
 /**
@@ -125,6 +131,7 @@ function parseLogLine(line: string, source: string): LogEntry | null {
  */
 async function discoverLogFiles(): Promise<Array<{ path: string; source: string }>> {
   const files: Array<{ path: string; source: string }> = []
+  const LOGS_PATH = config.logsDir
   if (!LOGS_PATH) return files
 
   try {
@@ -176,8 +183,26 @@ async function readLogFile(filePath: string, source: string, maxLines: number): 
   }
 }
 
+function matchesSearch(log: LogEntry, search: string): boolean {
+  const searchLower = search.toLowerCase()
+  const fields = [
+    log.message,
+    log.source,
+    log.session,
+    log.rule_id,
+    log.matched_rule,
+    log.matched_rule_id,
+    log.severity,
+    log.action,
+    log.tenant,
+    log.details,
+    log.data ? JSON.stringify(log.data) : undefined,
+  ]
+  return fields.some((field) => typeof field === 'string' && field.toLowerCase().includes(searchLower))
+}
+
 export async function GET(request: NextRequest) {
-  const auth = requireRole(request, 'viewer')
+  const auth = requireRole(request, 'admin')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const rateCheck = readLimiter(request)
@@ -191,6 +216,7 @@ export async function GET(request: NextRequest) {
     const session = searchParams.get('session')
     const search = searchParams.get('search')
     const source = searchParams.get('source')
+    const tenant = searchParams.get('tenant')
 
     if (action === 'recent') {
       const logFiles = await discoverLogFiles()
@@ -201,6 +227,14 @@ export async function GET(request: NextRequest) {
         if (source && file.source !== source) continue
         const entries = await readLogFile(file.path, file.source, 200)
         logs.push(...entries)
+      }
+
+      if (!source || source === HOOK_EVENT_SOURCE) {
+        const hookFiles = await discoverHookEventFiles({ tenant })
+        for (const file of hookFiles) {
+          const entries = await readHookEventFile(file, 500)
+          logs.push(...entries)
+        }
       }
 
       // Sort newest first
@@ -214,11 +248,7 @@ export async function GET(request: NextRequest) {
         logs = logs.filter(log => log.session?.includes(session))
       }
       if (search) {
-        const searchLower = search.toLowerCase()
-        logs = logs.filter(log =>
-          log.message.toLowerCase().includes(searchLower) ||
-          log.source.toLowerCase().includes(searchLower)
-        )
+        logs = logs.filter(log => matchesSearch(log, search))
       }
 
       logs = logs.slice(0, limit)
@@ -227,7 +257,8 @@ export async function GET(request: NextRequest) {
 
     if (action === 'sources') {
       const logFiles = await discoverLogFiles()
-      const sources = logFiles.map(f => f.source)
+      const hookFiles = await discoverHookEventFiles({ tenant })
+      const sources = Array.from(new Set([...logFiles.map(f => f.source), ...hookFiles.map(f => f.source)]))
       return NextResponse.json({ sources })
     }
 
@@ -242,13 +273,27 @@ export async function GET(request: NextRequest) {
         logs.push(...entries.filter(e => e.timestamp > sinceTimestamp))
       }
 
+      if (!source || source === HOOK_EVENT_SOURCE) {
+        const hookFiles = await discoverHookEventFiles({ tenant })
+        for (const file of hookFiles) {
+          const entries = await readHookEventFile(file, 50)
+          logs.push(...entries.filter(e => e.timestamp > sinceTimestamp))
+        }
+      }
+
       logs.sort((a, b) => b.timestamp - a.timestamp)
+      if (search) {
+        logs = logs.filter(log => matchesSearch(log, search))
+      }
       logs = logs.slice(0, limit)
       return NextResponse.json({ logs })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error) {
+    if (error instanceof Error && error.message === 'Invalid tenant') {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
     logger.error({ err: error }, 'Logs API error')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

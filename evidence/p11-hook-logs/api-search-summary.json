@@ -1,0 +1,22 @@
+{
+  "boundary_violation": {
+    "status": 200,
+    "hits": 2
+  },
+  "rule_id": {
+    "status": 200,
+    "hits": 2
+  },
+  "matched_rule": {
+    "status": 200,
+    "hits": 2
+  },
+  "matched_rule_id": {
+    "status": 200,
+    "hits": 2
+  },
+  "SNT-20260424": {
+    "status": 200,
+    "hits": 2
+  }
+}

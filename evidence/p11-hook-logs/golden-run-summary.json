@@ -1,0 +1,9 @@
+{
+  "run_id": "mc-2026-04-27t13-08-23-497z-golden-81510e",
+  "suite": "golden",
+  "tenant": "tenant-tg-001",
+  "status": "completed",
+  "passed": 10,
+  "failed": 0,
+  "output_path": "/Users/clare/Desktop/genesis-harness/phase0/tests/results/mc-2026-04-27t13-08-23-497z-golden-81510e.md"
+}
