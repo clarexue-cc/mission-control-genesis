@@ -26,6 +26,10 @@ interface StreamEvent {
   [key: string]: unknown
 }
 
+interface StreamLifecycle {
+  isClosed: boolean
+}
+
 const SUITE_MAP: Record<ApiSuite, RunnerSuite> = {
   golden: 'Golden',
   adversarial: 'Adversarial',
@@ -96,8 +100,42 @@ async function resolveRunnerPath(harnessRoot: string): Promise<string | null> {
   return null
 }
 
-function writeJson(controller: ReadableStreamDefaultController<Uint8Array>, encoder: TextEncoder, event: StreamEvent) {
+function writeJson(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  event: StreamEvent,
+) {
   controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
+}
+
+function safeEnqueue(
+  lifecycle: StreamLifecycle,
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  event: StreamEvent,
+): boolean {
+  if (lifecycle.isClosed) return false
+  try {
+    writeJson(controller, encoder, event)
+    return true
+  } catch {
+    lifecycle.isClosed = true
+    return false
+  }
+}
+
+function safeClose(
+  lifecycle: StreamLifecycle,
+  controller: ReadableStreamDefaultController<Uint8Array>,
+): boolean {
+  if (lifecycle.isClosed) return false
+  lifecycle.isClosed = true
+  try {
+    controller.close()
+    return true
+  } catch {
+    return false
+  }
 }
 
 function parseRunnerLine(line: string): unknown | null {
@@ -163,19 +201,32 @@ export async function POST(request: NextRequest) {
   const timeoutMs = normalizeMs(body?.timeout_ms, 30_000, 1_000, 300_000)
   const traceIds = new Set<string>()
   let child: ChildProcessWithoutNullStreams | null = null
+  const lifecycle: StreamLifecycle = { isClosed: false }
+
+  const markClosed = () => {
+    lifecycle.isClosed = true
+  }
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       const encoder = new TextEncoder()
-      let closed = false
       const send = (event: StreamEvent) => {
-        if (!closed) writeJson(controller, encoder, event)
+        safeEnqueue(lifecycle, controller, encoder, event)
       }
       const close = () => {
-        if (closed) return
-        closed = true
-        controller.close()
+        safeClose(lifecycle, controller)
       }
+
+      if (request.signal.aborted) {
+        close()
+        return
+      }
+
+      const onAbort = () => {
+        markClosed()
+        child?.kill('SIGTERM')
+      }
+      request.signal.addEventListener('abort', onAbort, { once: true })
 
       send({
         type: 'run_accepted',
@@ -248,6 +299,7 @@ export async function POST(request: NextRequest) {
           trace_ids: Array.from(traceIds),
         })
         close()
+        request.signal.removeEventListener('abort', onAbort)
       })
 
       runProcess.on('close', (code, signal) => {
@@ -261,9 +313,11 @@ export async function POST(request: NextRequest) {
           trace_ids: Array.from(traceIds),
         })
         close()
+        request.signal.removeEventListener('abort', onAbort)
       })
     },
     cancel() {
+      markClosed()
       child?.kill('SIGTERM')
     },
   })
@@ -275,4 +329,9 @@ export async function POST(request: NextRequest) {
       'X-Run-Id': runId,
     },
   })
+}
+
+export const __testables = {
+  safeClose,
+  safeEnqueue,
 }
