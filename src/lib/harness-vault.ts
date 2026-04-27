@@ -44,10 +44,11 @@ interface VirtualFile {
 const OBSIDIAN_VAULT_NAME = process.env.MC_OBSIDIAN_VAULT_NAME || process.env.OBSIDIAN_VAULT_NAME || 'openclaw'
 const OBSIDIAN_VAULT_ROOT = process.env.MC_OBSIDIAN_VAULT_ROOT || process.env.OBSIDIAN_VAULT_ROOT || '/Users/clare/Desktop/obsidian/openclaw'
 
+// TODO: During development, empty tenant agent directories fall back to vault-template/Agent-TEMPLATE below.
 const tenantAgentDir: Record<BoundaryTenant, string> = {
   'ceo-assistant-v1': 'Agent-Main',
-  'media-intel-v1': 'Agent-HarnessTester',
-  'web3-research-v1': 'Agent-HarnessTester',
+  'media-intel-v1': 'Agent-MediaIntel',
+  'web3-research-v1': 'Agent-Web3Research',
 }
 
 async function exists(filePath: string): Promise<boolean> {
