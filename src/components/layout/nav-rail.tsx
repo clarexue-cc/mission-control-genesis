@@ -36,7 +36,6 @@ const navGroups: NavGroup[] = [
       { id: 'chat', label: 'Chat', icon: <ChatIcon />, priority: false, essential: true },
       { id: 'channels', label: 'Channels', icon: <ChannelsIcon />, priority: false },
       { id: 'skills', label: 'Skills', icon: <SkillsIcon />, priority: false },
-      { id: 'memory', label: 'Memory', icon: <MemoryIcon />, priority: false },
     ],
   },
   {
@@ -48,11 +47,12 @@ const navGroups: NavGroup[] = [
       { id: 'tests', label: 'Tests', icon: <TestsIcon />, priority: false },
       { id: 'boundary', label: 'Boundary', icon: <BoundaryIcon />, priority: false },
       { id: 'delivery', label: 'Delivery', icon: <DeliveryIcon />, priority: false },
+      { id: 'vault', label: 'Vault', icon: <VaultIcon />, priority: false },
+      { id: 'memory', label: 'Memory', icon: <MemoryIcon />, priority: false },
       { id: 'cost-tracker', label: 'Cost Tracker', icon: <TokensIcon />, priority: false },
       { id: 'nodes', label: 'Nodes', icon: <NodesIcon />, priority: false },
       { id: 'exec-approvals', label: 'Approvals', icon: <ApprovalsIcon />, priority: false },
       { id: 'office', label: 'Office', icon: <OfficeIcon />, priority: false },
-      { id: 'monitor', label: 'Monitor', icon: <MonitorIcon />, priority: false },
     ],
   },
   {
@@ -69,6 +69,8 @@ const navGroups: NavGroup[] = [
     id: 'admin',
     label: 'ADMIN',
     items: [
+      { id: 'monitor', label: 'Monitor', icon: <MonitorIcon />, priority: false },
+      { id: 'hermes', label: 'Hermes', icon: <HermesIcon />, priority: false },
       { id: 'security', label: 'Security', icon: <SecurityIcon />, priority: false },
       { id: 'users', label: 'Users', icon: <UsersIcon />, priority: false },
       { id: 'audit', label: 'Audit', icon: <AuditIcon />, priority: false },
@@ -127,7 +129,7 @@ const gatewayOnlyPanels = new Set([
   'gateways', 'gateway-config', 'channels', 'nodes', 'exec-approvals',
   ...getPluginNavItems().filter(pi => pi.gatewayOnly).map(pi => pi.id),
 ])
-const adminOnlyPanels = new Set<string>(['tests', 'boundary', 'delivery'])
+const adminOnlyPanels = new Set<string>(['tests', 'boundary', 'delivery', 'vault', 'hermes'])
 
 export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: EffectiveRole }) {
   const { activeTab, connection, dashboardMode, currentUser, activeTenant, tenants, osUsers, setActiveTenant, fetchTenants, fetchOsUsers, activeProject, projects, setActiveProject, fetchProjects, sidebarExpanded, collapsedGroups, toggleSidebar, toggleGroup, defaultOrgName, interfaceMode, setInterfaceMode } = useMissionControl()
@@ -1341,6 +1343,16 @@ function MemoryIcon() {
   )
 }
 
+function VaultIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2.5 4.5h4l1.2 1.5h5.8a1 1 0 011 1v6a1 1 0 01-1 1h-11a1 1 0 01-1-1V5.5a1 1 0 011-1z" />
+      <path d="M3.5 4.5V3a1 1 0 011-1h3l1 1.2H12a1 1 0 011 1V6" />
+      <path d="M5 9h6M5 11.5h4" />
+    </svg>
+  )
+}
+
 function TokensIcon() {
   return (
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1561,6 +1573,17 @@ function MonitorIcon() {
       <rect x="1" y="2" width="14" height="10" rx="1.5" />
       <polyline points="4,9 6,6 8,8 12,4" />
       <path d="M5 14h6" />
+    </svg>
+  )
+}
+
+function HermesIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="6" />
+      <path d="M8 2v3M8 11v3M2 8h3M11 8h3" />
+      <path d="M5.8 5.8l4.4 4.4M10.2 5.8l-4.4 4.4" />
+      <circle cx="8" cy="8" r="1.5" />
     </svg>
   )
 }
