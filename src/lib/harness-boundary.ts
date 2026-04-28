@@ -80,17 +80,23 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
+async function isHarnessRootCandidate(root: string): Promise<boolean> {
+  return (await exists(resolveWithin(root, 'package.json'))) && (await exists(resolveWithin(root, 'phase0')))
+}
+
 export async function resolveHarnessRoot(): Promise<string> {
   const candidates = [
     process.env.MC_HARNESS_ROOT,
     process.env.GENESIS_HARNESS_ROOT,
-    '/Users/clare/Desktop/genesis-harness',
+    process.cwd(),
     path.resolve(process.cwd(), '..', 'genesis-harness'),
     path.resolve(process.cwd(), 'genesis-harness'),
+    '/Users/clare/Desktop/genesis-harness',
   ].filter((value): value is string => Boolean(value))
 
   for (const candidate of candidates) {
-    if (await exists(candidate)) return candidate
+    const root = path.resolve(candidate)
+    if (await isHarnessRootCandidate(root)) return root
   }
   throw new Error('Genesis harness root not found')
 }
