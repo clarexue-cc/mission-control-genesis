@@ -30,6 +30,21 @@ interface EvalResult {
   reason?: string
 }
 
+interface AlertEvent {
+  id: string
+  timestamp: number
+  severity: 'critical' | 'high' | 'warning' | 'info'
+  title: string
+  message: string
+  source: 'hermes' | 'system' | 'test'
+  source_label: string
+  source_type: string
+  tenant?: string | null
+  agent?: string | null
+  acknowledged: boolean
+  jump_href: string
+}
+
 const ENTITY_FIELDS: Record<string, string[]> = {
   agent: ['status', 'role', 'name', 'last_seen', 'last_activity'],
   task: ['status', 'priority', 'assigned_to', 'title'],
@@ -55,9 +70,17 @@ const ENTITY_COLORS: Record<string, string> = {
   activity: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
 }
 
+const ALERT_SEVERITY_CLASS: Record<AlertEvent['severity'], string> = {
+  critical: 'border-red-500/40 bg-red-500/15 text-red-200',
+  high: 'border-orange-500/40 bg-orange-500/15 text-orange-200',
+  warning: 'border-amber-500/40 bg-amber-500/15 text-amber-200',
+  info: 'border-blue-500/40 bg-blue-500/15 text-blue-200',
+}
+
 export function AlertRulesPanel() {
   const t = useTranslations('alertRules')
   const [rules, setRules] = useState<AlertRule[]>([])
+  const [alertEvents, setAlertEvents] = useState<AlertEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [evalResults, setEvalResults] = useState<EvalResult[] | null>(null)
@@ -68,6 +91,7 @@ export function AlertRulesPanel() {
       const res = await fetch('/api/alerts')
       const data = await res.json()
       setRules(data.rules || [])
+      setAlertEvents(data.alerts || [])
     } catch { /* ignore */ }
     setLoading(false)
   }, [])
@@ -164,6 +188,62 @@ export function AlertRulesPanel() {
           <div className="text-xl font-bold text-amber-400 mt-0.5">{totalTriggers}</div>
         </div>
       </div>
+
+      <section className="bg-card border border-border rounded-lg p-4">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">聚合告警</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Hermes / 系统 / 测试告警统一入口</p>
+          </div>
+          <span className="rounded-md border border-border bg-secondary/40 px-2 py-1 text-xs text-muted-foreground">
+            {alertEvents.length} 条
+          </span>
+        </div>
+        {alertEvents.length === 0 ? (
+          <div className="rounded-md border border-border/60 bg-secondary/20 px-3 py-4 text-center text-xs text-muted-foreground">
+            暂无聚合告警
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {alertEvents.slice(0, 8).map(alert => (
+              <div key={alert.id} className="rounded-md border border-border bg-background/70 p-3">
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded border px-1.5 py-0.5 text-2xs uppercase ${ALERT_SEVERITY_CLASS[alert.severity]}`}>
+                        {alert.severity}
+                      </span>
+                      <span className="rounded border border-border bg-secondary/50 px-1.5 py-0.5 text-2xs text-muted-foreground">
+                        {alert.source_label}
+                      </span>
+                      <span className={`rounded border px-1.5 py-0.5 text-2xs ${
+                        alert.acknowledged
+                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                          : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                      }`}>
+                        {alert.acknowledged ? '已确认' : '待确认'}
+                      </span>
+                    </div>
+                    <h4 className="mt-2 truncate text-sm font-semibold text-foreground">{alert.title}</h4>
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{alert.message}</p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-2xs text-muted-foreground">
+                      {alert.tenant && <span>tenant={alert.tenant}</span>}
+                      {alert.agent && <span>agent={alert.agent}</span>}
+                      <span>{new Date(alert.timestamp).toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <a
+                    href={alert.jump_href}
+                    className="shrink-0 rounded-md border border-border px-2 py-1 text-xs text-foreground transition hover:border-primary/50 hover:text-primary"
+                  >
+                    跳转
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Eval Results */}
       {evalResults && (
