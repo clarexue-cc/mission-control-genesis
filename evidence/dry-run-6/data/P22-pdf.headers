@@ -1,0 +1,18 @@
+HTTP/1.1 200 OK
+Transfer-Encoding: chunked
+Cache-Control: no-store
+Connection: keep-alive
+Content-Disposition: attachment; filename="checklist-media-intel-v1.pdf"
+Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'nonce-BLS/AlOiCDOwmJl7iymQZw==' 'strict-dynamic' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' ws: wss: http://127.0.0.1:* http://localhost:* https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' data:; frame-src 'self'; worker-src 'self' blob:
+Content-Type: application/pdf
+Date: Tue, 28 Apr 2026 01:26:34 GMT
+Keep-Alive: timeout=4
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+Proxy-Connection: keep-alive
+Referrer-Policy: strict-origin-when-cross-origin
+Set-Cookie: mc-view-role=admin; Path=/; Expires=Tue, 05 May 2026 01:26:34 GMT; Max-Age=604800; SameSite=lax
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-Request-Id: d4ceadf7-4320-4e01-9c26-08f3e69ca3e3
+

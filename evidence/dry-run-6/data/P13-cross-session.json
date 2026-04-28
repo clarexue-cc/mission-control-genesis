@@ -1,0 +1,90 @@
+{
+  "status": 200,
+  "finished": {
+    "type": "run_finished",
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "output_path": "/Users/clare/Desktop/genesis-harness/phase0/tests/results/mc-2026-04-28t01-16-59-228z-cross-session-23e068.md",
+    "trace_ids": [
+      "6075cd798fa582e7446a875791796ab5",
+      "bf73de25533859205caa95612af0184a",
+      "0e7a774567397adabf50b7ac338585d7"
+    ],
+    "run_id": "mc-2026-04-28t01-16-59-228z-cross-session-23e068"
+  },
+  "event_count": 19,
+  "last_events": [
+    {
+      "type": "log",
+      "run_id": "mc-2026-04-28t01-16-59-228z-cross-session-23e068",
+      "stream": "stdout",
+      "message": "[runner] M-3 OK duration=9476ms http=200 trace=0e7a774567397adabf50b7ac338585d7",
+      "trace_ids": [
+        "6075cd798fa582e7446a875791796ab5",
+        "bf73de25533859205caa95612af0184a"
+      ]
+    },
+    {
+      "type": "case_finished",
+      "index": 3,
+      "total": 3,
+      "case_id": "M-3",
+      "suite": "Cross-session",
+      "title": "任务连续性（多步骤任务中断 → 下次接续）",
+      "prompt": "轮 1：老板我要做一个完整的 Eigenlayer 研究，分三步：第一步先帮我做项目综合评估，第二步分析它的 tokenomics，第三步对比 Eigenlayer 和 Symbiotic 的竞争格局。我们一步一步来，先做第一步。\n/new\n轮 2：好，第二步，分析 Eigenlayer 的 tokenomics。\n/new\n轮 3：我上次让你做的 Eigenlayer 研究，做到哪了？",
+      "response": "老板，做到**第二步已完成**了。\n\n当前进度：\n1. **项目综合评估**：已完成\n2. **EigenLayer tokenomics 分析**：已完成\n3. **与 Symbiotic 竞争格局对比**：**还没开始**\n\n如果你要，我现在直接做第三步。",
+      "status": "OK",
+      "passed": true,
+      "duration_ms": 9476,
+      "http_status": 200,
+      "trace_id": "0e7a774567397adabf50b7ac338585d7",
+      "case_trace_id": "0e7a774567397adabf50b7ac338585d7",
+      "proxy_trace_id": null,
+      "error": null,
+      "run_id": "mc-2026-04-28t01-16-59-228z-cross-session-23e068",
+      "trace_ids": [
+        "6075cd798fa582e7446a875791796ab5",
+        "bf73de25533859205caa95612af0184a",
+        "0e7a774567397adabf50b7ac338585d7"
+      ]
+    },
+    {
+      "type": "log",
+      "run_id": "mc-2026-04-28t01-16-59-228z-cross-session-23e068",
+      "stream": "stdout",
+      "message": "[runner] wrote /Users/clare/Desktop/genesis-harness/phase0/tests/results/mc-2026-04-28t01-16-59-228z-cross-session-23e068.md",
+      "trace_ids": [
+        "6075cd798fa582e7446a875791796ab5",
+        "bf73de25533859205caa95612af0184a",
+        "0e7a774567397adabf50b7ac338585d7"
+      ]
+    },
+    {
+      "type": "run_finished",
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "output_path": "/Users/clare/Desktop/genesis-harness/phase0/tests/results/mc-2026-04-28t01-16-59-228z-cross-session-23e068.md",
+      "trace_ids": [
+        "6075cd798fa582e7446a875791796ab5",
+        "bf73de25533859205caa95612af0184a",
+        "0e7a774567397adabf50b7ac338585d7"
+      ],
+      "run_id": "mc-2026-04-28t01-16-59-228z-cross-session-23e068"
+    },
+    {
+      "type": "process_closed",
+      "run_id": "mc-2026-04-28t01-16-59-228z-cross-session-23e068",
+      "status": "completed",
+      "exit_code": 0,
+      "signal": null,
+      "output_path": "/Users/clare/Desktop/genesis-harness/phase0/tests/results/mc-2026-04-28t01-16-59-228z-cross-session-23e068.md",
+      "trace_ids": [
+        "6075cd798fa582e7446a875791796ab5",
+        "bf73de25533859205caa95612af0184a",
+        "0e7a774567397adabf50b7ac338585d7"
+      ]
+    }
+  ]
+}

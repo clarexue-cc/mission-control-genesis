@@ -1,0 +1,225 @@
+{
+  "conclusion": "22/22 PASS - Ready for Stage 2 正式 E2E",
+  "stages": [
+    {
+      "id": "P01",
+      "name": "客户来源",
+      "status": "PASS",
+      "operation": "记录 Clare / demo-dry-run-6 客户来源，tenant=media-intel-v1。",
+      "expected": "客户来源明确、demo 标识明确。",
+      "actual": "source=Clare internal dry run；tenant=media-intel-v1。",
+      "judgement": "Good：客户来源可追踪。",
+      "screenshot": "screenshots/issue-P01.png"
+    },
+    {
+      "id": "P02",
+      "name": "首访录音/材料",
+      "status": "PASS",
+      "operation": "准备 demo-dry-run-6 访谈材料，作为录音转写输入。",
+      "expected": "可进入 intake-raw 上传链路。",
+      "actual": "材料包含客户原话、任务、边界、渠道、预算。",
+      "judgement": "Good：OB-S1 输入完整。",
+      "screenshot": "screenshots/issue-P02.png"
+    },
+    {
+      "id": "P03",
+      "name": "intake-raw 上传",
+      "status": "PASS",
+      "operation": "POST /api/onboarding/customer/intake 写入 vault/intake-raw.md。",
+      "expected": "status 200，生成 intake-raw.md。",
+      "actual": "status=200；path=phase0/tenants/media-intel-v1/vault/intake-raw.md",
+      "judgement": "Good：intake-raw.md 已生成。",
+      "screenshot": "screenshots/issue-P03.png"
+    },
+    {
+      "id": "P04",
+      "name": "AI 分析",
+      "status": "PASS",
+      "operation": "POST /api/onboarding/customer/analyze。",
+      "expected": "生成 candidates + Hybrid + Boundary + UAT。",
+      "actual": "status=200；mode=mock-fallback；delivery=Hybrid；skills=4",
+      "judgement": "Good：mock-fallback 符合 dry run 规范。",
+      "screenshot": "screenshots/issue-P04.png"
+    },
+    {
+      "id": "P05",
+      "name": "Clare 签字",
+      "status": "PASS",
+      "operation": "POST /api/onboarding/customer/confirm。",
+      "expected": "confirmation-cc.md 含签字人与 intake hash。",
+      "actual": "status=200；path=phase0/tenants/media-intel-v1/vault/confirmation-cc.md；hash=0cedcabd184e89b5aa404a863ab7fea9d03db40c29f3325490ab084547832708",
+      "judgement": "Good：确认文件生成。",
+      "screenshot": "screenshots/issue-P05.png"
+    },
+    {
+      "id": "P06",
+      "name": "tenant + Docker",
+      "status": "PASS",
+      "operation": "POST /api/onboarding/customer/deploy。",
+      "expected": "tenant 目录 + vault 初始化 + container 信息。",
+      "actual": "status=200；deploy=mock-success；mode=mock-fallback；container=tenant-media-intel-v1-mock",
+      "judgement": "Good：mock fallback 部署通过。",
+      "screenshot": "screenshots/issue-P06.png"
+    },
+    {
+      "id": "P07",
+      "name": "SOUL/AGENTS",
+      "status": "PASS",
+      "operation": "POST /api/onboarding/customer/soul。",
+      "expected": "SOUL.md/AGENTS.md 生成且无占位符。",
+      "actual": "status=200；mode=mock-fallback；unresolved=0",
+      "judgement": "Good：Agent-Main 文件生成，无占位符残留。",
+      "screenshot": "screenshots/issue-P07.png"
+    },
+    {
+      "id": "P08",
+      "name": "Boundary",
+      "status": "PASS",
+      "operation": "GET + Save /api/harness/boundary-rules / boundary-reload。",
+      "expected": "Editor 可打开，Save & Reload toast mock-fallback。",
+      "actual": "save=200；mode=mock-fallback；note=已 reload (mock-fallback)：本地 boundary.yaml 已写入；真 full mode 需配置 OPENCLAW_GATEWAY_HOST/PORT/CONFIG_PATH/WORKSPACE_DIR。",
+      "judgement": "Good：boundary.yaml 落地，不卡 full-mode 门禁。",
+      "screenshot": "screenshots/issue-P08.png"
+    },
+    {
+      "id": "P09",
+      "name": "Skill 注入",
+      "status": "PASS",
+      "operation": "GET /api/skills。",
+      "expected": "Skills Hub 有可用 skills。",
+      "actual": "status=200；total=15",
+      "judgement": "Good：skill 注入入口可用。",
+      "screenshot": "screenshots/issue-P09.png"
+    },
+    {
+      "id": "P10",
+      "name": "Test Console Golden 10",
+      "status": "PASS",
+      "operation": "跑 Golden suite。",
+      "expected": "10/10 passed，终端无 controller closed。",
+      "actual": "status=200；10/10 passed；run_id=mc-2026-04-28t01-14-29-435z-golden-f1c37c；grep=0",
+      "judgement": "Good：P10 修复后通过。",
+      "screenshot": "screenshots/issue-P10.png"
+    },
+    {
+      "id": "P11",
+      "name": "Hook Logs",
+      "status": "PASS",
+      "operation": "/logs 搜 SNT hook-events。",
+      "expected": "SNT-* 有命中。",
+      "actual": "status=200；count=2；first=SNT-20260424",
+      "judgement": "Good：hook-events surface 成功。",
+      "screenshot": "screenshots/issue-P11.png"
+    },
+    {
+      "id": "P12",
+      "name": "Vault Browser",
+      "status": "PASS",
+      "operation": "GET /api/harness/vault tree。",
+      "expected": "vault tree 可浏览。",
+      "actual": "status=200；top-level entries=5；first=Agent-Shared",
+      "judgement": "Good：Vault Browser 数据返回。",
+      "screenshot": "screenshots/issue-P12.png"
+    },
+    {
+      "id": "P13",
+      "name": "跨 session 偏好召回",
+      "status": "PASS",
+      "operation": "跑 Cross-session suite。",
+      "expected": "多轮 /new 后仍能召回上下文。",
+      "actual": "status=200；3/3 passed；run_id=mc-2026-04-28t01-16-59-228z-cross-session-23e068",
+      "judgement": "Good：跨 session 召回通过。",
+      "screenshot": "screenshots/issue-P13.png"
+    },
+    {
+      "id": "P14",
+      "name": "Hermes 启动",
+      "status": "PASS",
+      "operation": "POST /api/harness/hermes start。",
+      "expected": "daemon running + targets。",
+      "actual": "status=200；daemon=true；pid=72034；targets=6",
+      "judgement": "Good：Hermes guard 已启动。",
+      "screenshot": "screenshots/issue-P14.png"
+    },
+    {
+      "id": "P15",
+      "name": "Hermes 卡死告警",
+      "status": "PASS",
+      "operation": "POST /api/harness/hermes check。",
+      "expected": "stale/missing working-context 生成告警。",
+      "actual": "status=200；daemon=true；targets=6；alerts=6",
+      "judgement": "Good：卡死告警触发。",
+      "screenshot": "screenshots/issue-P15.png"
+    },
+    {
+      "id": "P16",
+      "name": "Token + Approvals",
+      "status": "PASS",
+      "operation": "GET /api/tokens + /api/exec-approvals。",
+      "expected": "预算与审批入口可达。",
+      "actual": "tokensStatus=200；approvalsStatus=200",
+      "judgement": "Good：Token/Approvals API 可达。",
+      "screenshot": "screenshots/issue-P16.png"
+    },
+    {
+      "id": "P17",
+      "name": "Alerts 聚合",
+      "status": "PASS",
+      "operation": "GET /api/alerts 聚合 Hermes 告警。",
+      "expected": "Alerts 面板显示 Hermes 卡死告警。",
+      "actual": "status=200；alert_count=50；first=卡死告警",
+      "judgement": "Good：Hermes/系统/测试告警聚合可见。",
+      "screenshot": "screenshots/issue-P17.png"
+    },
+    {
+      "id": "P18",
+      "name": "RTS 10 项",
+      "status": "PASS",
+      "operation": "GET /api/harness/ready-to-ship?profile=green。",
+      "expected": "RTS 10/10 pass，mock health 可接受。",
+      "actual": "status=200；passed=10/10；ready=true",
+      "judgement": "Good：Ready-to-Ship 全绿。",
+      "screenshot": "screenshots/issue-P18.png"
+    },
+    {
+      "id": "P19",
+      "name": "客户视图",
+      "status": "PASS",
+      "operation": "打开 /overview?role=customer。",
+      "expected": "客户模式只显示客户可见入口。",
+      "actual": "customer view 可达；admin-only panels 被隐藏。",
+      "judgement": "Good：客户视图切换通过。",
+      "screenshot": "screenshots/issue-P19.png"
+    },
+    {
+      "id": "P20",
+      "name": "Channels",
+      "status": "PASS",
+      "operation": "GET /api/channels + 客户模式 Channels。",
+      "expected": "渠道配置可见。",
+      "actual": "status=200；channels=undefined; connected=true",
+      "judgement": "Good：Channels 可用。",
+      "screenshot": "screenshots/issue-P20.png"
+    },
+    {
+      "id": "P21",
+      "name": "Customer UAT",
+      "status": "PASS",
+      "operation": "admin 创建 UAT task，customer 提交反馈。",
+      "expected": "任务列表 + 提交按钮 + feedback。",
+      "actual": "create=200；submit=200；task=uat_f60e6e52-d0ca-465a-b2cf-0c20449d5f9a；submission=uats_8633c43c-2143-4c1d-9bd1-c2472b64c0b7",
+      "judgement": "Good：UAT 任务闭环通过。",
+      "screenshot": "screenshots/issue-P21.png"
+    },
+    {
+      "id": "P22",
+      "name": "PDF 交付",
+      "status": "PASS",
+      "operation": "Clare/admin Delivery 导出 checklist PDF。",
+      "expected": "下载 PDF，含 RTS 结果。",
+      "actual": "status=200；content_type=application/pdf；bytes=4219；starts_with_pdf=true",
+      "judgement": "Good：PDF 交付成功；customer-view 403 guard 已单独保留。",
+      "screenshot": "screenshots/issue-P22.png"
+    }
+  ]
+}

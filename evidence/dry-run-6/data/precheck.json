@@ -1,0 +1,37 @@
+[
+  {
+    "name": "precheck-onboarding-customer",
+    "url": "http://127.0.0.1:3002/onboarding/customer",
+    "ok": true,
+    "path": "/Users/clare/Desktop/mc-e2e-test/evidence/dry-run-6/screenshots/precheck-onboarding-customer.png",
+    "text": "OB-S1\n\n新客户接入：上传访谈记录\n\n将访谈文稿或录音写入当前 tenant vault 的 intake-raw.md，供后续 OB-S2 分析使用。\n\nTenant ID\n\n小写字母、数字、连字符。\n\nTenant 名称\n用户输入摘要\n上传访谈文件\n拖拽或点击上传\n支持 audio/* 与 text/*，最大 100MB\n确认上传，生成 intake-raw.md\nintake-raw.md 预览\n\n输出文件：phase0/tenants/<tenant>/vault/intake-raw.md\n\n上传成功后，这里会显示生成的 Markdown 内容。"
+  },
+  {
+    "name": "precheck-boundary",
+    "url": "http://127.0.0.1:3002/boundary",
+    "ok": true,
+    "path": "/Users/clare/Desktop/mc-e2e-test/evidence/dry-run-6/screenshots/precheck-boundary.png",
+    "text": "跳到主要内容\nBoundary Editor\nPath: /Users/clare/Desktop/genesis-harness/phase0/tenants/ceo-assistant-v1/boundary.yaml\nOn disk\nMode: mock-fallback\nApply: mock-fallback\nIn sync\nTENANT TEMPLATE\nceo-assistant-v1\nmedia-intel-v1\nweb3-research-v1\nRefresh\nSave & Reload\n真 full mode 未配置 OPENCLAW_GATEWAY_HOST/PORT/CONFIG_PATH/WORKSPACE_DIR；使用 dev mock fallback，本地写 phase0/tenants/<tenant>/boundary.yaml。\nRules Source\n\nEdit JSON directly; valid changes refresh the form.\n\nLanguage: json\nStructured Form\n\nForm edits write back to the source immediately.\n\nForbidden (3)\nDrift (0)\nVERSION\nLAST UPDATED\nForbidden patterns by category\nAdd Rule\ncustom\n1 rules\ndemo-dry-run-4 boundary smoke rule\nforbidden-ezh7il · custom · medium · block\nCollapse\nID\nCATEGORY\nSEVERITY\nACTION\nLABEL\nREGEX PATTERN\nKEYWORD PATTERNS\nRESPONSE TEMPLATE\ndry-run\n2 rules\ndemo-dry-run-4 boundary P8 official rule\nforbidden-546seh · dry-run · medium"
+  },
+  {
+    "name": "precheck-logs",
+    "url": "http://127.0.0.1:3002/logs",
+    "ok": true,
+    "path": "/Users/clare/Desktop/mc-e2e-test/evidence/dry-run-6/screenshots/precheck-logs.png",
+    "text": "跳到主要内容\n日志查看器\n\n实时系统日志\n\n级别\n所有级别\n错误\n警告\n信息\n调试\n来源\n所有来源\ncommands\ngateway.err\ngateway\ngateway.out\nhook-event\n会话\n搜索\n自动\n底部\n导出日志\n导出JSON\n清除\n显示\n自动滚动: 开 •最后更新: 15:19:58\nTIMESTAMP\nRULE_ID\nMATCHED_RULE\nSEVERITY\nACTION\nDETAILS\n15:19:58\n-\n-\nINFO\n-\n[telegram]\n{\"timestamp\":\"2026-04-07T07:19:58.490Z\",\"action\":\"new\",\"sessionKey\":\"agent:main:telegram:direct:8624183458\",\"senderId\":\"8624183458\",\"source\":\"telegram\"}\n17:18:48\n-\n-\nINFO\n-\n[gateway:sessions.reset]\n{\"timestamp\":\"2026-04-07T09:18:48.120Z\",\"action\":\"reset\",\"sessionKey\":\"agent:main:telegram:direct:8624183458\",\"senderId\":\"unknown\",\"source\":\"gateway:sessions.reset\"}\n14:04:15\n-\n-\nINFO\n-\n[openclaw-weixin]\n{\"timestamp\":\"2026-04-21T06:04:15.853Z\",\"action\":\"new\",\"sessionKey\":\"agent:clawbot:openclaw-weixin:direct:o9cq8071iee0pbrzhoxfkw-wjgto@im.wechat\",\"senderId\":\"o9cq8071iEE0PBrzhoXfkw-wJgTo@im.wechat\",\"source\":\"openclaw-weixin\"}\n09:11:11\n-\n-\nINFO\n-\n[gateway.o"
+  },
+  {
+    "name": "precheck-alerts",
+    "url": "http://127.0.0.1:3002/alerts",
+    "ok": true,
+    "path": "/Users/clare/Desktop/mc-e2e-test/evidence/dry-run-6/screenshots/precheck-alerts.png",
+    "text": "跳到主要内容\n警报规则\n\n为代理、任务和系统事件配置自动警报\n\n立即评估\n+ 新规则\n规则总数\n0\n活跃\n0\n触发总数\n0\n聚合告警\n\nHermes / 系统 / 测试告警统一入口\n\n50 条\nHIGH\nHermes vault\n待确认\n卡死告警\n\n卡死告警: working-context.md 407468s 未更新，超过 21600s 阈值\n\nagent=Agent-HarnessTester\n2026/4/28 09:01:34\n跳转\nHIGH\nHermes vault\n待确认\n卡死告警\n\n卡死告警: working-context.md 124204s 未更新，超过 21600s 阈值\n\nagent=Agent-Hermes\n2026/4/28 09:01:34\n跳转\nHIGH\nHermes vault\n待确认\n卡死告警\n\n卡死告警: working-context.md 407468s 未更新，超过 21600s 阈值\n\nagent=Agent-Kid\n2026/4/28 09:01:34\n跳转\nHIGH\nHermes vault\n待确认\n卡死告警\n\n卡死告警: working-context.md 78354s 未更新，超过 21600s 阈值\n\nagent=Agent-Main\n2026/4/28 09:01:34\n跳转\nCRITICAL\nHermes vault\n待确认\n卡死告警\n\n卡死告警: missing working-context.md\n\nagent=Agent-MediaIntel\n2026/4/28 09:01:34\n跳转\nCRITICAL\nHermes vault\n待确认\n卡死告警\n\n卡死告警: missing working-context.md\n\nagent=Agent-Web3Research\n2026/4/28 09:01:34\n跳转\nHIGH\nHermes vault\n待确认\n卡死告警\n\n卡死告警: working-context.md 400268s 未更新，超过 21600s 阈值\n\nagent=Agent-Harness"
+  },
+  {
+    "name": "precheck-customer-tasks",
+    "url": "http://127.0.0.1:3002/tasks?role=customer",
+    "ok": true,
+    "path": "/Users/clare/Desktop/mc-e2e-test/evidence/dry-run-6/screenshots/precheck-customer-tasks.png",
+    "text": "跳到主要内容\n总览\nUAT 任务\n更多\n客户视图 · UAT 任务\n查看验收任务并提交反馈\n服务在线\n客户模式\nUAT 任务\n\n查看验收任务并提交反馈\n\n客户可见\nUAT 任务\n\n验收任务与反馈提交\n\ntenant-tg-001\n1 待提交\n刷新\n任务列表\nP21 UAT acceptance 1777298288124\n已提交\n\n请验收 customer 视角 UAT 面板：确认任务可见、填写提交 input、勾选反馈表并提交评分。\n\n创建时间：2026/4/27 21:58:11\n提交时间：2026/4/27 21:58:14\n最近评分：5/5 · 可以上线\n提交 input\n反馈表\n结果正确\n内容有帮助\n语气合适\n需要修改\n可以上线\n文本反馈\n1\n2\n3\n4\n5\n再次提交\nP21 UAT acceptance 1777298239289\n已提交\n\n请验收 customer 视角 UAT 面板：确认任务可见、填写提交 input、勾选反馈表并提交评分。\n\n创建时间：2026/4/27 21:57:22\n提交时间：2026/4/27 21:57:33\n最近评分：5/5 · 可以上线\n提交 input\n反馈表\n结果正确\n内容有帮助\n语气合适\n需要修改\n可以上线\n文本反馈\n1\n2\n3\n4\n5\n再次提交\nP21 UAT acceptance 1777298175460\n待提交\n\n请验收 customer 视角 UAT 面板：确认任务可见、填写提交 input、勾选反馈表并提交评分。\n\n创建时间：2026/4/27 21:56:35\n提交时间：-\n提交 input\n反馈表\n结果正确\n内容有帮助\n语气合适\n需要修改\n可以上线\n文本反馈\n1\n2\n3\n4\n5\n提交"
+  }
+]

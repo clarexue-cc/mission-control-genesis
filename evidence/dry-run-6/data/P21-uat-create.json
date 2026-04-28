@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "task": {
+    "id": "uat_f60e6e52-d0ca-465a-b2cf-0c20449d5f9a",
+    "tenant_id": "tenant-tg-001",
+    "title": "demo-dry-run-6 UAT 1777339114414",
+    "description": "demo-dry-run-6 customer validates generated delivery artifacts and submits feedback.",
+    "status": "open",
+    "created_by": "clare-admin",
+    "created_at": "2026-04-28T01:18:34.442Z"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "status": 200,
+  "content_type": "application/pdf",
+  "bytes": 4219,
+  "starts_with_pdf": true,
+  "role": "admin",
+  "previous_customer_view_guard": "P22-pdf-customer-view-guard.json"
+}

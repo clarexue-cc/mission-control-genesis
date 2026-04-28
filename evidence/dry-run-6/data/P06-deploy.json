@@ -1,0 +1,134 @@
+{
+  "status": 200,
+  "tenant_id": "media-intel-v1",
+  "already_deployed": false,
+  "container": "tenant-media-intel-v1-mock",
+  "deploy_status": {
+    "status": "mock-success",
+    "mode": "mock-fallback",
+    "container": "tenant-media-intel-v1-mock",
+    "deployed_at": "2026-04-28T01:14:28.959Z",
+    "vault_initialized": true,
+    "note": "Docker daemon 不可用或 new-tenant.sh 缺失，走 mock 模式让 dry run 流程通过；真客户上线时配置 docker-compose.yml + new-tenant.sh; new-tenant.sh exited 1"
+  },
+  "vault_tree": [
+    {
+      "path": "vault/Agent-Main",
+      "name": "Agent-Main",
+      "type": "directory",
+      "children": []
+    },
+    {
+      "path": "vault/Agent-MediaIntel",
+      "name": "Agent-MediaIntel",
+      "type": "directory",
+      "children": []
+    },
+    {
+      "path": "vault/Agent-Shared",
+      "name": "Agent-Shared",
+      "type": "directory",
+      "children": [
+        {
+          "path": "vault/Agent-Shared/decisions-log.md",
+          "name": "decisions-log.md",
+          "type": "file"
+        },
+        {
+          "path": "vault/Agent-Shared/knowledge",
+          "name": "knowledge",
+          "type": "directory",
+          "children": [
+            {
+              "path": "vault/Agent-Shared/knowledge/.gitkeep",
+              "name": ".gitkeep",
+              "type": "file"
+            }
+          ]
+        },
+        {
+          "path": "vault/Agent-Shared/project-state.md",
+          "name": "project-state.md",
+          "type": "file"
+        },
+        {
+          "path": "vault/Agent-Shared/shared-guide.md",
+          "name": "shared-guide.md",
+          "type": "file"
+        },
+        {
+          "path": "vault/Agent-Shared/user-profile.md",
+          "name": "user-profile.md",
+          "type": "file"
+        }
+      ]
+    },
+    {
+      "path": "vault/Agent-TEMPLATE",
+      "name": "Agent-TEMPLATE",
+      "type": "directory",
+      "children": [
+        {
+          "path": "vault/Agent-TEMPLATE/daily",
+          "name": "daily",
+          "type": "directory",
+          "children": [
+            {
+              "path": "vault/Agent-TEMPLATE/daily/.gitkeep",
+              "name": ".gitkeep",
+              "type": "file"
+            }
+          ]
+        },
+        {
+          "path": "vault/Agent-TEMPLATE/mistakes.md",
+          "name": "mistakes.md",
+          "type": "file"
+        },
+        {
+          "path": "vault/Agent-TEMPLATE/working-context.md",
+          "name": "working-context.md",
+          "type": "file"
+        }
+      ]
+    },
+    {
+      "path": "vault/Agent-Web3Research",
+      "name": "Agent-Web3Research",
+      "type": "directory",
+      "children": []
+    },
+    {
+      "path": "vault/confirmation-cc.md",
+      "name": "confirmation-cc.md",
+      "type": "file"
+    },
+    {
+      "path": "vault/index.md",
+      "name": "index.md",
+      "type": "file"
+    },
+    {
+      "path": "vault/intake-analysis.md",
+      "name": "intake-analysis.md",
+      "type": "file"
+    },
+    {
+      "path": "vault/intake-raw.md",
+      "name": "intake-raw.md",
+      "type": "file"
+    },
+    {
+      "path": "vault/skills",
+      "name": "skills",
+      "type": "directory",
+      "children": [
+        {
+          "path": "vault/skills/.gitkeep",
+          "name": ".gitkeep",
+          "type": "file"
+        }
+      ]
+    }
+  ]
+}

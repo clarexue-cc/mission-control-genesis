@@ -1,0 +1,141 @@
+{
+  "status": 200,
+  "total": 15,
+  "skills": [
+    {
+      "id": "openclaw:agent-browser-clawdbot-0.1.0",
+      "name": "agent-browser-clawdbot-0.1.0",
+      "source": "openclaw",
+      "path": "/Users/clare/.openclaw/skills/agent-browser-clawdbot-0.1.0",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "openclaw:agent-team-orchestration-1.0.0",
+      "name": "agent-team-orchestration-1.0.0",
+      "source": "openclaw",
+      "path": "/Users/clare/.openclaw/skills/agent-team-orchestration-1.0.0",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "openclaw:apple-calendar",
+      "name": "apple-calendar",
+      "source": "openclaw",
+      "path": "/Users/clare/.openclaw/skills/apple-calendar",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "openclaw:apple-reminders",
+      "name": "apple-reminders",
+      "source": "openclaw",
+      "path": "/Users/clare/.openclaw/skills/apple-reminders",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "openclaw:baidu-search",
+      "name": "baidu-search",
+      "source": "openclaw",
+      "path": "/Users/clare/.openclaw/skills/baidu-search",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "workspace-clawbot:characteristic-voice",
+      "name": "characteristic-voice",
+      "source": "workspace-clawbot",
+      "path": "/Users/clare/.openclaw/workspace-clawbot/skills/characteristic-voice",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "openclaw:find-skills-skill-1.0.0",
+      "name": "find-skills-skill-1.0.0",
+      "source": "openclaw",
+      "path": "/Users/clare/.openclaw/skills/find-skills-skill-1.0.0",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "workspace:follow-builders",
+      "name": "follow-builders",
+      "source": "workspace",
+      "path": "/Users/clare/.openclaw/workspace/skills/follow-builders",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "openclaw:marketing-mode-1.0.0",
+      "name": "marketing-mode-1.0.0",
+      "source": "openclaw",
+      "path": "/Users/clare/.openclaw/skills/marketing-mode-1.0.0",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "openclaw:multi-search-engine-2.0.1",
+      "name": "multi-search-engine-2.0.1",
+      "source": "openclaw",
+      "path": "/Users/clare/.openclaw/skills/multi-search-engine-2.0.1",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "openclaw:openclaw-tavily-search",
+      "name": "openclaw-tavily-search",
+      "source": "openclaw",
+      "path": "/Users/clare/.openclaw/skills/openclaw-tavily-search",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "openclaw:self-improving-agent",
+      "name": "self-improving-agent",
+      "source": "openclaw",
+      "path": "/Users/clare/.openclaw/skills/self-improving-agent",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "openclaw:seo-competitor-analysis-1.0.0",
+      "name": "seo-competitor-analysis-1.0.0",
+      "source": "openclaw",
+      "path": "/Users/clare/.openclaw/skills/seo-competitor-analysis-1.0.0",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "openclaw:skill-vetter",
+      "name": "skill-vetter",
+      "source": "openclaw",
+      "path": "/Users/clare/.openclaw/skills/skill-vetter",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    },
+    {
+      "id": "workspace-clawbot:tts",
+      "name": "tts",
+      "source": "workspace-clawbot",
+      "path": "/Users/clare/.openclaw/workspace-clawbot/skills/tts",
+      "description": "---",
+      "registry_slug": null,
+      "security_status": "unchecked"
+    }
+  ]
+}

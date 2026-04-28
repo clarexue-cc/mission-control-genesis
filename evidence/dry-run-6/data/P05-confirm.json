@@ -1,0 +1,8 @@
+{
+  "status": 200,
+  "tenant_id": "media-intel-v1",
+  "path": "phase0/tenants/media-intel-v1/vault/confirmation-cc.md",
+  "already_exists": false,
+  "intake_raw_hash": "0cedcabd184e89b5aa404a863ab7fea9d03db40c29f3325490ab084547832708",
+  "preview": "# Confirmation CC\n\n> Source: OB-S3 Clare manual confirmation\n> Gate: customer onboarding S03\n\n## Confirmation\n\n| Field | Value |\n|---|---|\n| tenant_id | media-intel-v1 |\n| timestamp | 2026-04-28T01:14:28.712Z |\n| signed_by | clare-admin |\n| intake_raw_hash | 0cedcabd184e89b5aa404a863ab7fea9d03db40c29f3325490ab084547832708 |\n\n## Confirmation Text\n\ndemo-dry-run-6: Clare 已审阅，确认开始 tenant 部署\n"
+}

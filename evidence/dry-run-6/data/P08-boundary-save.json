@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "data": {
+    "success": true,
+    "tenant": "media-intel-v1",
+    "method": "mock-fallback",
+    "mode": "mock-fallback",
+    "latency_ms": 0,
+    "hash": "f6ee5d4c2d4f4439",
+    "note": "已 reload (mock-fallback)：本地 boundary.yaml 已写入；真 full mode 需配置 OPENCLAW_GATEWAY_HOST/PORT/CONFIG_PATH/WORKSPACE_DIR。"
+  }
+}

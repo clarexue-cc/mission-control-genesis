@@ -1,0 +1,79 @@
+{
+  "status": 200,
+  "daemon_running": true,
+  "targets": [
+    {
+      "tenant": "harness-tester",
+      "agent_dir": "Agent-HarnessTester",
+      "health": "stale",
+      "context_path": "/Users/clare/Desktop/obsidian/openclaw/Agent-HarnessTester/working-context.md",
+      "context_exists": true,
+      "heartbeat_age_seconds": 408452,
+      "last_heartbeat_at": "2026-04-23T07:50:26.049Z",
+      "last_check_at": "2026-04-28T01:17:58Z",
+      "last_alert": "- 2026-04-28T01:17:58Z | Agent-HarnessTester | ALERT | 卡死告警: working-context.md 408452s 未更新，超过 21600s 阈值",
+      "stale": true
+    },
+    {
+      "tenant": "hermes",
+      "agent_dir": "Agent-Hermes",
+      "health": "stale",
+      "context_path": "/Users/clare/Desktop/obsidian/openclaw/Agent-Hermes/working-context.md",
+      "context_exists": true,
+      "heartbeat_age_seconds": 125187,
+      "last_heartbeat_at": "2026-04-26T14:31:30.217Z",
+      "last_check_at": "2026-04-28T01:17:58Z",
+      "last_alert": "- 2026-04-28T01:17:58Z | Agent-Hermes | ALERT | 卡死告警: working-context.md 125188s 未更新，超过 21600s 阈值",
+      "stale": true
+    },
+    {
+      "tenant": "kid",
+      "agent_dir": "Agent-Kid",
+      "health": "stale",
+      "context_path": "/Users/clare/Desktop/obsidian/openclaw/Agent-Kid/working-context.md",
+      "context_exists": true,
+      "heartbeat_age_seconds": 408452,
+      "last_heartbeat_at": "2026-04-23T07:50:26.038Z",
+      "last_check_at": "2026-04-28T01:17:58Z",
+      "last_alert": "- 2026-04-28T01:17:58Z | Agent-Kid | ALERT | 卡死告警: working-context.md 408452s 未更新，超过 21600s 阈值",
+      "stale": true
+    },
+    {
+      "tenant": "main",
+      "agent_dir": "Agent-Main",
+      "health": "stale",
+      "context_path": "/Users/clare/Desktop/obsidian/openclaw/Agent-Main/working-context.md",
+      "context_exists": true,
+      "heartbeat_age_seconds": 79337,
+      "last_heartbeat_at": "2026-04-27T03:15:40.909Z",
+      "last_check_at": "2026-04-28T01:17:58Z",
+      "last_alert": "- 2026-04-28T01:17:58Z | Agent-Main | ALERT | 卡死告警: working-context.md 79338s 未更新，超过 21600s 阈值",
+      "stale": true
+    },
+    {
+      "tenant": "media-intel",
+      "agent_dir": "Agent-MediaIntel",
+      "health": "missing",
+      "context_path": "/Users/clare/Desktop/obsidian/openclaw/Agent-MediaIntel/working-context.md",
+      "context_exists": false,
+      "heartbeat_age_seconds": null,
+      "last_heartbeat_at": null,
+      "last_check_at": "2026-04-28T01:17:58Z",
+      "last_alert": "- 2026-04-28T01:17:58Z | Agent-MediaIntel | ALERT | 卡死告警: missing working-context.md",
+      "stale": true
+    },
+    {
+      "tenant": "web3research",
+      "agent_dir": "Agent-Web3Research",
+      "health": "missing",
+      "context_path": "/Users/clare/Desktop/obsidian/openclaw/Agent-Web3Research/working-context.md",
+      "context_exists": false,
+      "heartbeat_age_seconds": null,
+      "last_heartbeat_at": null,
+      "last_check_at": "2026-04-28T01:17:58Z",
+      "last_alert": "- 2026-04-28T01:17:58Z | Agent-Web3Research | ALERT | 卡死告警: missing working-context.md",
+      "stale": true
+    }
+  ],
+  "log_tail": "ntext.md 124204s 未更新，超过 21600s 阈值\n- 2026-04-28T01:01:34Z | Agent-Kid | ALERT | 卡死告警: working-context.md 407468s 未更新，超过 21600s 阈值\n- 2026-04-28T01:01:34Z | Agent-Main | ALERT | 卡死告警: working-context.md 78354s 未更新，超过 21600s 阈值\n- 2026-04-28T01:01:34Z | Agent-MediaIntel | ALERT | 卡死告警: missing working-context.md\n- 2026-04-28T01:01:34Z | Agent-Web3Research | ALERT | 卡死告警: missing working-context.md\n## 2026-04-28T01:17:58Z first heartbeat\n- 2026-04-28T01:17:58Z | Agent-HarnessTester | ALERT | 卡死告警: working-context.md 408452s 未更新，超过 21600s 阈值\n- 2026-04-28T01:17:58Z | Agent-Hermes | ALERT | 卡死告警: working-context.md 125188s 未更新，超过 21600s 阈值\n- 2026-04-28T01:17:58Z | Agent-Kid | ALERT | 卡死告警: working-context.md 408452s 未更新，超过 21600s 阈值\n- 2026-04-28T01:17:58Z | Agent-Main | ALERT | 卡死告警: working-context.md 79338s 未更新，超过 21600s 阈值\n- 2026-04-28T01:17:58Z | Agent-MediaIntel | ALERT | 卡死告警: missing working-context.md\n- 2026-04-28T01:17:58Z | Agent-Web3Research | ALERT | 卡死告警: missing working-context.md"
+}

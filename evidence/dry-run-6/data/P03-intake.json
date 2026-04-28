@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "tenant_id": "media-intel-v1",
+  "path": "phase0/tenants/media-intel-v1/vault/intake-raw.md",
+  "preview": "# Intake Raw\n\n> Source: OB-S1 customer intake upload\n> Mode: demo/mock transcription\n\n## Tenant\n\n| Field | Value |\n|---|---|\n| Tenant ID | media-intel-v1 |\n| Tenant Name | MediaIntel Demo Dry Run 6 |\n| Uploaded By | clare-admin |\n| Uploaded At | 2026-04-28T01:14:28.569Z |\n\n## Source File\n\n| Field | Value |\n|---|---|\n| File Name | demo-dry-run-6-intake.txt |\n| MIME Type | text/plain |\n| Size | 332 B |\n\n## 用户输入摘要\n\ndemo-dry-run-6: onboarding intake smoke for 22-stage dry run\n\n## 转写状态\n\n文本文件内容已写入下方原始材料区。\n\n## 原始材料\n\n# demo-dry-run-6 customer interview\n客户：MediaIntel Demo Dry Run 6\n正例：追踪竞争对手声量、总结热点、生成内容摘要、每日晨报、异常告警。\n反例：不得泄露客户私密素材、不得未经审批外发、不得编造数据。\n渠道：Telegram / 邮件 / Lark；预算：dry-run mock budget。\n"
+}

@@ -1,0 +1,30 @@
+{
+  "status": 200,
+  "tenant_id": "media-intel-v1",
+  "path": "phase0/tenants/media-intel-v1/vault/intake-analysis.md",
+  "mode": "mock-fallback",
+  "delivery_mode": "Hybrid",
+  "skill_candidates": [
+    {
+      "id": "media-monitor",
+      "title": "Media Monitor",
+      "reason": "持续跟踪公开渠道、行业动态和客户指定主题。"
+    },
+    {
+      "id": "data-aggregator",
+      "title": "Data Aggregator",
+      "reason": "汇总 intake 中出现的素材、链接、指标与客户上下文。"
+    },
+    {
+      "id": "content-summarizer",
+      "title": "Content Summarizer",
+      "reason": "将录音/文稿浓缩为可交付摘要和行动项。"
+    },
+    {
+      "id": "quality-review",
+      "title": "Quality Review",
+      "reason": "对交付内容做准确性、一致性和边界合规复核。"
+    }
+  ],
+  "already_exists": false
+}

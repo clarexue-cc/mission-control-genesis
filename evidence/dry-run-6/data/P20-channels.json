@@ -1,0 +1,38 @@
+{
+  "status": 200,
+  "connected": true,
+  "order": [
+    "telegram",
+    "openclaw-weixin"
+  ],
+  "channels": {
+    "telegram": {
+      "configured": true,
+      "running": true,
+      "lastConnectedAt": null,
+      "lastMessageAt": null,
+      "lastStartAt": 1777299173425,
+      "lastError": null,
+      "authAgeMs": null,
+      "mode": "polling",
+      "baseUrl": null,
+      "publicKey": null,
+      "probe": null,
+      "profile": null
+    },
+    "openclaw-weixin": {
+      "configured": true,
+      "running": false,
+      "lastConnectedAt": null,
+      "lastMessageAt": null,
+      "lastStartAt": null,
+      "lastError": null,
+      "authAgeMs": null,
+      "mode": null,
+      "baseUrl": null,
+      "publicKey": null,
+      "probe": null,
+      "profile": null
+    }
+  }
+}

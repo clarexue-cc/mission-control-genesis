@@ -1,0 +1,172 @@
+{
+  "status": 200,
+  "tenant": "media-intel-v1",
+  "tree": [
+    {
+      "path": "Agent-Shared",
+      "name": "Agent-Shared",
+      "type": "directory",
+      "modified": 1777294893262,
+      "obsidian_path": "Agent-Shared",
+      "children": [
+        {
+          "path": "Agent-Shared/knowledge",
+          "name": "knowledge",
+          "type": "directory",
+          "modified": 1775874151000,
+          "obsidian_path": "Agent-Shared/knowledge",
+          "children": [
+            {
+              "path": "Agent-Shared/knowledge/.gitkeep",
+              "name": ".gitkeep",
+              "type": "file",
+              "size": 0,
+              "modified": 1777259740907,
+              "obsidian_path": "Agent-Shared/knowledge/.gitkeep"
+            }
+          ]
+        },
+        {
+          "path": "Agent-Shared/decisions-log.md",
+          "name": "decisions-log.md",
+          "type": "file",
+          "size": 198,
+          "modified": 1777259740905,
+          "obsidian_path": "Agent-Shared/decisions-log.md"
+        },
+        {
+          "path": "Agent-Shared/hermes-daemon.pid",
+          "name": "hermes-daemon.pid",
+          "type": "file",
+          "size": 6,
+          "modified": 1777294893262,
+          "obsidian_path": "Agent-Shared/hermes-daemon.pid"
+        },
+        {
+          "path": "Agent-Shared/hermes-daemon.runtime.log",
+          "name": "hermes-daemon.runtime.log",
+          "type": "file",
+          "size": 0,
+          "modified": 1777214404495,
+          "obsidian_path": "Agent-Shared/hermes-daemon.runtime.log"
+        },
+        {
+          "path": "Agent-Shared/hermes-log.md",
+          "name": "hermes-log.md",
+          "type": "file",
+          "size": 10818,
+          "modified": 1777338094843,
+          "obsidian_path": "Agent-Shared/hermes-log.md"
+        },
+        {
+          "path": "Agent-Shared/project-state.md",
+          "name": "project-state.md",
+          "type": "file",
+          "size": 136,
+          "modified": 1777259740905,
+          "obsidian_path": "Agent-Shared/project-state.md"
+        },
+        {
+          "path": "Agent-Shared/shared-guide.md",
+          "name": "shared-guide.md",
+          "type": "file",
+          "size": 786,
+          "modified": 1777259740906,
+          "obsidian_path": "Agent-Shared/shared-guide.md"
+        },
+        {
+          "path": "Agent-Shared/user-profile.md",
+          "name": "user-profile.md",
+          "type": "file",
+          "size": 556,
+          "modified": 1777259740906,
+          "obsidian_path": "Agent-Shared/user-profile.md"
+        }
+      ]
+    },
+    {
+      "path": "Agent-MediaIntel",
+      "name": "Agent-MediaIntel",
+      "type": "directory",
+      "modified": 1777259740902,
+      "obsidian_path": "Agent-MediaIntel",
+      "children": []
+    },
+    {
+      "path": "skills",
+      "name": "skills",
+      "type": "directory",
+      "modified": 1777202152355,
+      "obsidian_path": null,
+      "children": [
+        {
+          "path": "skills/comment-mining",
+          "name": "comment-mining",
+          "type": "directory",
+          "modified": 1777202152354,
+          "obsidian_path": null,
+          "children": [
+            {
+              "path": "skills/comment-mining/SKILL.md",
+              "name": "SKILL.md",
+              "type": "file",
+              "size": 9129,
+              "modified": 1777202152355,
+              "obsidian_path": null
+            }
+          ]
+        },
+        {
+          "path": "skills/competitor-monitoring",
+          "name": "competitor-monitoring",
+          "type": "directory",
+          "modified": 1777202152355,
+          "obsidian_path": null,
+          "children": [
+            {
+              "path": "skills/competitor-monitoring/SKILL.md",
+              "name": "SKILL.md",
+              "type": "file",
+              "size": 8047,
+              "modified": 1777202152355,
+              "obsidian_path": null
+            }
+          ]
+        },
+        {
+          "path": "skills/trending-hotspot-tracking",
+          "name": "trending-hotspot-tracking",
+          "type": "directory",
+          "modified": 1777202152355,
+          "obsidian_path": null,
+          "children": [
+            {
+              "path": "skills/trending-hotspot-tracking/SKILL.md",
+              "name": "SKILL.md",
+              "type": "file",
+              "size": 8362,
+              "modified": 1777202152355,
+              "obsidian_path": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "intake-raw.md",
+      "name": "intake-raw.md",
+      "type": "file",
+      "size": 910,
+      "modified": 1777338868571,
+      "obsidian_path": null
+    },
+    {
+      "path": "intake-analysis.md",
+      "name": "intake-analysis.md",
+      "type": "file",
+      "size": 2167,
+      "modified": 1777338868645,
+      "obsidian_path": null
+    }
+  ]
+}

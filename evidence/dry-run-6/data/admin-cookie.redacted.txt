@@ -1,0 +1,2 @@
+# redacted
+# original cookie jar moved to /tmp/e2e-dry-run-6-admin-cookie.txt and intentionally excluded from git

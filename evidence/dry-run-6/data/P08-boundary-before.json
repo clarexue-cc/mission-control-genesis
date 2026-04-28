@@ -1,0 +1,7 @@
+{
+  "status": 200,
+  "mode": "mock-fallback",
+  "hash": null,
+  "path": "/Users/clare/Desktop/genesis-harness/phase0/tenants/media-intel-v1/boundary.yaml",
+  "contentPreview": "{\n  \"version\": \"1.0\",\n  \"last_updated\": \"2026-04-28\",\n  \"forbidden_patterns\": [],\n  \"drift_patterns\": []\n}\n"
+}

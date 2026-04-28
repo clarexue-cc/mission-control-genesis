@@ -1,0 +1,17 @@
+{
+  "status": 200,
+  "submission": {
+    "id": "uats_8633c43c-2143-4c1d-9bd1-c2472b64c0b7",
+    "task_id": "uat_f60e6e52-d0ca-465a-b2cf-0c20449d5f9a",
+    "tenant_id": "tenant-tg-001",
+    "submitted_by": "clare-admin",
+    "response_text": "demo-dry-run-6 customer feedback: UAT accepted.",
+    "feedback_options": [
+      "accepted",
+      "screenshots-reviewed"
+    ],
+    "feedback_notes": "demo-dry-run-6 submission from customer mode",
+    "rating": 5,
+    "submitted_at": "2026-04-28T01:18:35.300Z"
+  }
+}
