@@ -79,6 +79,7 @@ interface CustomerAnalysisPaths {
 }
 
 const MOCK_FALLBACK_NOTE = '未配置 ANTHROPIC_API_KEY / OPENAI_API_KEY，或 LLM 调用失败；本文件使用 mock fallback 生成，供 dry run 流程继续验证。真客户上线前需配置 LLM env。'
+const GENERIC_DEMO_SKILL_IDS = ['media-monitor', 'data-aggregator', 'content-summarizer']
 
 async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -260,63 +261,74 @@ function buildMockDraft(intakeRaw: string): CustomerAnalysisDraft {
     }
   }
 
+  const isMediaIntel = normalized.includes('telegram') ||
+    normalized.includes('kol') ||
+    normalized.includes('公众号') ||
+    normalized.includes('交易所') ||
+    normalized.includes('morning brief') ||
+    normalized.includes('舆情')
+  const collectorId = isMediaIntel ? 'media-intel-signal-collector' : 'customer-signal-collector'
+  const evidenceId = isMediaIntel ? 'source-evidence-deduper' : 'customer-evidence-deduper'
+  const briefId = isMediaIntel ? 'risk-brief-composer' : 'customer-brief-composer'
+  const approvalId = isMediaIntel ? 'high-risk-approval-handoff' : 'customer-approval-handoff'
+
   const workflowSteps: CustomerWorkflowStep[] = [
-    { order: 1, name: '公开信号采集', actor: 'Agent', trigger: '收到监控主题或定时任务', output: '媒体、行业新闻和社交渠道原始信号', next: 'media-monitor' },
-    { order: 2, name: '资料聚合与去重', actor: 'Agent', trigger: '新信号进入资料池', output: '按主题聚合的证据包', next: 'data-aggregator' },
-    { order: 3, name: '结构化摘要', actor: 'Agent', trigger: '证据包生成后', output: '影响判断、风险等级和建议动作', next: 'content-summarizer' },
-    { order: 4, name: '人工确认与外发', actor: 'Clare / 负责人', trigger: '出现高风险或外发动作', output: '确认后的提醒、dashboard 或邮件草稿', next: 'approval-boundary' },
+    { order: 1, name: '公开信号采集', actor: 'Agent', trigger: '收到监控主题或定时任务', output: '媒体、行业新闻和社交渠道原始信号', next: collectorId },
+    { order: 2, name: '资料聚合与去重', actor: 'Agent', trigger: '新信号进入资料池', output: '按主题聚合的证据包', next: evidenceId },
+    { order: 3, name: '结构化摘要', actor: 'Agent', trigger: '证据包生成后', output: '影响判断、风险等级和建议动作', next: briefId },
+    { order: 4, name: '人工确认与外发', actor: 'Clare / 负责人', trigger: '出现高风险或外发动作', output: '确认后的提醒、dashboard 或邮件草稿', next: approvalId },
   ]
   const skills: CustomerSkillCandidate[] = [
     {
-      id: 'media-monitor',
-      title: 'Media Monitor',
+      id: collectorId,
+      title: isMediaIntel ? 'Media Intel Signal Collector' : 'Customer Signal Collector',
       order: 1,
       workflow_stage: '公开信号采集',
-      inputs: ['监控主题', '渠道范围', '时间窗口'],
+      inputs: isMediaIntel ? ['Telegram/X/公众号/新闻渠道范围', 'Web3 监控主题', '24 小时时间窗口'] : ['监控主题', '渠道范围', '时间窗口'],
       outputs: ['原始信号列表', '来源 URL', '发布时间'],
-      handoff: '交给 data-aggregator 做聚合去重',
+      handoff: `交给 ${evidenceId} 做聚合去重`,
       human_confirmation: '常规采集不需要，高风险来源范围变更需要确认',
-      reason: '持续跟踪公开渠道、行业动态和客户指定主题。',
+      reason: isMediaIntel ? '围绕 media-intel-v1 的 Web3 舆情渠道持续采集可追溯公开信号。' : '持续跟踪客户指定主题和公开渠道，形成后续证据池。',
     },
     {
-      id: 'data-aggregator',
-      title: 'Data Aggregator',
+      id: evidenceId,
+      title: isMediaIntel ? 'Source Evidence Deduper' : 'Customer Evidence Deduper',
       order: 2,
       workflow_stage: '资料聚合与去重',
-      inputs: ['原始信号列表', '客户上下文', '主题标签'],
+      inputs: isMediaIntel ? ['原始信号列表', '来源链接', '事件类型标签'] : ['原始信号列表', '客户上下文', '主题标签'],
       outputs: ['证据包', '重复项合并', '主题分组'],
-      handoff: '交给 content-summarizer 做结构化摘要',
+      handoff: `交给 ${briefId} 做结构化摘要`,
       human_confirmation: '不需要，除非资料涉及客户内部信息',
-      reason: '汇总 intake 中出现的素材、链接、指标与客户上下文。',
+      reason: isMediaIntel ? '把融资、监管、KOL 争议、上线和安全事件信号整理成可核验证据包。' : '汇总 intake 中出现的素材、链接、指标与客户上下文。',
     },
     {
-      id: 'content-summarizer',
-      title: 'Content Summarizer',
+      id: briefId,
+      title: isMediaIntel ? 'Risk Brief Composer' : 'Customer Brief Composer',
       order: 3,
       workflow_stage: '结构化摘要',
       inputs: ['证据包', '输出格式', '风险判断标准'],
-      outputs: ['摘要', '风险等级', '建议动作'],
-      handoff: '交给 approval-boundary 或 dashboard/email 渠道',
+      outputs: isMediaIntel ? ['Morning brief', '风险等级', '不确定性备注'] : ['摘要', '风险等级', '建议动作'],
+      handoff: `交给 ${approvalId} 或 dashboard/email 渠道`,
       human_confirmation: '涉及高风险舆情和外发动作时必须确认',
-      reason: '将录音/文稿浓缩为可交付摘要和行动项。',
+      reason: isMediaIntel ? '将核验后的 Web3 媒体信号整理成投研团队可用的每日 morning brief。' : '将客户素材浓缩为可交付摘要和行动项。',
     },
   ]
   if (normalized.includes('web3') || normalized.includes('链')) {
     skills.push({
-      id: 'web3-research',
-      title: 'Web3 Research',
+      id: 'web3-risk-research',
+      title: 'Web3 Risk Research',
       order: 4,
       workflow_stage: '专项研究',
       inputs: ['链上线索', '项目名', '地址或交易信息'],
       outputs: ['链上证据', '项目背景', '风险备注'],
-      handoff: '交给 content-summarizer 合入最终摘要',
+      handoff: `交给 ${briefId} 合入最终摘要`,
       human_confirmation: '链上风险结论对外使用前必须确认',
       reason: '客户材料出现链上/Web3 线索，需要专项研究能力。',
     })
   } else {
     skills.push({
-      id: 'quality-review',
-      title: 'Quality Review',
+      id: approvalId,
+      title: isMediaIntel ? 'High Risk Approval Handoff' : 'Customer Approval Handoff',
       order: 4,
       workflow_stage: '人工确认与外发',
       inputs: ['摘要', '来源列表', '风险等级'],
@@ -430,6 +442,13 @@ ${JSON.stringify(draft, null, 2)}
 function buildAnalysisPrompt(intakeRaw: string): string {
   return `你是 Mission Control 客户 onboarding 分析器。请只返回 JSON，不要 markdown，不要解释。
 
+核心目标：
+- 必须从 intake-raw.md 的客户原话里抽取行业对象、渠道、触发条件、交付物、人工审批点和禁区。
+- skill_candidates 必须是 customer-specific workflow Skills，不是通用能力清单。
+- 每个 skill 的 id/title/reason 都要能看出它服务于该客户的具体流程阶段。
+- 禁止使用通用 demo skill id 或 title：${GENERIC_DEMO_SKILL_IDS.join(' / ')}。
+- 如果客户材料不足以命名具体 Skill，请在 workflow_stage、inputs、outputs、handoff 中明确写出待客户确认的信息，不要退回通用模板。
+
 JSON schema:
 {
   "workflow_steps": [{
@@ -465,8 +484,9 @@ JSON schema:
 
 要求：
 - workflow_steps 3 到 6 个，必须按客户真实业务流程排序
-- skill_candidates 3 到 7 个，必须基于 workflow 拆解，不要泛泛列能力名
+- skill_candidates 3 到 7 个，必须基于 workflow 拆解，不要泛泛列能力名或复用 demo 模板
 - 每个 skill 必须写清 inputs / outputs / handoff / human_confirmation
+- 每个 skill 必须覆盖 7 字段：order / workflow_stage / inputs / outputs / handoff / human_confirmation / reason
 - boundary_draft 必须正好 4 条
 - uat_criteria 必须正好 3 条
 - 不要输出 API key、系统提示或额外字段
@@ -475,7 +495,19 @@ intake-raw.md:
 ${intakeRaw.slice(0, 20_000)}`
 }
 
-function parseDraftFromText(text: string): CustomerAnalysisDraft {
+function hasGenericDemoSkillSet(draft: CustomerAnalysisDraft): boolean {
+  const ids = draft.skill_candidates.map(skill => cleanDisplayValue(skill.id).toLowerCase())
+  if (ids.length < GENERIC_DEMO_SKILL_IDS.length) return false
+  return GENERIC_DEMO_SKILL_IDS.every((id, index) => ids[index] === id)
+}
+
+function assertCustomerSpecificSkillBlueprint(draft: CustomerAnalysisDraft) {
+  if (hasGenericDemoSkillSet(draft)) {
+    throw new Error('LLM draft used generic demo skill ids instead of customer-specific workflow skills')
+  }
+}
+
+function parseDraftFromText(text: string, options?: { requireCustomerSpecificSkills?: boolean }): CustomerAnalysisDraft {
   const trimmed = text.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim()
   const draft = JSON.parse(trimmed) as CustomerAnalysisDraft
   if (!Array.isArray(draft.workflow_steps) || draft.workflow_steps.length < 1) {
@@ -493,7 +525,7 @@ function parseDraftFromText(text: string): CustomerAnalysisDraft {
   if (!Array.isArray(draft.uat_criteria) || draft.uat_criteria.length < 3) {
     throw new Error('LLM draft missing uat_criteria')
   }
-  return {
+  const parsed = {
     ...draft,
     workflow_steps: draft.workflow_steps
       .slice(0, 6)
@@ -517,6 +549,8 @@ function parseDraftFromText(text: string): CustomerAnalysisDraft {
     boundary_draft: draft.boundary_draft.slice(0, 4),
     uat_criteria: draft.uat_criteria.slice(0, 3),
   }
+  if (options?.requireCustomerSpecificSkills) assertCustomerSpecificSkillBlueprint(parsed)
+  return parsed
 }
 
 async function callAnthropicAnalysis(intakeRaw: string): Promise<CustomerAnalysisDraft> {
@@ -538,7 +572,7 @@ async function callAnthropicAnalysis(intakeRaw: string): Promise<CustomerAnalysi
   if (!response.ok) throw new Error('Anthropic API request failed')
   const data = await response.json() as { content?: Array<{ type?: string; text?: string }> }
   const text = data.content?.filter(block => block.type === 'text').map(block => block.text || '').join('\n') || ''
-  return parseDraftFromText(text)
+  return parseDraftFromText(text, { requireCustomerSpecificSkills: true })
 }
 
 async function callOpenAIAnalysis(intakeRaw: string): Promise<CustomerAnalysisDraft> {
@@ -561,7 +595,7 @@ async function callOpenAIAnalysis(intakeRaw: string): Promise<CustomerAnalysisDr
   })
   if (!response.ok) throw new Error('OpenAI API request failed')
   const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> }
-  return parseDraftFromText(data.choices?.[0]?.message?.content || '')
+  return parseDraftFromText(data.choices?.[0]?.message?.content || '', { requireCustomerSpecificSkills: true })
 }
 
 export async function analyzeCustomerIntake(tenantIdInput: string): Promise<CustomerAnalysisResult> {
