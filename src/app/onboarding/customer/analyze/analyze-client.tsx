@@ -82,9 +82,17 @@ interface AnalyzeResult {
 }
 
 type Progress = 'pending' | 'analyzing' | 'success' | 'failed'
+type EditorSection = 'workflow' | 'soul' | 'skills' | 'boundary' | 'uat'
 
 const DEFAULT_TENANT_ID = 'media-intel-v1'
 const DELIVERY_MODES = ['Pipeline', 'Toolkit', 'Hybrid']
+const EDITOR_SECTIONS: Array<{ id: EditorSection; label: string }> = [
+  { id: 'workflow', label: 'Workflow' },
+  { id: 'soul', label: '角色' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'boundary', label: 'Boundary' },
+  { id: 'uat', label: 'UAT' },
+]
 
 function previewText(value: string | null | undefined, maxLines = 28): string {
   return (value || '').split('\n').slice(0, maxLines).join('\n')
@@ -100,8 +108,16 @@ function parseBlueprintDraftFromAnalysis(content: string): BlueprintDraft | null
   }
 }
 
-function formatBlueprintDraft(draft: BlueprintDraft | null): string {
-  return draft ? JSON.stringify(draft, null, 2) : ''
+function cloneBlueprintDraft(draft: BlueprintDraft | null): BlueprintDraft | null {
+  return draft ? JSON.parse(JSON.stringify(draft)) as BlueprintDraft : null
+}
+
+function listToText(values: string[] | undefined): string {
+  return (values || []).join('\n')
+}
+
+function textToList(value: string): string[] {
+  return value.split('\n').map(line => line.trim()).filter(Boolean)
 }
 
 export function CustomerAnalyzeClient({ username }: { username: string }) {
@@ -111,7 +127,8 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
   const [progress, setProgress] = useState<Progress>('pending')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [draftText, setDraftText] = useState('')
+  const [editableDraft, setEditableDraft] = useState<BlueprintDraft | null>(null)
+  const [editorSection, setEditorSection] = useState<EditorSection>('workflow')
   const [draftSaving, setDraftSaving] = useState(false)
   const [draftError, setDraftError] = useState('')
   const [draftMessage, setDraftMessage] = useState('')
@@ -123,14 +140,17 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
     () => result?.draft || state?.draft || parseBlueprintDraftFromAnalysis(analysisContent),
     [analysisContent, result?.draft, state?.draft],
   )
-  const workflowSteps = useMemo(() => blueprintDraft?.workflow_steps || result?.workflow_steps || state?.workflow_steps || [], [blueprintDraft?.workflow_steps, result?.workflow_steps, state?.workflow_steps])
-  const skillCandidates = useMemo(() => blueprintDraft?.skill_candidates || result?.skill_candidates || state?.skill_candidates || [], [blueprintDraft?.skill_candidates, result?.skill_candidates, state?.skill_candidates])
-  const boundaryDraft = useMemo(() => blueprintDraft?.boundary_draft || result?.boundary_draft || state?.boundary_draft || [], [blueprintDraft?.boundary_draft, result?.boundary_draft, state?.boundary_draft])
-  const uatCriteria = useMemo(() => blueprintDraft?.uat_criteria || result?.uat_criteria || state?.uat_criteria || [], [blueprintDraft?.uat_criteria, result?.uat_criteria, state?.uat_criteria])
-  const deliveryMode = blueprintDraft?.delivery_mode || result?.delivery_mode || state?.delivery_mode || null
-  const soulDraft = blueprintDraft?.soul_draft || result?.soul_draft || state?.soul_draft || null
+  const activeDraft = editableDraft || blueprintDraft
+  const workflowSteps = useMemo(() => activeDraft?.workflow_steps || result?.workflow_steps || state?.workflow_steps || [], [activeDraft?.workflow_steps, result?.workflow_steps, state?.workflow_steps])
+  const skillCandidates = useMemo(() => activeDraft?.skill_candidates || result?.skill_candidates || state?.skill_candidates || [], [activeDraft?.skill_candidates, result?.skill_candidates, state?.skill_candidates])
+  const boundaryDraft = useMemo(() => activeDraft?.boundary_draft || result?.boundary_draft || state?.boundary_draft || [], [activeDraft?.boundary_draft, result?.boundary_draft, state?.boundary_draft])
+  const uatCriteria = useMemo(() => activeDraft?.uat_criteria || result?.uat_criteria || state?.uat_criteria || [], [activeDraft?.uat_criteria, result?.uat_criteria, state?.uat_criteria])
+  const deliveryMode = activeDraft?.delivery_mode || result?.delivery_mode || state?.delivery_mode || null
+  const soulDraft = activeDraft?.soul_draft || result?.soul_draft || state?.soul_draft || null
   const orderedSkillCandidates = useMemo(
-    () => skillCandidates.slice().sort((left, right) => (left.order || 0) - (right.order || 0)),
+    () => skillCandidates
+      .map((skill, index) => ({ skill, index }))
+      .sort((left, right) => (left.skill.order || 0) - (right.skill.order || 0)),
     [skillCandidates],
   )
   const candidateLines = useMemo(() => {
@@ -145,7 +165,9 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
   }, [analysisContent, skillCandidates])
 
   useEffect(() => {
-    setDraftText(formatBlueprintDraft(blueprintDraft))
+    setEditableDraft(cloneBlueprintDraft(blueprintDraft))
+    setDraftError('')
+    setDraftMessage('')
   }, [blueprintDraft])
 
   async function loadState(nextTenantId = tenantId) {
@@ -222,11 +244,8 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
     setDraftError('')
     setDraftMessage('')
 
-    let parsedDraft: BlueprintDraft
-    try {
-      parsedDraft = JSON.parse(draftText) as BlueprintDraft
-    } catch {
-      setDraftError('Blueprint JSON 格式不正确，请先修正后再保存。')
+    if (!editableDraft) {
+      setDraftError('还没有可保存的蓝图，请先完成 AI 分析。')
       setDraftSaving(false)
       return
     }
@@ -236,10 +255,10 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
       const response = await fetch('/api/onboarding/customer/analyze', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenant_id: normalizedTenantId, draft: parsedDraft }),
+        body: JSON.stringify({ tenant_id: normalizedTenantId, draft: editableDraft }),
       })
       const body = await response.json()
-      if (!response.ok) throw new Error(body?.error || '保存 Blueprint 失败')
+      if (!response.ok) throw new Error(body?.error || '保存蓝图失败')
       setTenantId(normalizedTenantId)
       setResult(body)
       setState(current => current
@@ -262,10 +281,33 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
       setProgress('success')
       setDraftMessage('已保存到 intake-analysis.md，P8 / P9 / P21 会读取更新后的蓝图。')
     } catch (err: any) {
-      setDraftError(err?.message || '保存 Blueprint 失败')
+      setDraftError(err?.message || '保存蓝图失败')
     } finally {
       setDraftSaving(false)
     }
+  }
+
+  function editDraft(updater: (draft: BlueprintDraft) => BlueprintDraft) {
+    setEditableDraft(current => {
+      if (!current) return current
+      setDraftError('')
+      setDraftMessage('')
+      return updater(cloneBlueprintDraft(current) || current)
+    })
+  }
+
+  function updateWorkflowStep(index: number, updates: Partial<WorkflowStep>) {
+    editDraft(draft => ({
+      ...draft,
+      workflow_steps: draft.workflow_steps.map((step, stepIndex) => stepIndex === index ? { ...step, ...updates } : step),
+    }))
+  }
+
+  function updateSkill(index: number, updates: Partial<SkillCandidate>) {
+    editDraft(draft => ({
+      ...draft,
+      skill_candidates: draft.skill_candidates.map((skill, skillIndex) => skillIndex === index ? { ...skill, ...updates } : skill),
+    }))
   }
 
   return (
@@ -292,7 +334,7 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
             读取 vault/intake-raw.md，生成 Workflow、SOUL/AGENTS 输入、候选 Skills、Boundary 草稿和 UAT 标准。
           </p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 font-medium text-primary">P4 机读蓝图</span>
+            <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 font-medium text-primary">P4 蓝图草稿</span>
             <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P5 SOUL/AGENTS 输入</span>
             <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P8 Boundary</span>
             <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P9 Skills</span>
@@ -441,38 +483,291 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
               <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-semibold">P4 Blueprint Editor</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">保存后写回 intake-analysis.md，并同步后续草稿读取。</p>
+                    <h3 className="text-sm font-semibold">蓝图文字编辑</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">直接改下面的普通文字；保存后写回 intake-analysis.md，并同步 P8 / P9 / P21。</p>
                   </div>
-                  <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">P4 可编辑机读 JSON</span>
+                  <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">不用改 JSON</span>
                 </div>
-                {blueprintDraft ? (
+                {activeDraft ? (
                   <>
-                    <textarea
-                      value={draftText}
-                      onChange={(event) => {
-                        setDraftText(event.target.value)
-                        setDraftError('')
-                        setDraftMessage('')
-                      }}
-                      spellCheck={false}
-                      className="mt-3 h-72 w-full resize-y rounded-md border border-border bg-background px-3 py-2 font-mono text-xs leading-relaxed outline-none focus:border-primary"
-                    />
+                    <div className="mt-3 grid overflow-hidden rounded-md border border-border bg-background text-xs font-medium sm:grid-cols-5">
+                      {EDITOR_SECTIONS.map(section => (
+                        <button
+                          key={section.id}
+                          type="button"
+                          onClick={() => setEditorSection(section.id)}
+                          aria-pressed={editorSection === section.id}
+                          className={`px-3 py-2 ${
+                            editorSection === section.id
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          {section.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 rounded-md border border-border bg-background p-3">
+                      {editorSection === 'workflow' && (
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground">交付模式</p>
+                            <div className="mt-1 grid overflow-hidden rounded-md border border-border bg-muted/30 text-center text-xs font-medium sm:grid-cols-3">
+                              {DELIVERY_MODES.map(option => {
+                                const active = activeDraft.delivery_mode.toLowerCase() === option.toLowerCase()
+                                return (
+                                  <button
+                                    key={option}
+                                    type="button"
+                                    onClick={() => editDraft(draft => ({ ...draft, delivery_mode: option }))}
+                                    aria-pressed={active}
+                                    className={`px-3 py-2 ${
+                                      active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
+                                    }`}
+                                  >
+                                    {option}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                          <label className="block text-xs font-medium text-muted-foreground">
+                            模式判断理由
+                            <textarea
+                              value={activeDraft.delivery_mode_reason}
+                              onChange={(event) => editDraft(draft => ({ ...draft, delivery_mode_reason: event.target.value }))}
+                              className="mt-1 min-h-20 w-full resize-y rounded border border-input bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                            />
+                          </label>
+                          {activeDraft.workflow_steps.map((step, index) => (
+                            <div key={`workflow-editor-${index}`} className="rounded-md border border-border bg-card/60 p-3">
+                              <div className="grid gap-2 md:grid-cols-[5rem_minmax(0,1fr)_minmax(0,10rem)]">
+                                <label className="text-xs font-medium text-muted-foreground">
+                                  顺序
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={step.order}
+                                    onChange={(event) => updateWorkflowStep(index, { order: Number(event.target.value) || index + 1 })}
+                                    className="mt-1 w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                  />
+                                </label>
+                                <label className="text-xs font-medium text-muted-foreground">
+                                  阶段名称
+                                  <input
+                                    value={step.name}
+                                    onChange={(event) => updateWorkflowStep(index, { name: event.target.value })}
+                                    className="mt-1 w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                  />
+                                </label>
+                                <label className="text-xs font-medium text-muted-foreground">
+                                  负责人
+                                  <input
+                                    value={step.actor}
+                                    onChange={(event) => updateWorkflowStep(index, { actor: event.target.value })}
+                                    className="mt-1 w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                  />
+                                </label>
+                              </div>
+                              <div className="mt-2 grid gap-2 lg:grid-cols-3">
+                                <label className="text-xs font-medium text-muted-foreground">
+                                  触发条件
+                                  <textarea
+                                    value={step.trigger}
+                                    onChange={(event) => updateWorkflowStep(index, { trigger: event.target.value })}
+                                    className="mt-1 min-h-16 w-full resize-y rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                  />
+                                </label>
+                                <label className="text-xs font-medium text-muted-foreground">
+                                  输出
+                                  <textarea
+                                    value={step.output}
+                                    onChange={(event) => updateWorkflowStep(index, { output: event.target.value })}
+                                    className="mt-1 min-h-16 w-full resize-y rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                  />
+                                </label>
+                                <label className="text-xs font-medium text-muted-foreground">
+                                  下一步
+                                  <textarea
+                                    value={step.next}
+                                    onChange={(event) => updateWorkflowStep(index, { next: event.target.value })}
+                                    className="mt-1 min-h-16 w-full resize-y rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {editorSection === 'soul' && (
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <label className="text-xs font-medium text-muted-foreground">
+                            角色名
+                            <input
+                              value={activeDraft.soul_draft.name}
+                              onChange={(event) => editDraft(draft => ({ ...draft, soul_draft: { ...draft.soul_draft, name: event.target.value } }))}
+                              className="mt-1 w-full rounded border border-input bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                            />
+                          </label>
+                          <label className="text-xs font-medium text-muted-foreground">
+                            语气
+                            <input
+                              value={activeDraft.soul_draft.tone}
+                              onChange={(event) => editDraft(draft => ({ ...draft, soul_draft: { ...draft.soul_draft, tone: event.target.value } }))}
+                              className="mt-1 w-full rounded border border-input bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                            />
+                          </label>
+                          <label className="text-xs font-medium text-muted-foreground md:col-span-2">
+                            核心职责
+                            <textarea
+                              value={activeDraft.soul_draft.role}
+                              onChange={(event) => editDraft(draft => ({ ...draft, soul_draft: { ...draft.soul_draft, role: event.target.value } }))}
+                              className="mt-1 min-h-24 w-full resize-y rounded border border-input bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                            />
+                          </label>
+                          <label className="text-xs font-medium text-muted-foreground md:col-span-2">
+                            禁止行为，每行一条
+                            <textarea
+                              value={listToText(activeDraft.soul_draft.forbidden)}
+                              onChange={(event) => editDraft(draft => ({ ...draft, soul_draft: { ...draft.soul_draft, forbidden: textToList(event.target.value) } }))}
+                              className="mt-1 min-h-24 w-full resize-y rounded border border-input bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      {editorSection === 'skills' && (
+                        <div className="space-y-3">
+                          {activeDraft.skill_candidates.map((skill, index) => (
+                            <div key={`skill-editor-${index}`} className="rounded-md border border-border bg-card/60 p-3">
+                              <div className="grid gap-2 lg:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,13rem)]">
+                                <label className="text-xs font-medium text-muted-foreground">
+                                  顺序
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={skill.order || index + 1}
+                                    onChange={(event) => updateSkill(index, { order: Number(event.target.value) || index + 1 })}
+                                    className="mt-1 w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                  />
+                                </label>
+                                <label className="text-xs font-medium text-muted-foreground">
+                                  Skill 标题
+                                  <input
+                                    value={skill.title}
+                                    onChange={(event) => updateSkill(index, { title: event.target.value })}
+                                    className="mt-1 w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                  />
+                                </label>
+                                <label className="text-xs font-medium text-muted-foreground">
+                                  文件名 / ID
+                                  <input
+                                    value={skill.id}
+                                    onChange={(event) => updateSkill(index, { id: event.target.value })}
+                                    className="mt-1 w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                  />
+                                </label>
+                              </div>
+                              <div className="mt-2 grid gap-2 lg:grid-cols-2">
+                                <label className="text-xs font-medium text-muted-foreground">
+                                  Workflow 阶段
+                                  <input
+                                    value={skill.workflow_stage || ''}
+                                    onChange={(event) => updateSkill(index, { workflow_stage: event.target.value })}
+                                    className="mt-1 w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                  />
+                                </label>
+                                <label className="text-xs font-medium text-muted-foreground">
+                                  为什么需要这个 Skill
+                                  <input
+                                    value={skill.reason}
+                                    onChange={(event) => updateSkill(index, { reason: event.target.value })}
+                                    className="mt-1 w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                  />
+                                </label>
+                              </div>
+                              <details className="mt-2 rounded border border-border bg-background/70 px-3 py-2">
+                                <summary className="cursor-pointer text-xs font-medium text-muted-foreground">展开输入 / 输出 / 交接 / 人工确认</summary>
+                                <div className="mt-2 grid gap-2 lg:grid-cols-2">
+                                  <label className="text-xs font-medium text-muted-foreground">
+                                    输入，每行一条
+                                    <textarea
+                                      value={listToText(skill.inputs)}
+                                      onChange={(event) => updateSkill(index, { inputs: textToList(event.target.value) })}
+                                      className="mt-1 min-h-20 w-full resize-y rounded border border-input bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                    />
+                                  </label>
+                                  <label className="text-xs font-medium text-muted-foreground">
+                                    输出，每行一条
+                                    <textarea
+                                      value={listToText(skill.outputs)}
+                                      onChange={(event) => updateSkill(index, { outputs: textToList(event.target.value) })}
+                                      className="mt-1 min-h-20 w-full resize-y rounded border border-input bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                    />
+                                  </label>
+                                  <label className="text-xs font-medium text-muted-foreground">
+                                    交接说明
+                                    <textarea
+                                      value={skill.handoff || ''}
+                                      onChange={(event) => updateSkill(index, { handoff: event.target.value })}
+                                      className="mt-1 min-h-20 w-full resize-y rounded border border-input bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                    />
+                                  </label>
+                                  <label className="text-xs font-medium text-muted-foreground">
+                                    人工确认
+                                    <textarea
+                                      value={skill.human_confirmation || ''}
+                                      onChange={(event) => updateSkill(index, { human_confirmation: event.target.value })}
+                                      className="mt-1 min-h-20 w-full resize-y rounded border border-input bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                                    />
+                                  </label>
+                                </div>
+                              </details>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {editorSection === 'boundary' && (
+                        <label className="block text-xs font-medium text-muted-foreground">
+                          Boundary 规则，每行一条
+                          <textarea
+                            value={listToText(activeDraft.boundary_draft)}
+                            onChange={(event) => editDraft(draft => ({ ...draft, boundary_draft: textToList(event.target.value) }))}
+                            className="mt-1 min-h-48 w-full resize-y rounded border border-input bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                          />
+                        </label>
+                      )}
+
+                      {editorSection === 'uat' && (
+                        <label className="block text-xs font-medium text-muted-foreground">
+                          UAT 验收项，每行一条
+                          <textarea
+                            value={listToText(activeDraft.uat_criteria)}
+                            onChange={(event) => editDraft(draft => ({ ...draft, uat_criteria: textToList(event.target.value) }))}
+                            className="mt-1 min-h-48 w-full resize-y rounded border border-input bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                          />
+                        </label>
+                      )}
+                    </div>
+
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                       <div className="text-xs">
                         {draftError && <p className="text-destructive">{draftError}</p>}
                         {draftMessage && <p className="text-primary">{draftMessage}</p>}
                         {!draftError && !draftMessage && (
-                          <p className="text-muted-foreground">可改 Workflow、SOUL、Skills、Boundary、UAT 字段。</p>
+                          <p className="text-muted-foreground">上面改的是普通文字，后台会自动保留机器可读结构。</p>
                         )}
                       </div>
-                      <Button type="button" onClick={saveBlueprintDraft} disabled={draftSaving || !draftText.trim()}>
-                        {draftSaving ? '保存中...' : '保存 Blueprint'}
+                      <Button type="button" onClick={saveBlueprintDraft} disabled={draftSaving}>
+                        {draftSaving ? '保存中...' : '保存蓝图修改'}
                       </Button>
                     </div>
                   </>
                 ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">分析完成后，这里会显示可编辑的 P4 机读蓝图。</p>
+                  <p className="mt-3 text-sm text-muted-foreground">分析完成后，这里会显示普通文字编辑区。</p>
                 )}
               </div>
 
@@ -561,7 +856,7 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                 </div>
                 {orderedSkillCandidates.length > 0 ? (
                   <div className="mt-3 space-y-3">
-                    {orderedSkillCandidates.map(skill => (
+                    {orderedSkillCandidates.map(({ skill }) => (
                       <div key={skill.id} className="grid gap-3 rounded-md border border-border bg-card/50 px-3 py-3 md:grid-cols-[8rem_minmax(0,1fr)]">
                         <div className="space-y-2 border-b border-border pb-3 md:border-b-0 md:border-r md:pb-0 md:pr-3">
                           <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
