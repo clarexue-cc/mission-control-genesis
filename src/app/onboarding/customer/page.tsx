@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
@@ -72,11 +73,18 @@ export default function CustomerOnboardingPage() {
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
         <header className="border-b border-border pb-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">OB-S1</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-normal">新客户接入：上传访谈记录</h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            将访谈文稿或录音写入当前 tenant vault 的 intake-raw.md，供后续 OB-S2 分析使用。
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P3 / OB-S1</p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-normal">新客户接入：上传访谈记录</h1>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                将访谈文稿或录音写入当前 tenant vault 的 intake-raw.md，供后续 OB-S2 分析使用。
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/">返回 MC 主页面</Link>
+            </Button>
+          </div>
         </header>
 
         <section className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
@@ -162,6 +170,11 @@ export default function CustomerOnboardingPage() {
                 <div className="rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
                   {result.path}
                 </div>
+                <Button asChild size="sm">
+                  <Link href={`/onboarding/customer/analyze?tenant=${encodeURIComponent(result.tenant_id)}`}>
+                    进入 P4 客户蓝图生成
+                  </Link>
+                </Button>
                 <pre className="max-h-[640px] overflow-auto rounded-md border border-border bg-background p-4 text-xs leading-relaxed">
                   {result.content}
                 </pre>

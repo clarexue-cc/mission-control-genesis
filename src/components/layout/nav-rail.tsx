@@ -47,12 +47,13 @@ const navGroups: NavGroup[] = [
         label: 'Customer Onboarding',
         icon: <TasksIcon />,
         priority: false,
+        essential: true,
         children: [
-          { id: 'onboarding/customer', label: 'Intake', icon: <TasksIcon />, priority: false },
-          { id: 'onboarding/customer/analyze', label: 'Analysis', icon: <SkillsIcon />, priority: false },
-          { id: 'onboarding/customer/confirm', label: 'Confirm', icon: <ApprovalsIcon />, priority: false },
-          { id: 'onboarding/customer/deploy', label: 'Deploy', icon: <DeliveryIcon />, priority: false },
-          { id: 'onboarding/customer/soul', label: 'SOUL/AGENTS', icon: <AgentsIcon />, priority: false },
+          { id: 'onboarding/customer', label: 'P3 Intake', icon: <TasksIcon />, priority: false, essential: true },
+          { id: 'onboarding/customer/analyze', label: 'P4 Blueprint', icon: <SkillsIcon />, priority: false, essential: true },
+          { id: 'onboarding/customer/confirm', label: 'P4 Confirm', icon: <ApprovalsIcon />, priority: false, essential: true },
+          { id: 'onboarding/customer/deploy', label: 'Deploy', icon: <DeliveryIcon />, priority: false, essential: true },
+          { id: 'onboarding/customer/soul', label: 'P5 SOUL/AGENTS', icon: <AgentsIcon />, priority: false, essential: true },
         ],
       },
     ],
@@ -169,7 +170,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
   const isLocal = dashboardMode === 'local'
   const isAdmin = currentUser?.role === 'admin'
   const isCustomer = isCustomerRole(effectiveRole)
-  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set(['onboarding/customer']))
 
   function toggleParent(id: string) {
     setExpandedParents(prev => {
@@ -367,7 +368,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
                           <div className="flex items-center w-full">
                             <Button
                               variant="ghost"
-                              onClick={() => { navigateToPanel(item.id); if (!isParentExpanded) toggleParent(item.id) }}
+                              onClick={() => toggleParent(item.id)}
                               onMouseEnter={() => { prefetchPanel(item.id); item.children?.forEach(child => prefetchPanel(child.id)) }}
                               onFocus={() => item.children?.forEach(child => prefetchPanel(child.id))}
                               className={`flex-1 flex items-center gap-2 px-2 py-1.5 h-auto rounded-lg rounded-r-none text-left justify-start relative ${

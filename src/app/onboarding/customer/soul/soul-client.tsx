@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
@@ -33,6 +34,8 @@ interface SoulResult {
 
 type Progress = 'pending' | 'generating' | 'success' | 'failed'
 
+const DEFAULT_TENANT_ID = 'media-intel-v1'
+
 function previewText(value: string | null | undefined, maxLines = 20): string {
   return (value || '').split('\n').slice(0, maxLines).join('\n')
 }
@@ -49,7 +52,7 @@ function joinDiff(diff: SoulResult['diff_vs_template'] | null): string {
 }
 
 export function CustomerSoulClient({ username }: { username: string }) {
-  const [tenantId, setTenantId] = useState('demo-dry-run-2')
+  const [tenantId, setTenantId] = useState(DEFAULT_TENANT_ID)
   const [state, setState] = useState<SoulState | null>(null)
   const [result, setResult] = useState<SoulResult | null>(null)
   const [progress, setProgress] = useState<Progress>('pending')
@@ -63,10 +66,12 @@ export function CustomerSoulClient({ username }: { username: string }) {
   const diffPreview = useMemo(() => joinDiff(result?.diff_vs_template || null), [result])
 
   async function loadState(nextTenantId = tenantId) {
+    const normalizedTenantId = nextTenantId.trim() || DEFAULT_TENANT_ID
+    setTenantId(normalizedTenantId)
     setLoading(true)
     setError('')
     try {
-      const response = await fetch(`/api/onboarding/customer/soul?tenant_id=${encodeURIComponent(nextTenantId)}`)
+      const response = await fetch(`/api/onboarding/customer/soul?tenant_id=${encodeURIComponent(normalizedTenantId)}`)
       const body = await response.json()
       if (!response.ok) throw new Error(body?.error || '读取 OB-S5 状态失败')
       setState(body)
@@ -83,7 +88,8 @@ export function CustomerSoulClient({ username }: { username: string }) {
   }
 
   useEffect(() => {
-    loadState()
+    const params = new URLSearchParams(window.location.search)
+    loadState(params.get('tenant') || params.get('tenant_id') || DEFAULT_TENANT_ID)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -93,10 +99,12 @@ export function CustomerSoulClient({ username }: { username: string }) {
     setProgress('generating')
     setError('')
     try {
+      const normalizedTenantId = tenantId.trim() || DEFAULT_TENANT_ID
+      setTenantId(normalizedTenantId)
       const response = await fetch('/api/onboarding/customer/soul', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenant_id: tenantId }),
+        body: JSON.stringify({ tenant_id: normalizedTenantId }),
       })
       const body = await response.json()
       if (!response.ok) throw new Error(body?.error || 'SOUL/AGENTS 生成失败')
@@ -131,11 +139,16 @@ export function CustomerSoulClient({ username }: { username: string }) {
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">OB-S5</p>
               <h1 className="mt-2 text-3xl font-semibold tracking-normal">SOUL / AGENTS 生成</h1>
             </div>
-            {mode && (
-              <span className="rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-xs font-medium text-primary">
-                {mode}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {mode && (
+                <span className="rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-xs font-medium text-primary">
+                  {mode}
+                </span>
+              )}
+              <Button asChild variant="outline" size="sm">
+                <Link href="/">返回 MC 主页面</Link>
+              </Button>
+            </div>
           </div>
           <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
             基于 vault/intake-analysis.md 生成 Agent-Main 的 SOUL.md 与 AGENTS.md，并检查占位符残留。

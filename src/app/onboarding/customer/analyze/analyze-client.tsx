@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
@@ -24,6 +25,13 @@ interface WorkflowStep {
   next: string
 }
 
+interface SoulDraft {
+  name: string
+  role: string
+  tone: string
+  forbidden: string[]
+}
+
 interface AnalyzeState {
   ok: boolean
   tenant_id: string
@@ -42,6 +50,7 @@ interface AnalyzeState {
   delivery_mode: string | null
   boundary_draft: string[]
   uat_criteria: string[]
+  soul_draft: SoulDraft | null
 }
 
 interface AnalyzeResult {
@@ -57,16 +66,31 @@ interface AnalyzeResult {
   delivery_mode: string
   boundary_draft: string[]
   uat_criteria: string[]
+  soul_draft: SoulDraft | null
 }
 
 type Progress = 'pending' | 'analyzing' | 'success' | 'failed'
+
+const DEFAULT_TENANT_ID = 'media-intel-v1'
+const DELIVERY_MODES = ['Pipeline', 'Toolkit', 'Hybrid']
 
 function previewText(value: string | null | undefined, maxLines = 28): string {
   return (value || '').split('\n').slice(0, maxLines).join('\n')
 }
 
+function parseSoulDraftFromAnalysis(content: string): SoulDraft | null {
+  const match = /## 机器可读蓝图 JSON\s*```json\s*([\s\S]*?)\s*```/m.exec(content)
+  if (!match?.[1]) return null
+  try {
+    const parsed = JSON.parse(match[1]) as { soul_draft?: SoulDraft }
+    return parsed.soul_draft || null
+  } catch {
+    return null
+  }
+}
+
 export function CustomerAnalyzeClient({ username }: { username: string }) {
-  const [tenantId, setTenantId] = useState('demo-dry-run-2')
+  const [tenantId, setTenantId] = useState(DEFAULT_TENANT_ID)
   const [state, setState] = useState<AnalyzeState | null>(null)
   const [result, setResult] = useState<AnalyzeResult | null>(null)
   const [progress, setProgress] = useState<Progress>('pending')
@@ -81,6 +105,14 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
   const boundaryDraft = useMemo(() => result?.boundary_draft || state?.boundary_draft || [], [result?.boundary_draft, state?.boundary_draft])
   const uatCriteria = useMemo(() => result?.uat_criteria || state?.uat_criteria || [], [result?.uat_criteria, state?.uat_criteria])
   const deliveryMode = result?.delivery_mode || state?.delivery_mode || null
+  const soulDraft = useMemo(
+    () => result?.soul_draft || state?.soul_draft || parseSoulDraftFromAnalysis(analysisContent),
+    [analysisContent, result?.soul_draft, state?.soul_draft],
+  )
+  const orderedSkillCandidates = useMemo(
+    () => skillCandidates.slice().sort((left, right) => (left.order || 0) - (right.order || 0)),
+    [skillCandidates],
+  )
   const candidateLines = useMemo(() => {
     if (skillCandidates.length) {
       return skillCandidates.map(skill => `${skill.id}: ${skill.title} - ${skill.reason}`)
@@ -93,10 +125,12 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
   }, [analysisContent, skillCandidates])
 
   async function loadState(nextTenantId = tenantId) {
+    const normalizedTenantId = nextTenantId.trim() || DEFAULT_TENANT_ID
+    setTenantId(normalizedTenantId)
     setLoading(true)
     setError('')
     try {
-      const response = await fetch(`/api/onboarding/customer/analyze?tenant_id=${encodeURIComponent(nextTenantId)}`)
+      const response = await fetch(`/api/onboarding/customer/analyze?tenant_id=${encodeURIComponent(normalizedTenantId)}`)
       const body = await response.json()
       if (!response.ok) throw new Error(body?.error || '读取 OB-S2 状态失败')
       setState(body)
@@ -113,7 +147,8 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
   }
 
   useEffect(() => {
-    loadState()
+    const params = new URLSearchParams(window.location.search)
+    loadState(params.get('tenant') || params.get('tenant_id') || DEFAULT_TENANT_ID)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -123,10 +158,12 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
     setProgress('analyzing')
     setError('')
     try {
+      const normalizedTenantId = tenantId.trim() || DEFAULT_TENANT_ID
+      setTenantId(normalizedTenantId)
       const response = await fetch('/api/onboarding/customer/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenant_id: tenantId }),
+        body: JSON.stringify({ tenant_id: normalizedTenantId }),
       })
       const body = await response.json()
       if (!response.ok) throw new Error(body?.error || 'AI 分析失败')
@@ -150,27 +187,39 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
   }
 
   return (
-    <main className="min-h-screen overflow-auto bg-background text-foreground">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
-        <header className="border-b border-border pb-5">
+    <main className="h-screen overflow-hidden bg-background text-foreground">
+      <div className="mx-auto flex h-full w-full max-w-[96rem] flex-col gap-4 px-4 py-4 sm:px-6">
+        <header className="shrink-0 border-b border-border pb-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">OB-S2</p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-normal">AI 分析 intake</h1>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P4 / OB-S2</p>
+              <h1 className="mt-1 text-2xl font-semibold tracking-normal">P4 客户蓝图生成</h1>
             </div>
-            {mode && (
-              <span className="rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-xs font-medium text-primary">
-                {mode}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {mode && (
+                <span className="rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-xs font-medium text-primary">
+                  {mode}
+                </span>
+              )}
+              <Button asChild variant="outline" size="sm">
+                <Link href="/">返回 MC 主页面</Link>
+              </Button>
+            </div>
           </div>
           <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            读取 vault/intake-raw.md，生成候选 Skills、Pipeline/Toolkit/Hybrid 判断、Boundary 草稿和 UAT 标准。
+            读取 vault/intake-raw.md，生成 Workflow、SOUL/AGENTS 输入、候选 Skills、Boundary 草稿和 UAT 标准。
           </p>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 font-medium text-primary">P4 机读蓝图</span>
+            <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P5 SOUL/AGENTS 输入</span>
+            <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P8 Boundary</span>
+            <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P9 Skills</span>
+            <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P21 UAT</span>
+          </div>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <form onSubmit={analyze} className="space-y-5 rounded-lg border border-border bg-card p-5">
+        <section className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-4 lg:grid-cols-[18rem_minmax(0,1fr)] lg:grid-rows-1 xl:grid-cols-[20rem_minmax(0,1fr)]">
+          <form onSubmit={analyze} className="min-h-0 space-y-4 overflow-y-auto rounded-lg border border-border bg-card p-4">
             <div>
               <label className="text-sm font-medium" htmlFor="tenant-id">Tenant ID</label>
               <div className="mt-2 flex gap-2">
@@ -247,24 +296,30 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
             </Button>
           </form>
 
-          <section className="rounded-lg border border-border bg-card p-5">
-            <div className="flex items-center justify-between gap-3">
+          <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card p-4">
+            <div className="shrink-0 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">客户交付蓝图</h2>
-                <p className="mt-1 text-xs text-muted-foreground">输出文件：phase0/tenants/&lt;tenant&gt;/vault/intake-analysis.md</p>
+                <p className="mt-1 text-xs text-muted-foreground">落盘文件：phase0/tenants/&lt;tenant&gt;/vault/intake-analysis.md</p>
               </div>
               {mode && <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary">{mode}</span>}
             </div>
 
-            <div className="mt-4 space-y-4">
+            <div className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pr-2">
               {workflowSteps.length > 0 ? (
                 <div className="rounded-md border border-border bg-background p-4">
-                  <h3 className="text-sm font-semibold">客户 Workflow 拆解</h3>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold">客户 Workflow 拆解</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">P4</span>
+                      <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">输入 P5 SOUL/AGENTS</span>
+                    </div>
+                  </div>
                   <div className="mt-3 space-y-3">
                     {workflowSteps.map(step => (
                       <div key={`${step.order}-${step.name}`} className="border-l-2 border-primary/50 pl-3">
                         <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                          <span className="text-primary">P{step.order}</span>
+                          <span className="text-primary">阶段 {step.order}</span>
                           <span>{step.name}</span>
                           <span className="text-xs text-muted-foreground">负责人：{step.actor}</span>
                         </div>
@@ -277,32 +332,154 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                 </div>
               ) : null}
 
+              <div className="rounded-md border border-border bg-background p-3">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold">交付模式判断</h3>
+                  <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">P4</span>
+                </div>
+                <div className="grid overflow-hidden rounded-md border border-border bg-muted/30 text-center text-xs font-medium md:grid-cols-3">
+                  {DELIVERY_MODES.map(option => {
+                    const active = deliveryMode?.toLowerCase() === option.toLowerCase()
+                    return (
+                      <div
+                        key={option}
+                        className={`px-3 py-2 ${
+                          active
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground'
+                        }`}
+                      >
+                        {option}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
               <div className="rounded-md border border-border bg-background p-4">
-                <h3 className="text-sm font-semibold">候选 Skills 蓝图</h3>
-                {skillCandidates.length > 0 ? (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold">SOUL / AGENTS 草稿要素</h3>
+                  <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">P5</span>
+                </div>
+                {soulDraft ? (
+                  <div className="mt-3 grid gap-2 text-xs leading-relaxed text-muted-foreground md:grid-cols-2">
+                    <div className="rounded border border-border bg-card/50 px-3 py-2">
+                      <p className="font-medium text-foreground">角色名</p>
+                      <p className="mt-1">{soulDraft.name}</p>
+                    </div>
+                    <div className="rounded border border-border bg-card/50 px-3 py-2">
+                      <p className="font-medium text-foreground">语气</p>
+                      <p className="mt-1">{soulDraft.tone}</p>
+                    </div>
+                    <div className="rounded border border-border bg-card/50 px-3 py-2 md:col-span-2">
+                      <p className="font-medium text-foreground">核心职责</p>
+                      <p className="mt-1">{soulDraft.role}</p>
+                    </div>
+                    <div className="rounded border border-border bg-card/50 px-3 py-2 md:col-span-2">
+                      <p className="font-medium text-foreground">禁止行为</p>
+                      <p className="mt-1">{soulDraft.forbidden.join(' / ')}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">分析完成后显示后续 P5 生成 SOUL.md / AGENTS.md 的输入。</p>
+                )}
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold">Boundary 草稿</h3>
+                    <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">P8 自动加载</span>
+                  </div>
+                  {boundaryDraft.length > 0 ? (
+                    <ol className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
+                      {boundaryDraft.map((rule, index) => (
+                        <li key={rule} className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-2">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
+                            {index + 1}
+                          </span>
+                          <span>{rule}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="mt-3 text-sm text-muted-foreground">分析完成后显示后续 P8 的护栏草稿。</p>
+                  )}
+                </div>
+
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold">UAT 草稿</h3>
+                    <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">P21 自动加载</span>
+                  </div>
+                  {uatCriteria.length > 0 ? (
+                    <ol className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
+                      {uatCriteria.map((criteria, index) => (
+                        <li key={criteria} className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-2">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
+                            {index + 1}
+                          </span>
+                          <span>{criteria}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="mt-3 text-sm text-muted-foreground">分析完成后显示后续 P21 的验收任务草稿。</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-border bg-background p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold">候选 Skills 蓝图</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">P9 生成 .md</span>
+                    {orderedSkillCandidates.length > 0 && (
+                      <span className="text-xs text-muted-foreground">{orderedSkillCandidates.length} skills</span>
+                    )}
+                  </div>
+                </div>
+                {orderedSkillCandidates.length > 0 ? (
                   <div className="mt-3 space-y-3">
-                    {skillCandidates
-                      .slice()
-                      .sort((left, right) => (left.order || 0) - (right.order || 0))
-                      .map(skill => (
-                        <div key={skill.id} className="rounded-md border border-border px-3 py-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
-                              {skill.order || '-'}
-                            </span>
-                            <span className="text-sm font-semibold">{skill.title}</span>
-                            <span className="text-xs text-muted-foreground">{skill.id}</span>
-                          </div>
-                          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{skill.reason}</p>
-                          <div className="mt-2 grid gap-2 text-xs leading-relaxed text-muted-foreground md:grid-cols-2">
-                            <p><span className="font-medium text-foreground">workflow：</span>{skill.workflow_stage || '待补'}</p>
-                            <p><span className="font-medium text-foreground">人工确认：</span>{skill.human_confirmation || '待补'}</p>
-                            <p><span className="font-medium text-foreground">输入：</span>{(skill.inputs || []).join(' / ') || '待补'}</p>
-                            <p><span className="font-medium text-foreground">输出：</span>{(skill.outputs || []).join(' / ') || '待补'}</p>
-                            <p className="md:col-span-2"><span className="font-medium text-foreground">交接：</span>{skill.handoff || '待补'}</p>
+                    {orderedSkillCandidates.map(skill => (
+                      <div key={skill.id} className="grid gap-3 rounded-md border border-border bg-card/50 px-3 py-3 md:grid-cols-[8rem_minmax(0,1fr)]">
+                        <div className="space-y-2 border-b border-border pb-3 md:border-b-0 md:border-r md:pb-0 md:pr-3">
+                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                            {skill.order || '-'}
+                          </span>
+                          <div>
+                            <p className="text-xs font-medium text-foreground">{skill.workflow_stage || '待补 workflow'}</p>
+                            <p className="mt-1 break-all text-[11px] leading-relaxed text-muted-foreground">{skill.id}</p>
                           </div>
                         </div>
-                      ))}
+                        <div>
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                              <h4 className="text-sm font-semibold">{skill.title}</h4>
+                              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{skill.reason}</p>
+                            </div>
+                          </div>
+                          <div className="mt-3 grid gap-2 text-xs leading-relaxed text-muted-foreground lg:grid-cols-2">
+                            <div className="rounded border border-border bg-background/70 px-3 py-2">
+                              <p className="font-medium text-foreground">输入</p>
+                              <p className="mt-1">{(skill.inputs || []).join(' / ') || '待补'}</p>
+                            </div>
+                            <div className="rounded border border-border bg-background/70 px-3 py-2">
+                              <p className="font-medium text-foreground">输出</p>
+                              <p className="mt-1">{(skill.outputs || []).join(' / ') || '待补'}</p>
+                            </div>
+                            <div className="rounded border border-border bg-background/70 px-3 py-2">
+                              <p className="font-medium text-foreground">交接</p>
+                              <p className="mt-1">{skill.handoff || '待补'}</p>
+                            </div>
+                            <div className="rounded border border-border bg-background/70 px-3 py-2">
+                              <p className="font-medium text-foreground">人工确认</p>
+                              <p className="mt-1">{skill.human_confirmation || '待补'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : candidateLines.length > 0 ? (
                   <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
@@ -311,40 +488,6 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                 ) : (
                   <p className="mt-3 text-sm text-muted-foreground">分析完成后显示候选 Skill 蓝图。</p>
                 )}
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-md border border-border bg-background p-4">
-                  <h3 className="text-sm font-semibold">交付模式</h3>
-                  {deliveryMode ? (
-                    <div className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
-                      <p>模式：{deliveryMode}</p>
-                      <p>{deliveryMode === 'Hybrid' ? '固定流程 + 随时追问/工具调用' : '由 intake 分析决定后续部署形态'}</p>
-                    </div>
-                  ) : (
-                    <p className="mt-3 text-sm text-muted-foreground">分析完成后显示 Pipeline / Toolkit / Hybrid 判断。</p>
-                  )}
-                </div>
-                <div className="rounded-md border border-border bg-background p-4">
-                  <h3 className="text-sm font-semibold">Boundary 草稿</h3>
-                  {boundaryDraft.length > 0 ? (
-                    <ol className="mt-3 list-decimal space-y-2 pl-4 text-xs leading-relaxed text-muted-foreground">
-                      {boundaryDraft.map(rule => <li key={rule}>{rule}</li>)}
-                    </ol>
-                  ) : (
-                    <p className="mt-3 text-sm text-muted-foreground">分析完成后显示后续 P8 的护栏草稿。</p>
-                  )}
-                </div>
-                <div className="rounded-md border border-border bg-background p-4 md:col-span-2">
-                  <h3 className="text-sm font-semibold">UAT 草稿</h3>
-                  {uatCriteria.length > 0 ? (
-                    <ol className="mt-3 list-decimal space-y-2 pl-4 text-xs leading-relaxed text-muted-foreground">
-                      {uatCriteria.map(criteria => <li key={criteria}>{criteria}</li>)}
-                    </ol>
-                  ) : (
-                    <p className="mt-3 text-sm text-muted-foreground">分析完成后显示后续 P21 的验收任务草稿。</p>
-                  )}
-                </div>
               </div>
 
               <details className="rounded-md border border-border bg-background p-4">

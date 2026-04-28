@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
       boundary_rules: blueprint?.boundary_rules || null,
       uat_criteria: state.draft?.uat_criteria || [],
       uat_tasks: blueprint?.uat_tasks || [],
+      soul_draft: state.draft?.soul_draft || null,
     })
   } catch (error: any) {
     return errorResponse(error?.message || 'Failed to read OB-S2 state', 500)
@@ -99,6 +100,7 @@ export async function POST(request: NextRequest) {
       boundary_rules: boundaryRules,
       uat_criteria: result.draft.uat_criteria,
       uat_tasks: uatTasks,
+      soul_draft: result.draft.soul_draft,
     })
   } catch (error: any) {
     const message = error?.message || 'Failed to write intake-analysis.md'
