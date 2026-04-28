@@ -52,9 +52,9 @@ const navGroups: NavGroup[] = [
         children: [
           { id: 'onboarding/customer', label: 'P3 Intake', icon: <TasksIcon />, priority: false, essential: true },
           { id: 'onboarding/customer/analyze', label: 'P4 Blueprint', icon: <SkillsIcon />, priority: false, essential: true },
-          { id: 'onboarding/customer/confirm', label: 'P4 Confirm', icon: <ApprovalsIcon />, priority: false, essential: true },
-          { id: 'onboarding/customer/deploy', label: 'Deploy', icon: <DeliveryIcon />, priority: false, essential: true },
-          { id: 'onboarding/customer/soul', label: 'P5 SOUL/AGENTS', icon: <AgentsIcon />, priority: false, essential: true },
+          { id: 'onboarding/customer/confirm', label: 'P5 Approval', icon: <ApprovalsIcon />, priority: false, essential: true },
+          { id: 'onboarding/customer/deploy', label: 'P6 Deploy', icon: <DeliveryIcon />, priority: false, essential: true },
+          { id: 'onboarding/customer/soul', label: 'P7 SOUL/AGENTS', icon: <AgentsIcon />, priority: false, essential: true },
         ],
       },
     ],

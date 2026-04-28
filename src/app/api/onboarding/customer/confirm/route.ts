@@ -38,12 +38,18 @@ export async function GET(request: NextRequest) {
       intake_raw_exists: state.intakeRawExists,
       intake_raw_hash: state.intakeRawHash,
       intake_raw_preview: state.intakeRawPreview,
+      intake_analysis_path: state.intakeAnalysisPath,
+      intake_analysis_exists: state.intakeAnalysisExists,
+      intake_analysis_hash: state.intakeAnalysisHash,
+      intake_analysis_preview: state.intakeAnalysisPreview,
       confirmation_path: state.confirmationPath,
       confirmation_exists: state.confirmationExists,
+      confirmation_analysis_hash: state.confirmationAnalysisHash,
+      confirmation_matches_analysis: state.confirmationMatchesAnalysis,
       content: state.confirmationContent,
     })
   } catch (error: any) {
-    return errorResponse(error?.message || 'Failed to read OB-S3 state', 500)
+    return errorResponse(error?.message || 'Failed to read P5 approval state', 500)
   }
 }
 
@@ -70,6 +76,7 @@ export async function POST(request: NextRequest) {
       tenantId,
       signedBy: auth.user.username,
       confirmationText: typeof body?.confirmation_text === 'string' ? body.confirmation_text : '',
+      replaceExisting: body?.replace_existing === true,
     })
 
     return NextResponse.json({
@@ -79,11 +86,17 @@ export async function POST(request: NextRequest) {
       content: result.content,
       already_exists: result.alreadyExists,
       intake_raw_hash: result.intakeRawHash,
-      message: result.alreadyExists ? 'confirmation-cc.md already exists; not overwritten' : 'confirmation-cc.md generated',
+      intake_analysis_hash: result.intakeAnalysisHash,
+      replaced_existing: result.replacedExisting,
+      message: result.replacedExisting
+        ? 'confirmation-cc.md updated after P4 blueprint change'
+        : result.alreadyExists
+          ? 'confirmation-cc.md already exists; not overwritten'
+          : 'confirmation-cc.md generated',
     })
   } catch (error: any) {
     const message = error?.message || 'Failed to write confirmation-cc.md'
-    const status = message.includes('intake-raw.md') ? 400 : 500
+    const status = message.includes('intake-raw.md') || message.includes('intake-analysis.md') ? 400 : 500
     return errorResponse(message, status)
   }
 }
