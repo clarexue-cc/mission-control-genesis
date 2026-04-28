@@ -1,0 +1,254 @@
+[
+  {
+    "level": "log",
+    "message": "[HMR] connected",
+    "timestamp": "2026-04-28T03:03:55.795Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "error",
+    "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>\n      <AppDevOverlayErrorBoundary globalError={[...]}>\n        <ReplaySsrOnlyErrors>\n        <DevRootHTTPAccessFallbackBoundary>\n          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>\n            <HTTPAccessFallbackErrorBoundary pathname=\"/login\" notFound={<NotAllowedRootHTTPFallbackError>} ...>\n              <RedirectBoundary>\n                <RedirectErrorBoundary router={{...}}>\n                  <Head>\n                  <__next_root_layout_boundary__>\n                    <SegmentViewNode type=\"layout\" pagePath=\"layout.tsx\">\n                      <SegmentTrieNode>\n                      <link>\n                      <RootLayout>\n                        <html lang=\"zh\" dir=\"ltr\" className=\"dark\" suppressHydrationWarning={true}>\n                          <head>\n                            <script\n+                             nonce=\"RAkk7d2gl3HuQURFPPbYpA==\"\n-                             nonce=\"\"\n                              dangerouslySetInnerHTML={{__html:\"(function(...\"}}\n                            >\n                          ...\n                  ...\n",
+    "timestamp": "2026-04-28T03:03:55.821Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:03:56.061Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] done in 172ms",
+    "timestamp": "2026-04-28T03:03:56.232Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[HMR] connected",
+    "timestamp": "2026-04-28T03:04:20.515Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "error",
+    "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>\n      <AppDevOverlayErrorBoundary globalError={[...]}>\n        <ReplaySsrOnlyErrors>\n        <DevRootHTTPAccessFallbackBoundary>\n          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>\n            <HTTPAccessFallbackErrorBoundary pathname=\"/login\" notFound={<NotAllowedRootHTTPFallbackError>} ...>\n              <RedirectBoundary>\n                <RedirectErrorBoundary router={{...}}>\n                  <Head>\n                  <__next_root_layout_boundary__>\n                    <SegmentViewNode type=\"layout\" pagePath=\"layout.tsx\">\n                      <SegmentTrieNode>\n                      <link>\n                      <RootLayout>\n                        <html lang=\"zh\" dir=\"ltr\" className=\"dark\" suppressHydrationWarning={true}>\n                          <head>\n                            <script\n+                             nonce=\"Gf9QygQc2tAmxWsZU9T6iQ==\"\n-                             nonce=\"\"\n                              dangerouslySetInnerHTML={{__html:\"(function(...\"}}\n                            >\n                          ...\n                  ...\n",
+    "timestamp": "2026-04-28T03:04:20.538Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js"
+  },
+  {
+    "level": "log",
+    "message": "[HMR] connected",
+    "timestamp": "2026-04-28T03:04:37.614Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "error",
+    "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>\n      <AppDevOverlayErrorBoundary globalError={[...]}>\n        <ReplaySsrOnlyErrors>\n        <DevRootHTTPAccessFallbackBoundary>\n          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>\n            <HTTPAccessFallbackErrorBoundary pathname=\"/login\" notFound={<NotAllowedRootHTTPFallbackError>} ...>\n              <RedirectBoundary>\n                <RedirectErrorBoundary router={{...}}>\n                  <Head>\n                  <__next_root_layout_boundary__>\n                    <SegmentViewNode type=\"layout\" pagePath=\"layout.tsx\">\n                      <SegmentTrieNode>\n                      <link>\n                      <RootLayout>\n                        <html lang=\"zh\" dir=\"ltr\" className=\"dark\" suppressHydrationWarning={true}>\n                          <head>\n                            <script\n+                             nonce=\"OIyj1IRAnDV6Hvgp2/jgkQ==\"\n-                             nonce=\"\"\n                              dangerouslySetInnerHTML={{__html:\"(function(...\"}}\n                            >\n                          ...\n                  ...\n",
+    "timestamp": "2026-04-28T03:04:37.636Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:04:39.499Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] done in 93ms",
+    "timestamp": "2026-04-28T03:04:39.593Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:04:39.867Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] done in 17004ms",
+    "timestamp": "2026-04-28T03:04:56.873Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[HMR] connected",
+    "timestamp": "2026-04-28T03:05:01.620Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "error",
+    "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>\n      <AppDevOverlayErrorBoundary globalError={[...]}>\n        <ReplaySsrOnlyErrors>\n        <DevRootHTTPAccessFallbackBoundary>\n          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>\n            <HTTPAccessFallbackErrorBoundary pathname=\"/\" notFound={<NotAllowedRootHTTPFallbackError>} ...>\n              <RedirectBoundary>\n                <RedirectErrorBoundary router={{...}}>\n                  <Head>\n                  <__next_root_layout_boundary__>\n                    <SegmentViewNode type=\"layout\" pagePath=\"layout.tsx\">\n                      <SegmentTrieNode>\n                      <link>\n                      <RootLayout>\n                        <html lang=\"zh\" dir=\"ltr\" className=\"dark\" suppressHydrationWarning={true}>\n                          <head>\n                            <script\n+                             nonce=\"rlw/bGKcYLrr3ny1f8wX/w==\"\n-                             nonce=\"\"\n                              dangerouslySetInnerHTML={{__html:\"(function(...\"}}\n                            >\n                          ...\n                  ...\n",
+    "timestamp": "2026-04-28T03:05:02.089Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:05:05.532Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:05:07.440Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] done in 759ms",
+    "timestamp": "2026-04-28T03:05:08.197Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[HMR] connected",
+    "timestamp": "2026-04-28T03:05:13.990Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[HMR] connected",
+    "timestamp": "2026-04-28T03:05:20.750Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "error",
+    "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>\n      <AppDevOverlayErrorBoundary globalError={[...]}>\n        <ReplaySsrOnlyErrors>\n        <DevRootHTTPAccessFallbackBoundary>\n          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>\n            <HTTPAccessFallbackErrorBoundary pathname=\"/alerts\" notFound={<NotAllowedRootHTTPFallbackError>} ...>\n              <RedirectBoundary>\n                <RedirectErrorBoundary router={{...}}>\n                  <Head>\n                  <__next_root_layout_boundary__>\n                    <SegmentViewNode type=\"layout\" pagePath=\"layout.tsx\">\n                      <SegmentTrieNode>\n                      <link>\n                      <RootLayout>\n                        <html lang=\"zh\" dir=\"ltr\" className=\"dark\" suppressHydrationWarning={true}>\n                          <head>\n                            <script\n+                             nonce=\"pj3giGNu6JBKM1lLOqAxig==\"\n-                             nonce=\"\"\n                              dangerouslySetInnerHTML={{__html:\"(function(...\"}}\n                            >\n                          ...\n                  ...\n",
+    "timestamp": "2026-04-28T03:05:21.179Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:05:21.888Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:05:22.985Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] done in 676ms",
+    "timestamp": "2026-04-28T03:05:23.662Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:05:24.046Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] done in 912ms",
+    "timestamp": "2026-04-28T03:05:24.959Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:05:25.018Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] done in 642ms",
+    "timestamp": "2026-04-28T03:05:25.660Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[HMR] connected",
+    "timestamp": "2026-04-28T03:05:30.041Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "error",
+    "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>\n      <AppDevOverlayErrorBoundary globalError={[...]}>\n        <ReplaySsrOnlyErrors>\n        <DevRootHTTPAccessFallbackBoundary>\n          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>\n            <HTTPAccessFallbackErrorBoundary pathname=\"/tasks\" notFound={<NotAllowedRootHTTPFallbackError>} ...>\n              <RedirectBoundary>\n                <RedirectErrorBoundary router={{...}}>\n                  <Head>\n                  <__next_root_layout_boundary__>\n                    <SegmentViewNode type=\"layout\" pagePath=\"layout.tsx\">\n                      <SegmentTrieNode>\n                      <link>\n                      <RootLayout>\n                        <html lang=\"zh\" dir=\"ltr\" className=\"dark\" suppressHydrationWarning={true}>\n                          <head>\n                            <script\n+                             nonce=\"rVvGfUZ81DCZ7lDILJf7dw==\"\n-                             nonce=\"\"\n                              dangerouslySetInnerHTML={{__html:\"(function(...\"}}\n                            >\n                          ...\n                  ...\n",
+    "timestamp": "2026-04-28T03:05:30.394Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:05:31.965Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "%c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;",
+    "timestamp": "2026-04-28T03:05:32.780Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "%cThis is a browser feature intended for developers.\n\nIf someone told you to copy-paste something here to enable a feature or \"hack\" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;",
+    "timestamp": "2026-04-28T03:05:32.781Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "%cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;",
+    "timestamp": "2026-04-28T03:05:32.786Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:05:32.917Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] done in 793ms",
+    "timestamp": "2026-04-28T03:05:33.713Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:05:33.929Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] done in 2640ms",
+    "timestamp": "2026-04-28T03:05:36.570Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:05:39.795Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] done in 833ms",
+    "timestamp": "2026-04-28T03:05:40.624Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] rebuilding",
+    "timestamp": "2026-04-28T03:05:40.718Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] done in 821ms",
+    "timestamp": "2026-04-28T03:05:41.539Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  },
+  {
+    "level": "log",
+    "message": "[Fast Refresh] done in 1388ms",
+    "timestamp": "2026-04-28T03:05:42.109Z",
+    "url": "webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@16.1.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwright+test@1.58.2_react-d_2884e55c18333d436dfed79a72263e38/node_modules/next/dist/next-devtools/shared/forward-logs-shared.js"
+  }
+]

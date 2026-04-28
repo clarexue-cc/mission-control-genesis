@@ -1,0 +1,80 @@
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+○ Compiling /onboarding/customer/analyze ...
+[16:17:29.438] [32mINFO[39m (32488): [36mDatabase migrations applied successfully[39m
+[16:17:29.456] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:17:29.456] [32mINFO[39m (32488): [36mScheduler initialized - backup at ~3AM, cleanup at ~4AM, heartbeat every 5m, webhook/claude/skill/local-agent/gateway-agent sync every 60s[39m
+ GET /onboarding/customer/analyze?role=admin 200 in 4.1s (compile: 3.8s, proxy.ts: 13ms, render: 315ms)
+[16:17:30.356] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:17:30.610] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:17:30.657] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+○ Compiling /api/onboarding/customer/analyze ...
+[16:17:34.924] [32mINFO[39m (32488): [36mDatabase migrations applied successfully[39m
+[16:17:34.982] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:17:34.983] [32mINFO[39m (32488): [36mScheduler initialized - backup at ~3AM, cleanup at ~4AM, heartbeat every 5m, webhook/claude/skill/local-agent/gateway-agent sync every 60s[39m
+ GET /api/onboarding/customer/analyze?tenant_id=demo-dry-run-2 200 in 4.2s (compile: 4.1s, proxy.ts: 5ms, render: 24ms)
+[16:17:35.721] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:17:37.873] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+ GET /api/onboarding/customer/analyze?tenant_id=media-intel-v1 200 in 40ms (compile: 15ms, proxy.ts: 9ms, render: 16ms)
+[16:17:43.461] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:17:43.661] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:17:50.386] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:17:57.643] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:17:58.134] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:17:59.160] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:18:03.277] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:18:09.892] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:18:20.365] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
+[16:18:21.553] [32mINFO[39m (32488): [36mAgent sync complete[39m
+    [35msynced[39m: 4
+    [35mcreated[39m: 0
+    [35mupdated[39m: 0
