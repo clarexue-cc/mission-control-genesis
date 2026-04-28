@@ -741,6 +741,8 @@
   },
   "taskBoard": {
     "title": "Aufgabentafel",
+    "taskBoard": "Aufgabentafel",
+    "loadingTasks": "Aufgaben werden geladen...",
     "allProjects": "Alle Projekte",
     "projects": "Projekte",
     "close": "Schließen",

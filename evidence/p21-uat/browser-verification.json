@@ -1,0 +1,32 @@
+{
+  "url": "http://127.0.0.1:3027/tasks?role=admin",
+  "tenant_id": "tenant-tg-001",
+  "task_id": "uat_146995ab-f6f9-4539-9fbe-3e9750d12455",
+  "title": "P21 UAT acceptance 1777298288124",
+  "admin_create_visible": true,
+  "customer_list_visible": true,
+  "customer_status": "submitted",
+  "submissions_count": 1,
+  "fallback": "Browser node_repl js and agent-browser CLI unavailable; verified with Playwright fallback.",
+  "console_error_summary": {
+    "csp-inline-script-dev-warning": 3,
+    "react-hydration-dev-warning": 3,
+    "missing-message:taskBoard.loadingTasks": 24,
+    "missing-message:taskBoard.taskBoard": 38
+  },
+  "console_error_samples": [
+    "Executing inline script violates the following Content Security Policy directive 'script-src 'self' 'nonce-favCtETUShB9tM7NH39XWw==' 'strict-dynamic' 'unsafe-eval' blob:'. Either the 'unsafe-inline' keyword, a hash ('sha256-ebcY/7CQ5kx8VGD84hTdQq9LsEQK3ueK2HGn",
+    "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input su",
+    "IntlError: MISSING_MESSAGE: Could not resolve `taskBoard.loadingTasks` in messages for locale `en`.\n    at getFallbackFromErrorAndNotify (http://127.0.0.1:3027/_next/static/chunks/node_modules__pnpm_398ca922._.js:4361:23)\n    at translateBaseFn (http://127.0.0",
+    "IntlError: MISSING_MESSAGE: Could not resolve `taskBoard.loadingTasks` in messages for locale `en`.\n    at getFallbackFromErrorAndNotify (http://127.0.0.1:3027/_next/static/chunks/node_modules__pnpm_398ca922._.js:4361:23)\n    at translateBaseFn (http://127.0.0",
+    "IntlError: MISSING_MESSAGE: Could not resolve `taskBoard.loadingTasks` in messages for locale `en`.\n    at getFallbackFromErrorAndNotify (http://127.0.0.1:3027/_next/static/chunks/node_modules__pnpm_398ca922._.js:4361:23)\n    at translateBaseFn (http://127.0.0"
+  ],
+  "i18n_followup": {
+    "fixed_task_board_missing_messages": true,
+    "keys_added": [
+      "taskBoard.loadingTasks",
+      "taskBoard.taskBoard"
+    ],
+    "note": "Added missing locale keys after the screenshot run; original UI screenshots and API JSON remain the P21 flow evidence."
+  }
+}

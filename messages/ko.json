@@ -741,6 +741,8 @@
   },
   "taskBoard": {
     "title": "작업 보드",
+    "taskBoard": "작업 보드",
+    "loadingTasks": "작업 불러오는 중...",
     "allProjects": "모든 프로젝트",
     "projects": "프로젝트",
     "close": "닫기",

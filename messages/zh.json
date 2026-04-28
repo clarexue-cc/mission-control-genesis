@@ -981,6 +981,8 @@
   },
   "taskBoard": {
     "title": "任务看板",
+    "taskBoard": "任务看板",
+    "loadingTasks": "正在加载任务...",
     "allProjects": "所有项目",
     "projects": "项目",
     "close": "关闭",

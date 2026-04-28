@@ -741,6 +741,8 @@
   },
   "taskBoard": {
     "title": "Tablero de tareas",
+    "taskBoard": "Tablero de tareas",
+    "loadingTasks": "Cargando tareas...",
     "allProjects": "Todos los proyectos",
     "projects": "Proyectos",
     "close": "Cerrar",
