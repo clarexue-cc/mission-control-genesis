@@ -28,6 +28,7 @@ function rule(id: string, name: string): ReadyToShipCheckRule {
 }
 
 async function writeFixtureHarness(root: string) {
+  await writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'fixture-harness' }), 'utf8')
   await mkdir(path.join(root, 'phase0/templates/delivery-checklist'), { recursive: true })
   await mkdir(path.join(root, `phase0/templates/${TENANT}/config`), { recursive: true })
   await mkdir(path.join(root, `phase0/templates/${TENANT}/tenant`), { recursive: true })

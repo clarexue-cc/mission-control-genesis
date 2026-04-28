@@ -38,6 +38,21 @@ interface UatFormState {
   rating: number
 }
 
+interface P4UatDraftTask {
+  id: string
+  order: number
+  tenant_id: string
+  title: string
+  description: string
+  acceptance_criteria: string[]
+  source: 'p4-blueprint'
+}
+
+interface CustomerBlueprintResponse {
+  tenant_id: string
+  uat_tasks: P4UatDraftTask[]
+}
+
 const feedbackChoices = ['结果正确', '内容有帮助', '语气合适', '需要修改', '可以上线']
 const defaultTenantId = 'tenant-tg-001'
 const panelClassName = 'rounded-lg border border-border bg-card/70'
@@ -312,6 +327,9 @@ export function AdminUatControlPanel() {
   const [submissions, setSubmissions] = useState<UatSubmission[]>([])
   const [status, setStatus] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [p4DraftTasks, setP4DraftTasks] = useState<P4UatDraftTask[]>([])
+  const [p4DraftLoading, setP4DraftLoading] = useState(false)
+  const [p4DraftError, setP4DraftError] = useState<string | null>(null)
 
   useEffect(() => {
     if (activeTenant?.slug) setTenantId(activeTenant.slug)
@@ -328,6 +346,28 @@ export function AdminUatControlPanel() {
   useEffect(() => {
     fetchTasks().catch(() => {})
   }, [fetchTasks])
+
+  const fetchP4DraftTasks = useCallback(async () => {
+    setP4DraftLoading(true)
+    setP4DraftError(null)
+    try {
+      const params = new URLSearchParams({ tenant_id: tenantId })
+      const response = await fetch(`/api/onboarding/customer/blueprint?${params}`, { cache: 'no-store' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to load P4 UAT draft')
+      const blueprint = data as CustomerBlueprintResponse
+      setP4DraftTasks(Array.isArray(blueprint.uat_tasks) ? blueprint.uat_tasks : [])
+    } catch (err) {
+      setP4DraftTasks([])
+      setP4DraftError(err instanceof Error ? err.message : 'Failed to load P4 UAT draft')
+    } finally {
+      setP4DraftLoading(false)
+    }
+  }, [tenantId])
+
+  useEffect(() => {
+    fetchP4DraftTasks().catch(() => {})
+  }, [fetchP4DraftTasks])
 
   async function createTask(event: FormEvent) {
     event.preventDefault()
@@ -347,6 +387,48 @@ export function AdminUatControlPanel() {
       await fetchTasks()
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Failed to create UAT task')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function createDraftTask(task: P4UatDraftTask) {
+    setLoading(true)
+    setStatus(null)
+    try {
+      const response = await fetch('/api/tasks/uat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenantId, title: task.title, description: task.description }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to create UAT task')
+      setStatus(`Created ${data.task?.id || task.title}`)
+      await fetchTasks()
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Failed to create UAT task')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function createAllDraftTasks() {
+    setLoading(true)
+    setStatus(null)
+    try {
+      for (const task of p4DraftTasks) {
+        const response = await fetch('/api/tasks/uat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenant_id: tenantId, title: task.title, description: task.description }),
+        })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error || `Failed to create ${task.title}`)
+      }
+      setStatus(`Created ${p4DraftTasks.length} P4 UAT tasks`)
+      await fetchTasks()
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Failed to create P4 UAT tasks')
     } finally {
       setLoading(false)
     }
@@ -402,6 +484,40 @@ export function AdminUatControlPanel() {
           </div>
           {status && <div className="mt-3 text-xs text-muted-foreground">{status}</div>}
         </form>
+
+        <div className="rounded-lg border border-border bg-card/70">
+          <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+            <div className="text-sm font-semibold text-foreground">P4 UAT Draft</div>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => fetchP4DraftTasks()} disabled={p4DraftLoading || loading}>
+                {p4DraftLoading ? 'Loading' : 'Refresh'}
+              </Button>
+              <Button type="button" size="sm" onClick={createAllDraftTasks} disabled={loading || p4DraftTasks.length === 0}>
+                Create All
+              </Button>
+            </div>
+          </div>
+          <div className="max-h-72 overflow-auto divide-y divide-border">
+            {p4DraftError ? (
+              <div className="px-4 py-6 text-sm text-amber-200">{p4DraftError}</div>
+            ) : p4DraftTasks.length === 0 ? (
+              <div className="px-4 py-6 text-sm text-muted-foreground">No P4 UAT draft for {tenantId}</div>
+            ) : p4DraftTasks.map(task => (
+              <div key={task.id} className="space-y-2 px-4 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-foreground">{task.title}</div>
+                    <div className="text-xs text-muted-foreground">{task.id}</div>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => createDraftTask(task)} disabled={loading}>
+                    Create
+                  </Button>
+                </div>
+                <div className="line-clamp-2 text-xs text-muted-foreground">{task.acceptance_criteria.join(' / ')}</div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <div className="rounded-lg border border-border bg-card/70">
           <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">UAT Tasks</div>

@@ -48,6 +48,31 @@ interface RegistrySkill {
   tags?: string[]
 }
 
+interface BlueprintSkillCandidate {
+  id: string
+  title: string
+  order: number
+  workflow_stage: string
+  inputs: string[]
+  outputs: string[]
+  handoff: string
+  human_confirmation: string
+  reason: string
+}
+
+interface CustomerBlueprintResponse {
+  tenant_id: string
+  skills_blueprint: BlueprintSkillCandidate[]
+}
+
+interface CustomerSkillGenerationResponse {
+  created: number
+  unchanged: number
+  skipped: number
+  generated: Array<{ skill_name: string; path: string; status: string }>
+  error?: string
+}
+
 type PanelTab = 'installed' | 'registry'
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -70,7 +95,7 @@ function getSourceLabel(source: string): string {
 
 export function SkillsPanel() {
   const t = useTranslations('skills')
-  const { dashboardMode, skillsList, skillGroups, skillsTotal, setSkillsData } = useMissionControl()
+  const { dashboardMode, activeTenant, skillsList, skillGroups, skillsTotal, setSkillsData } = useMissionControl()
   const [loading, setLoading] = useState(skillsList === null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -110,10 +135,20 @@ export function SkillsPanel() {
     message?: string
     securityStatus?: string
   } | null>(null)
+  const [blueprintTenant, setBlueprintTenant] = useState(activeTenant?.slug || 'media-intel-v1')
+  const [blueprintSkills, setBlueprintSkills] = useState<BlueprintSkillCandidate[]>([])
+  const [blueprintLoading, setBlueprintLoading] = useState(false)
+  const [blueprintError, setBlueprintError] = useState<string | null>(null)
+  const [blueprintGenerating, setBlueprintGenerating] = useState(false)
+  const [blueprintMessage, setBlueprintMessage] = useState<string | null>(null)
 
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (activeTenant?.slug) setBlueprintTenant(activeTenant.slug)
+  }, [activeTenant?.slug])
 
   const loadSkills = useCallback(async (opts?: { initial?: boolean }) => {
     if (opts?.initial) setLoading(true)
@@ -212,6 +247,51 @@ export function SkillsPanel() {
       setError(err?.message || 'Failed to refresh skills')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadBlueprintSkills = useCallback(async (tenantId: string) => {
+    const nextTenant = tenantId.trim()
+    if (!nextTenant) return
+    setBlueprintLoading(true)
+    setBlueprintError(null)
+    try {
+      const res = await fetch(`/api/onboarding/customer/blueprint?tenant_id=${encodeURIComponent(nextTenant)}`, { cache: 'no-store' })
+      const body = await res.json()
+      if (!res.ok) throw new Error(body?.error || 'Failed to load P4 Skills blueprint')
+      const blueprint = body as CustomerBlueprintResponse
+      setBlueprintSkills(Array.isArray(blueprint.skills_blueprint) ? blueprint.skills_blueprint : [])
+      setBlueprintMessage(`Loaded ${blueprint.skills_blueprint?.length || 0} P4 candidate Skills for ${blueprint.tenant_id}`)
+    } catch (err: any) {
+      setBlueprintSkills([])
+      setBlueprintError(err?.message || 'Failed to load P4 Skills blueprint')
+    } finally {
+      setBlueprintLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadBlueprintSkills(blueprintTenant).catch(() => {})
+  }, [blueprintTenant, loadBlueprintSkills])
+
+  const generateBlueprintSkills = async () => {
+    setBlueprintGenerating(true)
+    setBlueprintError(null)
+    setBlueprintMessage(null)
+    try {
+      const res = await fetch('/api/onboarding/customer/skills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: blueprintTenant }),
+      })
+      const body = await res.json() as CustomerSkillGenerationResponse
+      if (!res.ok) throw new Error(body?.error || 'Failed to generate Skill files')
+      setBlueprintMessage(`Generated ${body.created}, unchanged ${body.unchanged}, skipped ${body.skipped}`)
+      await loadSkills()
+    } catch (err: any) {
+      setBlueprintError(err?.message || 'Failed to generate Skill files')
+    } finally {
+      setBlueprintGenerating(false)
     }
   }
 
@@ -464,6 +544,45 @@ export function SkillsPanel() {
               {t('searchResults', { count: filtered.length, total: skillsTotal, query })}
             </div>
           )}
+
+          <div className="rounded-lg border border-border bg-card p-3 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-sm font-medium text-foreground">P4 Skills Blueprint</div>
+                <div className="text-2xs text-muted-foreground">{blueprintSkills.length} candidate Skills</div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  value={blueprintTenant}
+                  onChange={(event) => setBlueprintTenant(event.target.value)}
+                  className="h-8 w-44 rounded-md border border-border bg-secondary/50 px-2 text-xs text-foreground focus:outline-none"
+                  aria-label="P4 blueprint tenant"
+                />
+                <Button variant="outline" size="xs" onClick={() => loadBlueprintSkills(blueprintTenant)} disabled={blueprintLoading || blueprintGenerating}>
+                  {blueprintLoading ? 'Loading' : 'Refresh P4'}
+                </Button>
+                <Button variant="default" size="xs" onClick={generateBlueprintSkills} disabled={blueprintGenerating || blueprintSkills.length === 0}>
+                  {blueprintGenerating ? 'Generating' : 'Generate .md'}
+                </Button>
+              </div>
+            </div>
+            {blueprintError && <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">{blueprintError}</div>}
+            {blueprintMessage && !blueprintError && <div className="rounded-md border border-primary/25 bg-primary/10 px-3 py-2 text-xs text-primary">{blueprintMessage}</div>}
+            {blueprintSkills.length > 0 && (
+              <div className="grid gap-2 md:grid-cols-2">
+                {blueprintSkills.slice(0, 4).map(skill => (
+                  <div key={skill.id} className="rounded-md border border-border bg-background/60 px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded border border-border px-1.5 py-0.5 text-2xs text-muted-foreground">{skill.order}</span>
+                      <span className="truncate text-xs font-medium text-foreground">{skill.id}</span>
+                    </div>
+                    <div className="mt-1 text-2xs text-muted-foreground">{skill.workflow_stage}</div>
+                    <div className="mt-1 line-clamp-2 text-2xs text-muted-foreground/80">{skill.reason}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="rounded-lg border border-border bg-card p-3 space-y-2">
             <div className="flex items-center justify-between gap-2">

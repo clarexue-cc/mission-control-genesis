@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import loader from '@monaco-editor/loader'
 import { Button } from '@/components/ui/button'
+import { useMissionControl } from '@/store'
 import {
   createBlankDriftRule,
   createBlankForbiddenRule,
@@ -50,6 +51,11 @@ interface ReloadResponse {
   error?: string
 }
 
+interface CustomerBlueprintResponse {
+  tenant_id: string
+  boundary_rules: BoundaryRules
+}
+
 interface ToastState {
   kind: ToastKind
   title: string
@@ -91,7 +97,8 @@ function fieldList(value: string[] | undefined) {
 }
 
 export function BoundaryEditorPanel() {
-  const [tenant, setTenant] = useState('ceo-assistant-v1')
+  const { activeTenant } = useMissionControl()
+  const [tenant, setTenant] = useState(activeTenant?.slug || 'media-intel-v1')
   const [availableTenants, setAvailableTenants] = useState(tenantOptions)
   const [activeTab, setActiveTab] = useState<RuleTab>('forbidden')
   const [loading, setLoading] = useState(true)
@@ -109,6 +116,8 @@ export function BoundaryEditorPanel() {
   const [reloadStrategy, setReloadStrategy] = useState<ReloadStrategy>('reload')
   const [mode, setMode] = useState<BoundaryMode>('full')
   const [modeNote, setModeNote] = useState('')
+  const [p4BoundaryDraft, setP4BoundaryDraft] = useState<BoundaryRules | null>(null)
+  const [p4BoundaryMessage, setP4BoundaryMessage] = useState('')
   const [expandedRules, setExpandedRules] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<ToastState | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -149,6 +158,10 @@ export function BoundaryEditorPanel() {
     }
   }, [])
 
+  useEffect(() => {
+    if (activeTenant?.slug) setTenant(activeTenant.slug)
+  }, [activeTenant?.slug])
+
   const toggleExpanded = useCallback((id: string) => {
     setExpandedRules(current => {
       const next = new Set(current)
@@ -170,6 +183,12 @@ export function BoundaryEditorPanel() {
     }
   }, [])
 
+  const applyP4BoundaryDraft = useCallback(() => {
+    if (!p4BoundaryDraft) return
+    applyRules(p4BoundaryDraft)
+    setP4BoundaryMessage(`Loaded P4 boundary draft for ${tenant}`)
+  }, [applyRules, p4BoundaryDraft, tenant])
+
   const loadRules = useCallback(async (nextTenant: string) => {
     setLoading(true)
     setLoadError(null)
@@ -190,6 +209,8 @@ export function BoundaryEditorPanel() {
       setModeNote(body.note || '')
       setEditorValue(body.content)
       setSavedValue(body.content)
+      setP4BoundaryDraft(null)
+      setP4BoundaryMessage('')
 
       if (body.rules) {
         setRules(body.rules)
@@ -204,11 +225,35 @@ export function BoundaryEditorPanel() {
         setValidationError(body.parse_error || 'Boundary rules JSON is invalid')
         setExpandedRules(new Set())
       }
+
+      try {
+        const blueprintResponse = await fetch(`/api/onboarding/customer/blueprint?tenant_id=${encodeURIComponent(nextTenant)}`, { cache: 'no-store' })
+        const blueprintBody = await blueprintResponse.json()
+        if (blueprintResponse.ok && blueprintBody?.boundary_rules) {
+          const blueprint = blueprintBody as CustomerBlueprintResponse
+          setP4BoundaryDraft(blueprint.boundary_rules)
+          setP4BoundaryMessage(`P4 boundary draft loaded for ${blueprint.tenant_id}`)
+          if (!body.exists && blueprint.boundary_rules.forbidden_patterns?.length) {
+            const draftContent = stringifyBoundaryRules(blueprint.boundary_rules)
+            setRules(blueprint.boundary_rules)
+            setEditorValue(draftContent)
+            setValidationError(null)
+            const firstIds = blueprint.boundary_rules.forbidden_patterns.slice(0, 2).map(rule => `forbidden-${rule.id}`)
+            setExpandedRules(new Set(firstIds))
+          }
+        } else if (blueprintBody?.error) {
+          setP4BoundaryMessage(blueprintBody.error)
+        }
+      } catch {
+        setP4BoundaryMessage('')
+      }
     } catch (error) {
       setLoadError(errorMessage(error))
       setRules(null)
       setEditorValue('')
       setSavedValue('')
+      setP4BoundaryDraft(null)
+      setP4BoundaryMessage('')
     } finally {
       setLoading(false)
     }
@@ -329,6 +374,11 @@ export function BoundaryEditorPanel() {
           <Button variant="ghost" onClick={() => loadRules(tenant)} disabled={loading || saving}>
             Refresh
           </Button>
+          {p4BoundaryDraft && (
+            <Button variant="outline" onClick={applyP4BoundaryDraft} disabled={loading || saving}>
+              Apply P4 Draft
+            </Button>
+          )}
           <Button onClick={() => saveRules()} disabled={saving || !writable || Boolean(validationError) || editorValue.trim().length === 0}>
             {saving ? 'Saving...' : 'Save & Reload'}
           </Button>
@@ -356,6 +406,12 @@ export function BoundaryEditorPanel() {
       {mode === 'mock-fallback' && (
         <div className="rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
           {modeNote || 'Dev mock fallback is active; writes are saved locally for dry run validation.'}
+        </div>
+      )}
+
+      {p4BoundaryMessage && (
+        <div className="rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
+          {p4BoundaryMessage}
         </div>
       )}
 

@@ -4,6 +4,7 @@ import {
   analyzeCustomerIntake,
   readCustomerAnalysisState,
 } from '@/lib/customer-analysis'
+import { buildCustomerBoundaryRulesDraft, buildCustomerBlueprintPayload, buildCustomerSkillsBlueprint, buildCustomerUatDraft } from '@/lib/customer-blueprint'
 import { normalizeCustomerTenantId } from '@/lib/customer-intake'
 
 function authErrorResponse(error: string, status: 401 | 403) {
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const state = await readCustomerAnalysisState(tenantId)
+    const blueprint = state.draft && state.intakeRawHash ? buildCustomerBlueprintPayload(state) : null
     return NextResponse.json({
       ok: true,
       tenant_id: state.tenantId,
@@ -46,9 +48,12 @@ export async function GET(request: NextRequest) {
       mode: state.mode,
       workflow_steps: state.draft?.workflow_steps || [],
       skill_candidates: state.draft?.skill_candidates || [],
+      skills_blueprint: blueprint?.skills_blueprint || [],
       delivery_mode: state.draft?.delivery_mode || null,
       boundary_draft: state.draft?.boundary_draft || [],
+      boundary_rules: blueprint?.boundary_rules || null,
       uat_criteria: state.draft?.uat_criteria || [],
+      uat_tasks: blueprint?.uat_tasks || [],
     })
   } catch (error: any) {
     return errorResponse(error?.message || 'Failed to read OB-S2 state', 500)
@@ -75,6 +80,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await analyzeCustomerIntake(tenantId)
+    const skillsBlueprint = buildCustomerSkillsBlueprint(result.draft)
+    const boundaryRules = buildCustomerBoundaryRulesDraft({ tenantId: result.tenantId, draft: result.draft })
+    const uatTasks = buildCustomerUatDraft({ tenantId: result.tenantId, draft: result.draft })
     return NextResponse.json({
       ok: true,
       tenant_id: result.tenantId,
@@ -85,9 +93,12 @@ export async function POST(request: NextRequest) {
       already_exists: result.alreadyExists,
       workflow_steps: result.draft.workflow_steps,
       skill_candidates: result.draft.skill_candidates,
+      skills_blueprint: skillsBlueprint,
       delivery_mode: result.draft.delivery_mode,
       boundary_draft: result.draft.boundary_draft,
+      boundary_rules: boundaryRules,
       uat_criteria: result.draft.uat_criteria,
+      uat_tasks: uatTasks,
     })
   } catch (error: any) {
     const message = error?.message || 'Failed to write intake-analysis.md'

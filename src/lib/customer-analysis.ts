@@ -5,6 +5,7 @@ import path from 'node:path'
 import { resolveHarnessRoot } from '@/lib/harness-boundary'
 import { normalizeCustomerTenantId } from '@/lib/customer-intake'
 import { resolveWithin } from '@/lib/paths'
+import { buildCustomerBoundaryRulesDraft, buildCustomerSkillsBlueprint, buildCustomerUatDraft } from '@/lib/customer-blueprint'
 
 export type CustomerAnalysisMode = 'llm-anthropic' | 'llm-openai' | 'mock-fallback'
 export type CustomerAnalysisProvider = 'anthropic' | 'openai' | 'mock'
@@ -374,6 +375,16 @@ function buildAnalysisMarkdown(input: {
   note: string
 }): string {
   const draft = input.draft
+  const skillsBlueprint = buildCustomerSkillsBlueprint(draft)
+  const boundaryRulesDraft = buildCustomerBoundaryRulesDraft({
+    tenantId: input.tenantId,
+    draft,
+    generatedAt: input.generatedAt,
+  })
+  const uatDraft = buildCustomerUatDraft({
+    tenantId: input.tenantId,
+    draft,
+  })
   return `# Intake Analysis
 
 > Source: OB-S2 AI analysis
@@ -435,6 +446,24 @@ ${draft.uat_criteria.map((criteria, index) => `${index + 1}. ${cleanDisplayValue
 
 \`\`\`json
 ${JSON.stringify(draft, null, 2)}
+\`\`\`
+
+## P8 Boundary Draft JSON
+
+\`\`\`json
+${JSON.stringify(boundaryRulesDraft, null, 2)}
+\`\`\`
+
+## P9 Skills Blueprint JSON
+
+\`\`\`json
+${JSON.stringify(skillsBlueprint, null, 2)}
+\`\`\`
+
+## P21 UAT Draft JSON
+
+\`\`\`json
+${JSON.stringify(uatDraft, null, 2)}
 \`\`\`
 `
 }
