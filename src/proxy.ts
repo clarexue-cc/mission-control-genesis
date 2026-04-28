@@ -112,7 +112,7 @@ function addSecurityHeaders(response: NextResponse, _request: NextRequest, nonce
   const effectiveNonce = nonce || crypto.randomBytes(16).toString('base64')
   response.headers.set('Content-Security-Policy', buildMissionControlCsp({ nonce: effectiveNonce, googleEnabled }))
 
-  const queryRole = _request.nextUrl.searchParams.get('role')
+  const queryRole = _request.nextUrl.searchParams?.get('role')
   if (queryRole === 'customer' || queryRole === 'admin') {
     response.cookies.set(RBAC_ROLE_COOKIE, queryRole, {
       path: '/',

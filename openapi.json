@@ -61,6 +61,10 @@
       "description": "Pipeline orchestration"
     },
     {
+      "name": "Customer Onboarding",
+      "description": "Customer onboarding blueprint and draft generation"
+    },
+    {
       "name": "Monitoring",
       "description": "Activities, logs, events, and notifications"
     },
@@ -5012,6 +5016,86 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/onboarding/customer/blueprint": {
+      "get": {
+        "tags": [
+          "Customer Onboarding"
+        ],
+        "summary": "Load P4 customer blueprint drafts",
+        "operationId": "getCustomerOnboardingBlueprint",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "P4 machine-readable drafts for P8, P9, and P21"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "P4 blueprint not found"
+          },
+          "409": {
+            "description": "P4 blueprint is stale"
+          }
+        }
+      }
+    },
+    "/api/onboarding/customer/skills": {
+      "post": {
+        "tags": [
+          "Customer Onboarding"
+        ],
+        "summary": "Generate P9 customer Skill files",
+        "operationId": "generateCustomerSkillFiles",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "tenant_id"
+                ],
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Generated Skill file status"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "P4 blueprint is stale"
           }
         }
       }

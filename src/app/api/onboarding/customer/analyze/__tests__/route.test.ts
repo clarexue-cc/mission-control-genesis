@@ -20,60 +20,60 @@ vi.mock('@/lib/harness-boundary', () => ({
 describe('POST /api/onboarding/customer/analyze', () => {
   const originalEnv = { ...process.env }
   let harnessRoot = ''
-  const tenantId = 'demo-dry-run-2'
+  const tenantId = 'media-intel-v1'
 
   const llmDraft = {
     workflow_steps: [
       {
         order: 1,
-        name: '客户材料理解',
+        name: '客户监控主题配置',
         actor: 'Agent',
         trigger: 'intake 上传后',
-        output: '业务上下文',
-        next: 'customer-research',
+        output: '监控主题、渠道和风险阈值',
+        next: 'media-intel-topic-planner',
       },
       {
         order: 2,
-        name: '交付草案生成',
+        name: '多渠道信号核验',
         actor: 'Agent',
         trigger: '上下文确认后',
-        output: '候选 skills 和 UAT',
-        next: 'quality-review',
+        output: '可追溯证据包',
+        next: 'source-evidence-mapper',
       },
     ],
     skill_candidates: [
       {
-        id: 'customer-research',
-        title: 'Customer Research',
+        id: 'media-intel-topic-planner',
+        title: 'Media Intel Topic Planner',
         order: 1,
-        workflow_stage: '客户材料理解',
-        inputs: ['intake-raw.md'],
-        outputs: ['业务上下文'],
-        handoff: '交给 content-summarizer',
+        workflow_stage: '客户监控主题配置',
+        inputs: ['intake-raw.md', '客户关注的 Web3 项目', '渠道清单'],
+        outputs: ['监控主题矩阵', '风险阈值', '每日简报栏目'],
+        handoff: '交给 source-evidence-mapper',
         human_confirmation: '不需要',
-        reason: '提炼客户行业和任务背景。',
+        reason: '把 media-intel-v1 的关注项目、渠道和风险阈值转成可执行监控配置。',
       },
       {
-        id: 'content-summarizer',
-        title: 'Content Summarizer',
+        id: 'source-evidence-mapper',
+        title: 'Source Evidence Mapper',
         order: 2,
-        workflow_stage: '交付草案生成',
-        inputs: ['业务上下文'],
-        outputs: ['访谈摘要'],
-        handoff: '交给 quality-review',
+        workflow_stage: '多渠道信号核验',
+        inputs: ['Telegram/X/公众号信号', '项目名', '时间窗口'],
+        outputs: ['来源链接', '交叉验证结果', '不确定性备注'],
+        handoff: '交给 daily-risk-brief-composer',
         human_confirmation: '需要 Clare 复核',
-        reason: '整理访谈摘要。',
+        reason: 'media-intel-v1 需要每条舆情判断都能追溯到公开来源和核验状态。',
       },
       {
-        id: 'quality-review',
-        title: 'Quality Review',
+        id: 'daily-risk-brief-composer',
+        title: 'Daily Risk Brief Composer',
         order: 3,
-        workflow_stage: '交付草案生成',
-        inputs: ['访谈摘要'],
-        outputs: ['复核意见'],
+        workflow_stage: '每日舆情简报',
+        inputs: ['证据包', '风险阈值', '客户关注栏目'],
+        outputs: ['Morning brief', '高风险提醒', '待确认结论'],
         handoff: '交给后续部署',
         human_confirmation: '需要 Clare 复核',
-        reason: '复核交付准确性。',
+        reason: '把核验后的媒体信号整理成 media-intel-v1 可验收的每日风险简报。',
       },
     ],
     delivery_mode: 'Hybrid',
@@ -115,7 +115,16 @@ describe('POST /api/onboarding/customer/analyze', () => {
     return import('@/app/api/onboarding/customer/analyze/route')
   }
 
-  async function writeIntakeRaw(content = '# Intake Raw\n\n客户需要媒体监控、素材聚合、内容摘要和交付 UAT。\n') {
+  async function writeIntakeRaw(content = `# Intake Raw
+
+客户：media-intel-v1
+
+客户原话：
+- 每天监控 Telegram、X、公众号和行业新闻里的 Web3 项目舆情。
+- 重点看融资、监管、KOL 争议、交易所上线和安全事故。
+- 输出 morning brief，要保留来源链接、发布时间、风险等级和不确定性备注。
+- 高风险判断、对外提醒和客户邮件必须 Clare 先确认。
+`) {
     const vaultDir = path.join(harnessRoot, 'phase0/tenants', tenantId, 'vault')
     await mkdir(vaultDir, { recursive: true })
     await writeFile(path.join(vaultDir, 'intake-raw.md'), content, 'utf8')
@@ -152,13 +161,25 @@ describe('POST /api/onboarding/customer/analyze', () => {
     expect(body.ok).toBe(true)
     expect(body.mode).toBe('mock-fallback')
     expect(body.provider).toBe('mock')
-    expect(body.path).toBe('phase0/tenants/demo-dry-run-2/vault/intake-analysis.md')
+    expect(body.path).toBe('phase0/tenants/media-intel-v1/vault/intake-analysis.md')
     expect(body.workflow_steps.length).toBeGreaterThanOrEqual(3)
+    expect(body.skill_candidates.map((skill: { id: string }) => skill.id)).toContain('media-intel-signal-collector')
+    expect(body.skills_blueprint.length).toBeGreaterThanOrEqual(3)
+    expect(body.skills_blueprint.map((skill: { id: string }) => skill.id)).toContain('media-intel-signal-collector')
+    expect(body.content).toContain('media-intel-signal-collector')
+    expect(body.content).not.toContain('media-monitor')
+    expect(body.content).not.toContain('data-aggregator')
+    expect(body.content).not.toContain('content-summarizer')
+    expect(body.boundary_rules.forbidden_patterns).toHaveLength(4)
+    expect(body.uat_tasks).toHaveLength(3)
     expect(body.content).toContain('## 候选 Skills')
     expect(body.content).toContain('## 客户 Workflow 拆解')
     expect(body.content).toContain('## 候选 Skills 蓝图')
     expect(body.content).toContain('## Boundary 草稿')
-    await expect(stat(path.join(harnessRoot, 'phase0/tenants/demo-dry-run-2/vault/intake-analysis.md'))).resolves.toBeTruthy()
+    expect(body.content).toContain('## P8 Boundary Draft JSON')
+    expect(body.content).toContain('## P9 Skills Blueprint JSON')
+    expect(body.content).toContain('## P21 UAT Draft JSON')
+    await expect(stat(path.join(harnessRoot, 'phase0/tenants/media-intel-v1/vault/intake-analysis.md'))).resolves.toBeTruthy()
   })
 
   it('uses Anthropic LLM mode when ANTHROPIC_API_KEY is configured', async () => {
@@ -178,11 +199,53 @@ describe('POST /api/onboarding/customer/analyze', () => {
     expect(body.provider).toBe('anthropic')
     expect(body.workflow_steps).toHaveLength(2)
     expect(body.skill_candidates).toHaveLength(3)
-    expect(body.skill_candidates[0].inputs).toEqual(['intake-raw.md'])
-    expect(body.content).toContain('customer-research')
+    expect(body.skills_blueprint[0].id).toBe('media-intel-topic-planner')
+    expect(body.boundary_rules.forbidden_patterns).toHaveLength(4)
+    expect(body.uat_tasks).toHaveLength(3)
+    expect(body.skill_candidates[0].inputs).toContain('intake-raw.md')
+    expect(body.content).toContain('media-intel-topic-planner')
+    expect(body.content).not.toContain('media-monitor')
+    expect(body.content).not.toContain('data-aggregator')
+    expect(body.content).not.toContain('content-summarizer')
     expect(body.content).not.toContain('sk-ant-test-secret')
     const fetchCalls = fetchMock.mock.calls as unknown[][]
     expect(fetchCalls[0]?.[0]).toBe('https://api.anthropic.com/v1/messages')
+    const fetchOptions = fetchCalls[0]?.[1] as RequestInit
+    const promptBody = JSON.parse(String(fetchOptions.body)) as { messages: Array<{ content: string }> }
+    const prompt = promptBody.messages[0].content
+    expect(prompt).toContain('media-intel-v1')
+    expect(prompt).toContain('Telegram、X、公众号')
+    expect(prompt).toContain('customer-specific workflow Skills')
+    expect(prompt).toContain('media-monitor / data-aggregator / content-summarizer')
+  })
+
+  it('falls back when the LLM returns generic demo skill ids', async () => {
+    await writeIntakeRaw()
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-secret'
+    const genericDraft = {
+      ...llmDraft,
+      skill_candidates: [
+        { ...llmDraft.skill_candidates[0], id: 'media-monitor', title: 'Media Monitor' },
+        { ...llmDraft.skill_candidates[1], id: 'data-aggregator', title: 'Data Aggregator' },
+        { ...llmDraft.skill_candidates[2], id: 'content-summarizer', title: 'Content Summarizer' },
+      ],
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      content: [{ type: 'text', text: JSON.stringify(genericDraft) }],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    const { POST } = await loadRoute()
+
+    const response = await POST(request({ tenant_id: tenantId }))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.mode).toBe('mock-fallback')
+    expect(body.provider).toBe('mock')
+    expect(body.skill_candidates.map((skill: { id: string }) => skill.id)).toContain('media-intel-signal-collector')
+    expect(body.content).not.toContain('media-monitor')
+    expect(body.content).not.toContain('data-aggregator')
+    expect(body.content).not.toContain('content-summarizer')
+    expect(body.content).toContain('LLM 调用失败')
   })
 
   it.each([

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, stat } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { NextRequest } from 'next/server'
@@ -62,6 +62,7 @@ describe('/api/tasks/uat', () => {
   beforeEach(async () => {
     harnessRoot = await mkdtemp(path.join(os.tmpdir(), 'mc-uat-'))
     await mkdir(path.join(harnessRoot, 'phase0', 'tenants'), { recursive: true })
+    await writeFile(path.join(harnessRoot, 'package.json'), JSON.stringify({ name: 'fixture-harness' }), 'utf8')
     process.env = {
       ...originalEnv,
       MC_HARNESS_ROOT: harnessRoot,

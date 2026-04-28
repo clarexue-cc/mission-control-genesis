@@ -72,6 +72,10 @@ const endpoints: Endpoint[] = [
   { path: '/api/pipelines', methods: ['GET', 'POST', 'DELETE'], description: 'Pipeline CRUD', tag: 'Pipelines', auth: 'viewer/operator' },
   { path: '/api/pipelines/run', methods: ['POST'], description: 'Execute pipeline', tag: 'Pipelines', auth: 'operator' },
 
+  // ── Customer Onboarding ───────────────────────────
+  { path: '/api/onboarding/customer/blueprint', methods: ['GET'], description: 'P4 machine-readable customer blueprint drafts', tag: 'Customer Onboarding', auth: 'admin' },
+  { path: '/api/onboarding/customer/skills', methods: ['POST'], description: 'Generate P9 customer-specific Skill files from P4 blueprint', tag: 'Customer Onboarding', auth: 'admin' },
+
   // ── Webhooks ──────────────────────────────────────
   { path: '/api/webhooks', methods: ['GET', 'POST', 'PATCH', 'DELETE'], description: 'Webhook CRUD', tag: 'Webhooks', auth: 'viewer/operator' },
   { path: '/api/webhooks/deliveries', methods: ['GET'], description: 'Webhook delivery history', tag: 'Webhooks', auth: 'viewer' },
