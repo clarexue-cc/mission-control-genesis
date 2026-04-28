@@ -17,7 +17,7 @@ vi.mock('@/lib/harness-boundary', () => ({
   resolveHarnessRoot: async () => process.env.MC_HARNESS_ROOT,
 }))
 
-describe('POST /api/onboarding/customer/analyze', () => {
+describe('/api/onboarding/customer/analyze', () => {
   const originalEnv = { ...process.env }
   let harnessRoot = ''
   const tenantId = 'media-intel-v1'
@@ -105,6 +105,14 @@ describe('POST /api/onboarding/customer/analyze', () => {
   function request(body: Record<string, unknown>) {
     return new NextRequest('http://localhost/api/onboarding/customer/analyze', {
       method: 'POST',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  function putRequest(body: Record<string, unknown>) {
+    return new NextRequest('http://localhost/api/onboarding/customer/analyze', {
+      method: 'PUT',
       body: JSON.stringify(body),
       headers: { 'Content-Type': 'application/json' },
     })
@@ -307,6 +315,55 @@ describe('POST /api/onboarding/customer/analyze', () => {
 
     expect(response.status).toBe(409)
     expect(body.error).toContain('different intake-raw.md hash')
+  })
+
+  it('lets an admin edit the machine-readable P4 blueprint and persists the downstream drafts', async () => {
+    await writeIntakeRaw()
+    const { POST, PUT } = await loadRoute()
+    const createResponse = await POST(request({ tenant_id: tenantId }))
+    const created = await createResponse.json()
+    const editedDraft = JSON.parse(JSON.stringify(created.draft))
+
+    editedDraft.soul_draft.name = 'Edited Media Intel Chief of Staff'
+    editedDraft.boundary_draft[0] = 'Edited boundary: every high-risk media claim needs a saved public source link.'
+    editedDraft.uat_criteria[0] = 'Edited UAT: daily brief includes source, risk level, uncertainty note, and Clare approval state.'
+    editedDraft.skill_candidates[0].title = 'Edited Media Intel Signal Planner'
+
+    const response = await PUT(putRequest({ tenant_id: tenantId, draft: editedDraft }))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.ok).toBe(true)
+    expect(body.already_exists).toBe(false)
+    expect(body.draft.soul_draft.name).toBe('Edited Media Intel Chief of Staff')
+    expect(body.soul_draft.name).toBe('Edited Media Intel Chief of Staff')
+    expect(body.boundary_rules.forbidden_patterns[0].pattern).toContain('Edited boundary')
+    expect(body.uat_tasks[0].description).toContain('Edited UAT')
+    expect(body.uat_tasks[0].acceptance_criteria[0]).toContain('Edited UAT')
+    expect(body.skills_blueprint[0].title).toBe('Edited Media Intel Signal Planner')
+
+    const saved = await readFile(path.join(harnessRoot, 'phase0/tenants', tenantId, 'vault/intake-analysis.md'), 'utf8')
+    expect(saved).toContain('Edited Media Intel Chief of Staff')
+    expect(saved).toContain('Edited Media Intel Signal Planner')
+    expect(saved).toContain('## 机器可读蓝图 JSON')
+    expect(saved).toContain('## P8 Boundary Draft JSON')
+    expect(saved).toContain('## P9 Skills Blueprint JSON')
+    expect(saved).toContain('## P21 UAT Draft JSON')
+  })
+
+  it('rejects non-admin P4 blueprint edits', async () => {
+    authMock.requireRole.mockReturnValue({
+      error: 'Requires admin role or higher',
+      status: 403,
+    })
+    const { PUT } = await loadRoute()
+
+    const response = await PUT(putRequest({ tenant_id: tenantId, draft: llmDraft }))
+    const body = await response.json()
+
+    expect(response.status).toBe(403)
+    expect(body.error).toContain('Requires admin')
+    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'admin')
   })
 
   it('writes the required mock fallback structure', async () => {

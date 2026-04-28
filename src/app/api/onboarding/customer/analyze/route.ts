@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/auth'
 import {
   analyzeCustomerIntake,
   readCustomerAnalysisState,
+  updateCustomerAnalysisDraft,
 } from '@/lib/customer-analysis'
 import { buildCustomerBoundaryRulesDraft, buildCustomerBlueprintPayload, buildCustomerSkillsBlueprint, buildCustomerUatDraft } from '@/lib/customer-blueprint'
 import { normalizeCustomerTenantId } from '@/lib/customer-intake'
@@ -46,6 +47,7 @@ export async function GET(request: NextRequest) {
       analysis_matches_intake: state.analysisMatchesIntake,
       content: state.analysisContent,
       mode: state.mode,
+      draft: state.draft,
       workflow_steps: state.draft?.workflow_steps || [],
       skill_candidates: state.draft?.skill_candidates || [],
       skills_blueprint: blueprint?.skills_blueprint || [],
@@ -54,6 +56,7 @@ export async function GET(request: NextRequest) {
       boundary_rules: blueprint?.boundary_rules || null,
       uat_criteria: state.draft?.uat_criteria || [],
       uat_tasks: blueprint?.uat_tasks || [],
+      soul_draft: state.draft?.soul_draft || null,
     })
   } catch (error: any) {
     return errorResponse(error?.message || 'Failed to read OB-S2 state', 500)
@@ -91,6 +94,7 @@ export async function POST(request: NextRequest) {
       mode: result.mode,
       provider: result.provider,
       already_exists: result.alreadyExists,
+      draft: result.draft,
       workflow_steps: result.draft.workflow_steps,
       skill_candidates: result.draft.skill_candidates,
       skills_blueprint: skillsBlueprint,
@@ -99,12 +103,70 @@ export async function POST(request: NextRequest) {
       boundary_rules: boundaryRules,
       uat_criteria: result.draft.uat_criteria,
       uat_tasks: uatTasks,
+      soul_draft: result.draft.soul_draft,
     })
   } catch (error: any) {
     const message = error?.message || 'Failed to write intake-analysis.md'
     const status = message.includes('different intake-raw.md hash')
       ? 409
       : message.includes('intake-raw.md')
+        ? 400
+        : 500
+    return errorResponse(message, status)
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  const auth = requireRole(request, 'admin')
+  if ('error' in auth) return authErrorResponse(auth.error || 'Authentication required', auth.status || 401)
+
+  let body: any
+  try {
+    body = await request.json()
+  } catch {
+    return errorResponse('Expected JSON body')
+  }
+
+  let tenantId: string
+  try {
+    tenantId = parseTenantId(body?.tenant_id)
+  } catch (error: any) {
+    return errorResponse(error?.message || 'Invalid tenant_id')
+  }
+
+  if (!body?.draft || typeof body.draft !== 'object') {
+    return errorResponse('draft is required')
+  }
+
+  try {
+    const result = await updateCustomerAnalysisDraft(tenantId, body.draft)
+    const skillsBlueprint = buildCustomerSkillsBlueprint(result.draft)
+    const boundaryRules = buildCustomerBoundaryRulesDraft({ tenantId: result.tenantId, draft: result.draft })
+    const uatTasks = buildCustomerUatDraft({ tenantId: result.tenantId, draft: result.draft })
+    return NextResponse.json({
+      ok: true,
+      tenant_id: result.tenantId,
+      path: result.path,
+      content: result.content,
+      mode: result.mode,
+      provider: result.provider,
+      already_exists: false,
+      draft: result.draft,
+      workflow_steps: result.draft.workflow_steps,
+      skill_candidates: result.draft.skill_candidates,
+      skills_blueprint: skillsBlueprint,
+      delivery_mode: result.draft.delivery_mode,
+      boundary_draft: result.draft.boundary_draft,
+      boundary_rules: boundaryRules,
+      uat_criteria: result.draft.uat_criteria,
+      uat_tasks: uatTasks,
+      soul_draft: result.draft.soul_draft,
+    })
+  } catch (error: any) {
+    const message = error?.message || 'Failed to update intake-analysis.md'
+    const status = message.includes('different intake-raw.md hash')
+      ? 409
+      : message.includes('intake-raw.md') || message.includes('intake-analysis.md') || message.includes('draft')
         ? 400
         : 500
     return errorResponse(message, status)

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
@@ -44,6 +45,7 @@ interface DeployResult {
 }
 
 type Progress = 'pending' | 'running' | 'success' | 'failed'
+const DEFAULT_TENANT_ID = 'media-intel-v1'
 
 function flattenTree(nodes: VaultTreeNode[], depth = 0): string[] {
   return nodes.flatMap(node => [
@@ -53,7 +55,7 @@ function flattenTree(nodes: VaultTreeNode[], depth = 0): string[] {
 }
 
 export function CustomerDeployClient({ username }: { username: string }) {
-  const [tenantId, setTenantId] = useState('demo-dry-run-2')
+  const [tenantId, setTenantId] = useState(DEFAULT_TENANT_ID)
   const [state, setState] = useState<DeployState | null>(null)
   const [result, setResult] = useState<DeployResult | null>(null)
   const [progress, setProgress] = useState<Progress>('pending')
@@ -64,10 +66,12 @@ export function CustomerDeployClient({ username }: { username: string }) {
   const deployStatus = result?.deploy_status || state?.deploy_status || null
 
   async function loadState(nextTenantId = tenantId) {
+    const normalizedTenantId = nextTenantId.trim() || DEFAULT_TENANT_ID
+    setTenantId(normalizedTenantId)
     setLoading(true)
     setError('')
     try {
-      const response = await fetch(`/api/onboarding/customer/deploy?tenant_id=${encodeURIComponent(nextTenantId)}`)
+      const response = await fetch(`/api/onboarding/customer/deploy?tenant_id=${encodeURIComponent(normalizedTenantId)}`)
       const body = await response.json()
       if (!response.ok) throw new Error(body?.error || '读取 OB-S4 状态失败')
       setState(body)
@@ -84,7 +88,8 @@ export function CustomerDeployClient({ username }: { username: string }) {
   }
 
   useEffect(() => {
-    loadState()
+    const params = new URLSearchParams(window.location.search)
+    loadState(params.get('tenant') || params.get('tenant_id') || DEFAULT_TENANT_ID)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -94,10 +99,12 @@ export function CustomerDeployClient({ username }: { username: string }) {
     setProgress('running')
     setError('')
     try {
+      const normalizedTenantId = tenantId.trim() || DEFAULT_TENANT_ID
+      setTenantId(normalizedTenantId)
       const response = await fetch('/api/onboarding/customer/deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenant_id: tenantId }),
+        body: JSON.stringify({ tenant_id: normalizedTenantId }),
       })
       const body = await response.json()
       if (!response.ok) throw new Error(body?.error || '部署失败')
@@ -123,11 +130,18 @@ export function CustomerDeployClient({ username }: { username: string }) {
     <main className="min-h-screen overflow-auto bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
         <header className="border-b border-border pb-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">OB-S4</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-normal">new-tenant + Docker 部署</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            基于 Clare 签字确认创建 tenant 目录、初始化 vault，并在 Docker 不可用时写入 mock fallback deploy-status.json。
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">OB-S4</p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-normal">new-tenant + Docker 部署</h1>
+              <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+                基于 Clare 签字确认创建 tenant 目录、初始化 vault，并在 Docker 不可用时写入 mock fallback deploy-status.json。
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/">返回 MC 主页面</Link>
+            </Button>
+          </div>
         </header>
 
         <section className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">

@@ -43,9 +43,12 @@ export function useNavigateToPanel() {
     if (href === pathname) return
     safePrefetch(router, href)
     startNavigationTiming(pathname, href)
-    setActiveTab(panel === 'sessions' ? 'chat' : panel)
-    if (panel === 'chat' || panel === 'sessions') {
-      setChatPanelOpen(false)
+    const isStandaloneRoute = panel.includes('/')
+    if (!isStandaloneRoute) {
+      setActiveTab(panel === 'sessions' ? 'chat' : panel)
+      if (panel === 'chat' || panel === 'sessions') {
+        setChatPanelOpen(false)
+      }
     }
     startTransition(() => {
       router.push(href, { scroll: false })

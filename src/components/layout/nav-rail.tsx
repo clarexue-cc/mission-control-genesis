@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useMissionControl } from '@/store'
@@ -47,12 +48,13 @@ const navGroups: NavGroup[] = [
         label: 'Customer Onboarding',
         icon: <TasksIcon />,
         priority: false,
+        essential: true,
         children: [
-          { id: 'onboarding/customer', label: 'Intake', icon: <TasksIcon />, priority: false },
-          { id: 'onboarding/customer/analyze', label: 'Analysis', icon: <SkillsIcon />, priority: false },
-          { id: 'onboarding/customer/confirm', label: 'Confirm', icon: <ApprovalsIcon />, priority: false },
-          { id: 'onboarding/customer/deploy', label: 'Deploy', icon: <DeliveryIcon />, priority: false },
-          { id: 'onboarding/customer/soul', label: 'SOUL/AGENTS', icon: <AgentsIcon />, priority: false },
+          { id: 'onboarding/customer', label: 'P3 Intake', icon: <TasksIcon />, priority: false, essential: true },
+          { id: 'onboarding/customer/analyze', label: 'P4 Blueprint', icon: <SkillsIcon />, priority: false, essential: true },
+          { id: 'onboarding/customer/confirm', label: 'P4 Confirm', icon: <ApprovalsIcon />, priority: false, essential: true },
+          { id: 'onboarding/customer/deploy', label: 'Deploy', icon: <DeliveryIcon />, priority: false, essential: true },
+          { id: 'onboarding/customer/soul', label: 'P5 SOUL/AGENTS', icon: <AgentsIcon />, priority: false, essential: true },
         ],
       },
     ],
@@ -154,6 +156,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
   const { activeTab, connection, dashboardMode, currentUser, activeTenant, tenants, osUsers, setActiveTenant, fetchTenants, fetchOsUsers, activeProject, projects, setActiveProject, fetchProjects, sidebarExpanded, collapsedGroups, toggleSidebar, toggleGroup, defaultOrgName, interfaceMode, setInterfaceMode } = useMissionControl()
   const navigateToPanel = useNavigateToPanel()
   const prefetchPanel = usePrefetchPanel()
+  const pathname = usePathname()
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
 
@@ -169,7 +172,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
   const isLocal = dashboardMode === 'local'
   const isAdmin = currentUser?.role === 'admin'
   const isCustomer = isCustomerRole(effectiveRole)
-  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set(['onboarding/customer']))
 
   function toggleParent(id: string) {
     setExpandedParents(prev => {
@@ -246,6 +249,12 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
     return items.flatMap(i => i.children ? [i, ...flattenItems(i.children)] : [i])
   }
   const filteredAllNavItems = filteredGroups.flatMap(g => flattenItems(g.items))
+  function isNavItemActive(id: string): boolean {
+    if (activeTab === id) return true
+    if (!id.includes('/')) return false
+    const href = `/${id}`
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
 
   // Keyboard shortcut: [ to toggle sidebar
   useEffect(() => {
@@ -346,9 +355,10 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
               >
                 <div className={`flex flex-col ${sidebarExpanded ? 'gap-0.5 px-2' : 'items-center gap-1'}`}>
                   {group.items.map((item) => {
+                    const itemActive = isNavItemActive(item.id)
                     if (item.children) {
                       const isParentExpanded = expandedParents.has(item.id)
-                      const childActive = item.children.some(c => activeTab === c.id)
+                      const childActive = item.children.some(c => isNavItemActive(c.id))
                       if (!sidebarExpanded) {
                         // Collapsed mode: clicking parent navigates to first child
                         return (
@@ -367,18 +377,18 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
                           <div className="flex items-center w-full">
                             <Button
                               variant="ghost"
-                              onClick={() => { navigateToPanel(item.id); if (!isParentExpanded) toggleParent(item.id) }}
+                              onClick={() => toggleParent(item.id)}
                               onMouseEnter={() => { prefetchPanel(item.id); item.children?.forEach(child => prefetchPanel(child.id)) }}
                               onFocus={() => item.children?.forEach(child => prefetchPanel(child.id))}
                               className={`flex-1 flex items-center gap-2 px-2 py-1.5 h-auto rounded-lg rounded-r-none text-left justify-start relative ${
-                                activeTab === item.id
+                                itemActive
                                   ? 'bg-primary/15 text-primary hover:bg-primary/20'
                                   : childActive && !isParentExpanded
                                     ? 'bg-primary/10 text-primary/80 hover:bg-primary/15'
                                     : ''
                               }`}
                             >
-                              {activeTab === item.id && (
+                              {itemActive && (
                                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-primary rounded-r-full" />
                               )}
                               <div className="w-5 h-5 shrink-0">{item.icon}</div>
@@ -413,7 +423,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
                                 <NavButton
                                   key={child.id}
                                   item={child}
-                                  active={activeTab === child.id}
+                                  active={isNavItemActive(child.id)}
                                   expanded={true}
                                   onClick={() => navigateToPanel(child.id)}
                                   onPrefetch={() => prefetchPanel(child.id)}
@@ -429,7 +439,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
                       <NavButton
                         key={item.id}
                         item={item}
-                        active={activeTab === item.id}
+                        active={itemActive}
                         expanded={sidebarExpanded}
                         onClick={() => navigateToPanel(item.id)}
                         onPrefetch={() => prefetchPanel(item.id)}
