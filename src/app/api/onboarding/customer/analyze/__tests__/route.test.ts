@@ -23,10 +23,58 @@ describe('POST /api/onboarding/customer/analyze', () => {
   const tenantId = 'demo-dry-run-2'
 
   const llmDraft = {
+    workflow_steps: [
+      {
+        order: 1,
+        name: '客户材料理解',
+        actor: 'Agent',
+        trigger: 'intake 上传后',
+        output: '业务上下文',
+        next: 'customer-research',
+      },
+      {
+        order: 2,
+        name: '交付草案生成',
+        actor: 'Agent',
+        trigger: '上下文确认后',
+        output: '候选 skills 和 UAT',
+        next: 'quality-review',
+      },
+    ],
     skill_candidates: [
-      { id: 'customer-research', title: 'Customer Research', reason: '提炼客户行业和任务背景。' },
-      { id: 'content-summarizer', title: 'Content Summarizer', reason: '整理访谈摘要。' },
-      { id: 'quality-review', title: 'Quality Review', reason: '复核交付准确性。' },
+      {
+        id: 'customer-research',
+        title: 'Customer Research',
+        order: 1,
+        workflow_stage: '客户材料理解',
+        inputs: ['intake-raw.md'],
+        outputs: ['业务上下文'],
+        handoff: '交给 content-summarizer',
+        human_confirmation: '不需要',
+        reason: '提炼客户行业和任务背景。',
+      },
+      {
+        id: 'content-summarizer',
+        title: 'Content Summarizer',
+        order: 2,
+        workflow_stage: '交付草案生成',
+        inputs: ['业务上下文'],
+        outputs: ['访谈摘要'],
+        handoff: '交给 quality-review',
+        human_confirmation: '需要 Clare 复核',
+        reason: '整理访谈摘要。',
+      },
+      {
+        id: 'quality-review',
+        title: 'Quality Review',
+        order: 3,
+        workflow_stage: '交付草案生成',
+        inputs: ['访谈摘要'],
+        outputs: ['复核意见'],
+        handoff: '交给后续部署',
+        human_confirmation: '需要 Clare 复核',
+        reason: '复核交付准确性。',
+      },
     ],
     delivery_mode: 'Hybrid',
     delivery_mode_reason: '需要流程编排和工具调用并存。',
@@ -105,7 +153,10 @@ describe('POST /api/onboarding/customer/analyze', () => {
     expect(body.mode).toBe('mock-fallback')
     expect(body.provider).toBe('mock')
     expect(body.path).toBe('phase0/tenants/demo-dry-run-2/vault/intake-analysis.md')
+    expect(body.workflow_steps.length).toBeGreaterThanOrEqual(3)
     expect(body.content).toContain('## 候选 Skills')
+    expect(body.content).toContain('## 客户 Workflow 拆解')
+    expect(body.content).toContain('## 候选 Skills 蓝图')
     expect(body.content).toContain('## Boundary 草稿')
     await expect(stat(path.join(harnessRoot, 'phase0/tenants/demo-dry-run-2/vault/intake-analysis.md'))).resolves.toBeTruthy()
   })
@@ -125,7 +176,9 @@ describe('POST /api/onboarding/customer/analyze', () => {
     expect(response.status).toBe(200)
     expect(body.mode).toBe('llm-anthropic')
     expect(body.provider).toBe('anthropic')
+    expect(body.workflow_steps).toHaveLength(2)
     expect(body.skill_candidates).toHaveLength(3)
+    expect(body.skill_candidates[0].inputs).toEqual(['intake-raw.md'])
     expect(body.content).toContain('customer-research')
     expect(body.content).not.toContain('sk-ant-test-secret')
     const fetchCalls = fetchMock.mock.calls as unknown[][]
@@ -164,7 +217,10 @@ describe('POST /api/onboarding/customer/analyze', () => {
   it('is idempotent and does not overwrite an existing analysis', async () => {
     await writeIntakeRaw()
     const analysisPath = path.join(harnessRoot, 'phase0/tenants', tenantId, 'vault/intake-analysis.md')
-    const existingContent = '# Intake Analysis\n\n> Mode: mock-fallback\n\nexisting analysis\n'
+    const intakeRaw = await readFile(path.join(harnessRoot, 'phase0/tenants', tenantId, 'vault/intake-raw.md'), 'utf8')
+    const { createHash } = await import('node:crypto')
+    const intakeHash = createHash('sha256').update(intakeRaw).digest('hex')
+    const existingContent = `# Intake Analysis\n\n> Mode: mock-fallback\n> Intake Raw Hash: ${intakeHash}\n\nexisting analysis\n`
     await writeFile(analysisPath, existingContent, 'utf8')
 
     const { POST } = await loadRoute()
@@ -177,6 +233,19 @@ describe('POST /api/onboarding/customer/analyze', () => {
     await expect(readFile(analysisPath, 'utf8')).resolves.toBe(existingContent)
   })
 
+  it('rejects stale analysis when the saved intake hash differs from current intake-raw', async () => {
+    await writeIntakeRaw()
+    const analysisPath = path.join(harnessRoot, 'phase0/tenants', tenantId, 'vault/intake-analysis.md')
+    await writeFile(analysisPath, '# Intake Analysis\n\n> Mode: mock-fallback\n> Intake Raw Hash: 0000000000000000000000000000000000000000000000000000000000000000\n\nstale analysis\n', 'utf8')
+
+    const { POST } = await loadRoute()
+    const response = await POST(request({ tenant_id: tenantId }))
+    const body = await response.json()
+
+    expect(response.status).toBe(409)
+    expect(body.error).toContain('different intake-raw.md hash')
+  })
+
   it('writes the required mock fallback structure', async () => {
     await writeIntakeRaw()
     const { POST } = await loadRoute()
@@ -186,6 +255,7 @@ describe('POST /api/onboarding/customer/analyze', () => {
 
     expect(response.status).toBe(200)
     expect(body.skill_candidates.length).toBeGreaterThanOrEqual(3)
+    expect(body.workflow_steps.length).toBeGreaterThanOrEqual(3)
     expect(body.delivery_mode).toBe('Hybrid')
     expect(body.boundary_draft).toHaveLength(4)
     expect(body.uat_criteria).toHaveLength(3)

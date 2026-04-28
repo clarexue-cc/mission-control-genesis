@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { NextRequest } from 'next/server'
@@ -93,6 +93,8 @@ describe('/api/harness boundary routes', () => {
 
   beforeEach(async () => {
     harnessRoot = await mkdtemp(path.join(os.tmpdir(), 'mc-boundary-route-'))
+    await mkdir(path.join(harnessRoot, 'phase0'), { recursive: true })
+    await writeFile(path.join(harnessRoot, 'package.json'), '{"name":"harness-test"}\n', 'utf8')
     process.env = {
       ...originalEnv,
       MC_HARNESS_ROOT: harnessRoot,
@@ -210,6 +212,28 @@ describe('/api/harness boundary routes', () => {
       OPENCLAW_CONFIG_PATH: '/tmp/openclaw.json',
       OPENCLAW_WORKSPACE_DIR: '/tmp/workspace',
     } as unknown as NodeJS.ProcessEnv)).toBe(false)
+  })
+
+  it('resolves the current workspace before the legacy desktop harness path', async () => {
+    const parentRoot = await mkdtemp(path.join(os.tmpdir(), 'mc-boundary-parent-'))
+    const currentRoot = path.join(parentRoot, 'mc-e2e-test')
+    const legacyRoot = path.join(parentRoot, 'genesis-harness')
+    await mkdir(path.join(currentRoot, 'phase0'), { recursive: true })
+    await mkdir(path.join(legacyRoot, 'phase0'), { recursive: true })
+    await writeFile(path.join(currentRoot, 'package.json'), '{"name":"current"}\n', 'utf8')
+    await writeFile(path.join(legacyRoot, 'package.json'), '{"name":"legacy"}\n', 'utf8')
+    const originalCwd = process.cwd()
+    try {
+      process.env.MC_HARNESS_ROOT = ''
+      process.env.GENESIS_HARNESS_ROOT = ''
+      process.chdir(currentRoot)
+      const { resolveHarnessRoot } = await import('@/lib/harness-boundary')
+
+      await expect(resolveHarnessRoot()).resolves.toBe(await realpath(currentRoot))
+    } finally {
+      process.chdir(originalCwd)
+      await rm(parentRoot, { recursive: true, force: true })
+    }
   })
 
   it('rejects tenant traversal attempts', async () => {

@@ -1,12 +1,27 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 interface SkillCandidate {
   id: string
   title: string
+  order?: number
+  workflow_stage?: string
+  inputs?: string[]
+  outputs?: string[]
+  handoff?: string
+  human_confirmation?: string
   reason: string
+}
+
+interface WorkflowStep {
+  order: number
+  name: string
+  actor: string
+  trigger: string
+  output: string
+  next: string
 }
 
 interface AnalyzeState {
@@ -18,8 +33,15 @@ interface AnalyzeState {
   intake_raw_preview: string
   analysis_path: string
   analysis_exists: boolean
+  analysis_intake_raw_hash: string | null
+  analysis_matches_intake: boolean | null
   content: string | null
   mode: string | null
+  workflow_steps: WorkflowStep[]
+  skill_candidates: SkillCandidate[]
+  delivery_mode: string | null
+  boundary_draft: string[]
+  uat_criteria: string[]
 }
 
 interface AnalyzeResult {
@@ -30,6 +52,7 @@ interface AnalyzeResult {
   mode: string
   provider: string
   already_exists: boolean
+  workflow_steps: WorkflowStep[]
   skill_candidates: SkillCandidate[]
   delivery_mode: string
   boundary_draft: string[]
@@ -49,19 +72,25 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
   const [progress, setProgress] = useState<Progress>('pending')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const tenantInputRef = useRef<HTMLInputElement>(null)
 
   const analysisContent = result?.content || state?.content || ''
   const mode = result?.mode || state?.mode || null
+  const workflowSteps = useMemo(() => result?.workflow_steps || state?.workflow_steps || [], [result?.workflow_steps, state?.workflow_steps])
+  const skillCandidates = useMemo(() => result?.skill_candidates || state?.skill_candidates || [], [result?.skill_candidates, state?.skill_candidates])
+  const boundaryDraft = useMemo(() => result?.boundary_draft || state?.boundary_draft || [], [result?.boundary_draft, state?.boundary_draft])
+  const uatCriteria = useMemo(() => result?.uat_criteria || state?.uat_criteria || [], [result?.uat_criteria, state?.uat_criteria])
+  const deliveryMode = result?.delivery_mode || state?.delivery_mode || null
   const candidateLines = useMemo(() => {
-    if (result?.skill_candidates?.length) {
-      return result.skill_candidates.map(skill => `${skill.id}: ${skill.title} - ${skill.reason}`)
+    if (skillCandidates.length) {
+      return skillCandidates.map(skill => `${skill.id}: ${skill.title} - ${skill.reason}`)
     }
     return analysisContent
       .split('\n')
       .filter(line => line.trim().startsWith('- '))
       .slice(0, 5)
       .map(line => line.replace(/^- /, ''))
-  }, [analysisContent, result])
+  }, [analysisContent, skillCandidates])
 
   async function loadState(nextTenantId = tenantId) {
     setLoading(true)
@@ -147,6 +176,7 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
               <div className="mt-2 flex gap-2">
                 <input
                   id="tenant-id"
+                  ref={tenantInputRef}
                   value={tenantId}
                   onChange={(event) => {
                     setTenantId(event.target.value)
@@ -159,7 +189,7 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                   className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                   placeholder="edu-luolaoshi-v1"
                 />
-                <Button type="button" variant="outline" onClick={() => loadState()} disabled={loading}>
+                <Button type="button" variant="outline" onClick={() => loadState(tenantInputRef.current?.value || tenantId)} disabled={loading}>
                   {loading ? '读取中...' : '读取'}
                 </Button>
               </div>
@@ -206,6 +236,12 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
               </div>
             )}
 
+            {state?.analysis_matches_intake === false && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                intake-analysis.md 与当前 intake-raw.md hash 不一致，请先归档旧分析再继续。
+              </div>
+            )}
+
             <Button type="submit" disabled={loading || !state?.intake_raw_exists} className="w-full">
               {progress === 'analyzing' ? '分析中...' : 'AI 分析'}
             </Button>
@@ -214,15 +250,105 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
           <section className="rounded-lg border border-border bg-card p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">intake-analysis.md 预览</h2>
+                <h2 className="text-lg font-semibold">客户交付蓝图</h2>
                 <p className="mt-1 text-xs text-muted-foreground">输出文件：phase0/tenants/&lt;tenant&gt;/vault/intake-analysis.md</p>
               </div>
               {mode && <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary">{mode}</span>}
             </div>
 
             <div className="mt-4 space-y-4">
+              {workflowSteps.length > 0 ? (
+                <div className="rounded-md border border-border bg-background p-4">
+                  <h3 className="text-sm font-semibold">客户 Workflow 拆解</h3>
+                  <div className="mt-3 space-y-3">
+                    {workflowSteps.map(step => (
+                      <div key={`${step.order}-${step.name}`} className="border-l-2 border-primary/50 pl-3">
+                        <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                          <span className="text-primary">P{step.order}</span>
+                          <span>{step.name}</span>
+                          <span className="text-xs text-muted-foreground">负责人：{step.actor}</span>
+                        </div>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          触发：{step.trigger} ｜ 输出：{step.output} ｜ 下一步：{step.next}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="rounded-md border border-border bg-background p-4">
-                <h3 className="text-sm font-semibold">待分析内容预览</h3>
+                <h3 className="text-sm font-semibold">候选 Skills 蓝图</h3>
+                {skillCandidates.length > 0 ? (
+                  <div className="mt-3 space-y-3">
+                    {skillCandidates
+                      .slice()
+                      .sort((left, right) => (left.order || 0) - (right.order || 0))
+                      .map(skill => (
+                        <div key={skill.id} className="rounded-md border border-border px-3 py-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+                              {skill.order || '-'}
+                            </span>
+                            <span className="text-sm font-semibold">{skill.title}</span>
+                            <span className="text-xs text-muted-foreground">{skill.id}</span>
+                          </div>
+                          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{skill.reason}</p>
+                          <div className="mt-2 grid gap-2 text-xs leading-relaxed text-muted-foreground md:grid-cols-2">
+                            <p><span className="font-medium text-foreground">workflow：</span>{skill.workflow_stage || '待补'}</p>
+                            <p><span className="font-medium text-foreground">人工确认：</span>{skill.human_confirmation || '待补'}</p>
+                            <p><span className="font-medium text-foreground">输入：</span>{(skill.inputs || []).join(' / ') || '待补'}</p>
+                            <p><span className="font-medium text-foreground">输出：</span>{(skill.outputs || []).join(' / ') || '待补'}</p>
+                            <p className="md:col-span-2"><span className="font-medium text-foreground">交接：</span>{skill.handoff || '待补'}</p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                ) : candidateLines.length > 0 ? (
+                  <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
+                    {candidateLines.map(line => <li key={line}>{line}</li>)}
+                  </ul>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">分析完成后显示候选 Skill 蓝图。</p>
+                )}
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-md border border-border bg-background p-4">
+                  <h3 className="text-sm font-semibold">交付模式</h3>
+                  {deliveryMode ? (
+                    <div className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
+                      <p>模式：{deliveryMode}</p>
+                      <p>{deliveryMode === 'Hybrid' ? '固定流程 + 随时追问/工具调用' : '由 intake 分析决定后续部署形态'}</p>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm text-muted-foreground">分析完成后显示 Pipeline / Toolkit / Hybrid 判断。</p>
+                  )}
+                </div>
+                <div className="rounded-md border border-border bg-background p-4">
+                  <h3 className="text-sm font-semibold">Boundary 草稿</h3>
+                  {boundaryDraft.length > 0 ? (
+                    <ol className="mt-3 list-decimal space-y-2 pl-4 text-xs leading-relaxed text-muted-foreground">
+                      {boundaryDraft.map(rule => <li key={rule}>{rule}</li>)}
+                    </ol>
+                  ) : (
+                    <p className="mt-3 text-sm text-muted-foreground">分析完成后显示后续 P8 的护栏草稿。</p>
+                  )}
+                </div>
+                <div className="rounded-md border border-border bg-background p-4 md:col-span-2">
+                  <h3 className="text-sm font-semibold">UAT 草稿</h3>
+                  {uatCriteria.length > 0 ? (
+                    <ol className="mt-3 list-decimal space-y-2 pl-4 text-xs leading-relaxed text-muted-foreground">
+                      {uatCriteria.map(criteria => <li key={criteria}>{criteria}</li>)}
+                    </ol>
+                  ) : (
+                    <p className="mt-3 text-sm text-muted-foreground">分析完成后显示后续 P21 的验收任务草稿。</p>
+                  )}
+                </div>
+              </div>
+
+              <details className="rounded-md border border-border bg-background p-4">
+                <summary className="cursor-pointer text-sm font-semibold">待分析内容预览</summary>
                 {state?.intake_raw_preview ? (
                   <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
                     {previewText(state.intake_raw_preview, 16)}
@@ -230,35 +356,10 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                 ) : (
                   <p className="mt-3 text-sm text-muted-foreground">尚未读取到 intake-raw.md。请先完成 OB-S1 上传。</p>
                 )}
-              </div>
+              </details>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-md border border-border bg-background p-4">
-                  <h3 className="text-sm font-semibold">候选 Skills</h3>
-                  {candidateLines.length > 0 ? (
-                    <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
-                      {candidateLines.map(line => <li key={line}>{line}</li>)}
-                    </ul>
-                  ) : (
-                    <p className="mt-3 text-sm text-muted-foreground">分析完成后显示候选 Skill 清单。</p>
-                  )}
-                </div>
-                <div className="rounded-md border border-border bg-background p-4">
-                  <h3 className="text-sm font-semibold">模式 / Boundary / UAT</h3>
-                  {result ? (
-                    <div className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
-                      <p>模式：{result.delivery_mode}</p>
-                      <p>Boundary：{result.boundary_draft.length} 条</p>
-                      <p>UAT：{result.uat_criteria.length} 条</p>
-                    </div>
-                  ) : (
-                    <p className="mt-3 text-sm text-muted-foreground">分析完成后显示模式判断、边界草稿和验收标准。</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-md border border-border bg-background p-4">
-                <h3 className="text-sm font-semibold">完整 markdown</h3>
+              <details className="rounded-md border border-border bg-background p-4">
+                <summary className="cursor-pointer text-sm font-semibold">完整 markdown</summary>
                 {analysisContent ? (
                   <pre className="mt-3 max-h-[32rem] overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
                     {analysisContent}
@@ -266,7 +367,7 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                 ) : (
                   <p className="mt-3 text-sm text-muted-foreground">点击 AI 分析后，这里会显示 intake-analysis.md。</p>
                 )}
-              </div>
+              </details>
             </div>
           </section>
         </section>

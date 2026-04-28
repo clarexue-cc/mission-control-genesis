@@ -39,6 +39,25 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    id: 'customer-setup',
+    label: 'CUSTOMER SETUP',
+    items: [
+      {
+        id: 'onboarding/customer',
+        label: 'Customer Onboarding',
+        icon: <TasksIcon />,
+        priority: false,
+        children: [
+          { id: 'onboarding/customer', label: 'Intake', icon: <TasksIcon />, priority: false },
+          { id: 'onboarding/customer/analyze', label: 'Analysis', icon: <SkillsIcon />, priority: false },
+          { id: 'onboarding/customer/confirm', label: 'Confirm', icon: <ApprovalsIcon />, priority: false },
+          { id: 'onboarding/customer/deploy', label: 'Deploy', icon: <DeliveryIcon />, priority: false },
+          { id: 'onboarding/customer/soul', label: 'SOUL/AGENTS', icon: <AgentsIcon />, priority: false },
+        ],
+      },
+    ],
+  },
+  {
     id: 'observe',
     label: 'OBSERVE',
     items: [

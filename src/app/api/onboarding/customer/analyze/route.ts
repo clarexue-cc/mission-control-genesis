@@ -40,8 +40,15 @@ export async function GET(request: NextRequest) {
       intake_raw_preview: state.intakeRawPreview,
       analysis_path: state.analysisPath,
       analysis_exists: state.analysisExists,
+      analysis_intake_raw_hash: state.analysisIntakeRawHash,
+      analysis_matches_intake: state.analysisMatchesIntake,
       content: state.analysisContent,
       mode: state.mode,
+      workflow_steps: state.draft?.workflow_steps || [],
+      skill_candidates: state.draft?.skill_candidates || [],
+      delivery_mode: state.draft?.delivery_mode || null,
+      boundary_draft: state.draft?.boundary_draft || [],
+      uat_criteria: state.draft?.uat_criteria || [],
     })
   } catch (error: any) {
     return errorResponse(error?.message || 'Failed to read OB-S2 state', 500)
@@ -76,6 +83,7 @@ export async function POST(request: NextRequest) {
       mode: result.mode,
       provider: result.provider,
       already_exists: result.alreadyExists,
+      workflow_steps: result.draft.workflow_steps,
       skill_candidates: result.draft.skill_candidates,
       delivery_mode: result.draft.delivery_mode,
       boundary_draft: result.draft.boundary_draft,
@@ -83,7 +91,11 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     const message = error?.message || 'Failed to write intake-analysis.md'
-    const status = message.includes('intake-raw.md') ? 400 : 500
+    const status = message.includes('different intake-raw.md hash')
+      ? 409
+      : message.includes('intake-raw.md')
+        ? 400
+        : 500
     return errorResponse(message, status)
   }
 }
