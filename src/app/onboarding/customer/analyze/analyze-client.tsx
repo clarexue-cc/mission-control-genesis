@@ -32,6 +32,16 @@ interface SoulDraft {
   forbidden: string[]
 }
 
+interface BlueprintDraft {
+  workflow_steps: WorkflowStep[]
+  skill_candidates: SkillCandidate[]
+  delivery_mode: string
+  delivery_mode_reason: string
+  boundary_draft: string[]
+  uat_criteria: string[]
+  soul_draft: SoulDraft
+}
+
 interface AnalyzeState {
   ok: boolean
   tenant_id: string
@@ -45,6 +55,7 @@ interface AnalyzeState {
   analysis_matches_intake: boolean | null
   content: string | null
   mode: string | null
+  draft: BlueprintDraft | null
   workflow_steps: WorkflowStep[]
   skill_candidates: SkillCandidate[]
   delivery_mode: string | null
@@ -61,6 +72,7 @@ interface AnalyzeResult {
   mode: string
   provider: string
   already_exists: boolean
+  draft: BlueprintDraft
   workflow_steps: WorkflowStep[]
   skill_candidates: SkillCandidate[]
   delivery_mode: string
@@ -78,15 +90,18 @@ function previewText(value: string | null | undefined, maxLines = 28): string {
   return (value || '').split('\n').slice(0, maxLines).join('\n')
 }
 
-function parseSoulDraftFromAnalysis(content: string): SoulDraft | null {
+function parseBlueprintDraftFromAnalysis(content: string): BlueprintDraft | null {
   const match = /## 机器可读蓝图 JSON\s*```json\s*([\s\S]*?)\s*```/m.exec(content)
   if (!match?.[1]) return null
   try {
-    const parsed = JSON.parse(match[1]) as { soul_draft?: SoulDraft }
-    return parsed.soul_draft || null
+    return JSON.parse(match[1]) as BlueprintDraft
   } catch {
     return null
   }
+}
+
+function formatBlueprintDraft(draft: BlueprintDraft | null): string {
+  return draft ? JSON.stringify(draft, null, 2) : ''
 }
 
 export function CustomerAnalyzeClient({ username }: { username: string }) {
@@ -96,19 +111,24 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
   const [progress, setProgress] = useState<Progress>('pending')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [draftText, setDraftText] = useState('')
+  const [draftSaving, setDraftSaving] = useState(false)
+  const [draftError, setDraftError] = useState('')
+  const [draftMessage, setDraftMessage] = useState('')
   const tenantInputRef = useRef<HTMLInputElement>(null)
 
   const analysisContent = result?.content || state?.content || ''
   const mode = result?.mode || state?.mode || null
-  const workflowSteps = useMemo(() => result?.workflow_steps || state?.workflow_steps || [], [result?.workflow_steps, state?.workflow_steps])
-  const skillCandidates = useMemo(() => result?.skill_candidates || state?.skill_candidates || [], [result?.skill_candidates, state?.skill_candidates])
-  const boundaryDraft = useMemo(() => result?.boundary_draft || state?.boundary_draft || [], [result?.boundary_draft, state?.boundary_draft])
-  const uatCriteria = useMemo(() => result?.uat_criteria || state?.uat_criteria || [], [result?.uat_criteria, state?.uat_criteria])
-  const deliveryMode = result?.delivery_mode || state?.delivery_mode || null
-  const soulDraft = useMemo(
-    () => result?.soul_draft || state?.soul_draft || parseSoulDraftFromAnalysis(analysisContent),
-    [analysisContent, result?.soul_draft, state?.soul_draft],
+  const blueprintDraft = useMemo(
+    () => result?.draft || state?.draft || parseBlueprintDraftFromAnalysis(analysisContent),
+    [analysisContent, result?.draft, state?.draft],
   )
+  const workflowSteps = useMemo(() => blueprintDraft?.workflow_steps || result?.workflow_steps || state?.workflow_steps || [], [blueprintDraft?.workflow_steps, result?.workflow_steps, state?.workflow_steps])
+  const skillCandidates = useMemo(() => blueprintDraft?.skill_candidates || result?.skill_candidates || state?.skill_candidates || [], [blueprintDraft?.skill_candidates, result?.skill_candidates, state?.skill_candidates])
+  const boundaryDraft = useMemo(() => blueprintDraft?.boundary_draft || result?.boundary_draft || state?.boundary_draft || [], [blueprintDraft?.boundary_draft, result?.boundary_draft, state?.boundary_draft])
+  const uatCriteria = useMemo(() => blueprintDraft?.uat_criteria || result?.uat_criteria || state?.uat_criteria || [], [blueprintDraft?.uat_criteria, result?.uat_criteria, state?.uat_criteria])
+  const deliveryMode = blueprintDraft?.delivery_mode || result?.delivery_mode || state?.delivery_mode || null
+  const soulDraft = blueprintDraft?.soul_draft || result?.soul_draft || state?.soul_draft || null
   const orderedSkillCandidates = useMemo(
     () => skillCandidates.slice().sort((left, right) => (left.order || 0) - (right.order || 0)),
     [skillCandidates],
@@ -123,6 +143,10 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
       .slice(0, 5)
       .map(line => line.replace(/^- /, ''))
   }, [analysisContent, skillCandidates])
+
+  useEffect(() => {
+    setDraftText(formatBlueprintDraft(blueprintDraft))
+  }, [blueprintDraft])
 
   async function loadState(nextTenantId = tenantId) {
     const normalizedTenantId = nextTenantId.trim() || DEFAULT_TENANT_ID
@@ -175,6 +199,13 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
           analysis_path: body.path,
           content: body.content,
           mode: body.mode,
+          draft: body.draft,
+          workflow_steps: body.workflow_steps,
+          skill_candidates: body.skill_candidates,
+          delivery_mode: body.delivery_mode,
+          boundary_draft: body.boundary_draft,
+          uat_criteria: body.uat_criteria,
+          soul_draft: body.soul_draft,
         }
         : current)
       setProgress('success')
@@ -183,6 +214,57 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
       setProgress('failed')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function saveBlueprintDraft() {
+    setDraftSaving(true)
+    setDraftError('')
+    setDraftMessage('')
+
+    let parsedDraft: BlueprintDraft
+    try {
+      parsedDraft = JSON.parse(draftText) as BlueprintDraft
+    } catch {
+      setDraftError('Blueprint JSON 格式不正确，请先修正后再保存。')
+      setDraftSaving(false)
+      return
+    }
+
+    try {
+      const normalizedTenantId = tenantId.trim() || DEFAULT_TENANT_ID
+      const response = await fetch('/api/onboarding/customer/analyze', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: normalizedTenantId, draft: parsedDraft }),
+      })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body?.error || '保存 Blueprint 失败')
+      setTenantId(normalizedTenantId)
+      setResult(body)
+      setState(current => current
+        ? {
+          ...current,
+          analysis_exists: true,
+          analysis_path: body.path,
+          analysis_matches_intake: true,
+          content: body.content,
+          mode: body.mode,
+          draft: body.draft,
+          workflow_steps: body.workflow_steps,
+          skill_candidates: body.skill_candidates,
+          delivery_mode: body.delivery_mode,
+          boundary_draft: body.boundary_draft,
+          uat_criteria: body.uat_criteria,
+          soul_draft: body.soul_draft,
+        }
+        : current)
+      setProgress('success')
+      setDraftMessage('已保存到 intake-analysis.md，P8 / P9 / P21 会读取更新后的蓝图。')
+    } catch (err: any) {
+      setDraftError(err?.message || '保存 Blueprint 失败')
+    } finally {
+      setDraftSaving(false)
     }
   }
 
@@ -354,6 +436,44 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                     )
                   })}
                 </div>
+              </div>
+
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">P4 Blueprint Editor</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">保存后写回 intake-analysis.md，并同步后续草稿读取。</p>
+                  </div>
+                  <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">P4 可编辑机读 JSON</span>
+                </div>
+                {blueprintDraft ? (
+                  <>
+                    <textarea
+                      value={draftText}
+                      onChange={(event) => {
+                        setDraftText(event.target.value)
+                        setDraftError('')
+                        setDraftMessage('')
+                      }}
+                      spellCheck={false}
+                      className="mt-3 h-72 w-full resize-y rounded-md border border-border bg-background px-3 py-2 font-mono text-xs leading-relaxed outline-none focus:border-primary"
+                    />
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-xs">
+                        {draftError && <p className="text-destructive">{draftError}</p>}
+                        {draftMessage && <p className="text-primary">{draftMessage}</p>}
+                        {!draftError && !draftMessage && (
+                          <p className="text-muted-foreground">可改 Workflow、SOUL、Skills、Boundary、UAT 字段。</p>
+                        )}
+                      </div>
+                      <Button type="button" onClick={saveBlueprintDraft} disabled={draftSaving || !draftText.trim()}>
+                        {draftSaving ? '保存中...' : '保存 Blueprint'}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">分析完成后，这里会显示可编辑的 P4 机读蓝图。</p>
+                )}
               </div>
 
               <div className="rounded-md border border-border bg-background p-4">

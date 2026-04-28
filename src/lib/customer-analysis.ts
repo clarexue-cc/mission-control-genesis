@@ -108,9 +108,25 @@ function parseAnalysisMode(content: string): CustomerAnalysisMode | null {
   return (match?.[1] as CustomerAnalysisMode | undefined) || null
 }
 
+function parseAnalysisProvider(content: string): CustomerAnalysisProvider {
+  const match = /^>\s*Provider:\s*(anthropic|openai|mock)\s*$/im.exec(content)
+  return (match?.[1] as CustomerAnalysisProvider | undefined) || 'mock'
+}
+
+function parseAnalysisGeneratedAt(content: string): Date {
+  const match = /^>\s*Generated At:\s*(.+?)\s*$/im.exec(content)
+  const parsed = match?.[1] ? new Date(match[1]) : null
+  return parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date()
+}
+
 function parseAnalysisIntakeRawHash(content: string): string | null {
   const match = /^>\s*Intake Raw Hash:\s*([a-f0-9]{64})\s*$/im.exec(content)
   return match?.[1] || null
+}
+
+function parseAnalysisNote(content: string): string {
+  const match = /^>\s*Note:\s*(.+?)\s*$/im.exec(content)
+  return cleanDisplayValue(match?.[1] || 'Edited in P4 Blueprint Editor.')
 }
 
 function parseAnalysisDraft(content: string): CustomerAnalysisDraft | null {
@@ -121,6 +137,10 @@ function parseAnalysisDraft(content: string): CustomerAnalysisDraft | null {
   } catch {
     return null
   }
+}
+
+export function parseCustomerAnalysisDraftContent(content: string): CustomerAnalysisDraft {
+  return parseDraftFromText(content)
 }
 
 export function selectCustomerAnalysisProvider(env: NodeJS.ProcessEnv = process.env): 'anthropic' | 'openai' | null {
@@ -554,6 +574,9 @@ function parseDraftFromText(text: string, options?: { requireCustomerSpecificSki
   if (!Array.isArray(draft.uat_criteria) || draft.uat_criteria.length < 3) {
     throw new Error('LLM draft missing uat_criteria')
   }
+  if (!draft.soul_draft || !Array.isArray(draft.soul_draft.forbidden)) {
+    throw new Error('LLM draft missing soul_draft')
+  }
   const parsed = {
     ...draft,
     workflow_steps: draft.workflow_steps
@@ -568,15 +591,24 @@ function parseDraftFromText(text: string, options?: { requireCustomerSpecificSki
       })),
     skill_candidates: draft.skill_candidates.slice(0, 7).map((skill, index) => ({
       ...skill,
+      id: cleanDisplayValue(skill.id || `skill-${index + 1}`),
+      title: cleanDisplayValue(skill.title || `Skill ${index + 1}`),
       order: Number(skill.order) || index + 1,
       workflow_stage: cleanDisplayValue(skill.workflow_stage || '未标注 workflow'),
       inputs: Array.isArray(skill.inputs) && skill.inputs.length > 0 ? skill.inputs.map(cleanDisplayValue) : ['待补输入'],
       outputs: Array.isArray(skill.outputs) && skill.outputs.length > 0 ? skill.outputs.map(cleanDisplayValue) : ['待补输出'],
       handoff: cleanDisplayValue(skill.handoff || '待补交接'),
       human_confirmation: cleanDisplayValue(skill.human_confirmation || '待确认'),
+      reason: cleanDisplayValue(skill.reason || '待补原因'),
     })),
     boundary_draft: draft.boundary_draft.slice(0, 4),
     uat_criteria: draft.uat_criteria.slice(0, 3),
+    soul_draft: {
+      name: cleanDisplayValue(draft.soul_draft.name || '客户交付助手'),
+      role: cleanDisplayValue(draft.soul_draft.role || '读取客户 intake 并辅助生成交付草稿。'),
+      tone: cleanDisplayValue(draft.soul_draft.tone || '专业、清晰、审慎。'),
+      forbidden: draft.soul_draft.forbidden.map(cleanDisplayValue).filter(Boolean),
+    },
   }
   if (options?.requireCustomerSpecificSkills) assertCustomerSpecificSkillBlueprint(parsed)
   return parsed
@@ -649,14 +681,15 @@ export async function analyzeCustomerIntake(tenantIdInput: string): Promise<Cust
     if (existingHash && existingHash !== intakeRawHash) {
       throw new Error('vault/intake-analysis.md was generated from a different intake-raw.md hash; archive the stale analysis before rerun')
     }
+    const existingDraft = parseAnalysisDraft(content) || buildMockDraft(intakeRaw)
     return {
       tenantId: paths.tenantId,
       path: paths.analysisRelativePath,
       content,
       mode: parseAnalysisMode(content) || 'mock-fallback',
-      provider: 'mock',
+      provider: parseAnalysisProvider(content),
       alreadyExists: true,
-      draft: buildMockDraft(intakeRaw),
+      draft: existingDraft,
     }
   }
 
@@ -721,6 +754,66 @@ export async function analyzeCustomerIntake(tenantIdInput: string): Promise<Cust
     content,
     mode,
     provider: outputProvider,
+    alreadyExists: false,
+    draft,
+  }
+}
+
+export async function updateCustomerAnalysisDraft(
+  tenantIdInput: string,
+  draftInput: CustomerAnalysisDraft,
+): Promise<CustomerAnalysisResult> {
+  const paths = await resolveCustomerAnalysisPaths(tenantIdInput)
+  let intakeRaw: string
+  let existingContent: string
+  try {
+    intakeRaw = await readFile(paths.intakeRawPhysicalPath, 'utf8')
+  } catch (error: any) {
+    if (error?.code === 'ENOENT') {
+      throw new Error('vault/intake-raw.md is required before editing P4 blueprint')
+    }
+    throw error
+  }
+  try {
+    existingContent = await readFile(paths.analysisPhysicalPath, 'utf8')
+  } catch (error: any) {
+    if (error?.code === 'ENOENT') {
+      throw new Error('vault/intake-analysis.md is required before editing P4 blueprint')
+    }
+    throw error
+  }
+
+  const intakeRawHash = sha256Hex(intakeRaw)
+  const existingHash = parseAnalysisIntakeRawHash(existingContent)
+  if (existingHash && existingHash !== intakeRawHash) {
+    throw new Error('vault/intake-analysis.md was generated from a different intake-raw.md hash; rerun P4 before editing')
+  }
+
+  const draft = parseCustomerAnalysisDraftContent(JSON.stringify(draftInput))
+  const mode = parseAnalysisMode(existingContent) || 'mock-fallback'
+  const provider = parseAnalysisProvider(existingContent)
+  const previousNote = parseAnalysisNote(existingContent)
+  const note = previousNote.includes('Edited in P4 Blueprint Editor.')
+    ? previousNote
+    : `${previousNote} Edited in P4 Blueprint Editor.`
+  const content = buildAnalysisMarkdown({
+    tenantId: paths.tenantId,
+    mode,
+    provider,
+    intakeRawHash,
+    generatedAt: parseAnalysisGeneratedAt(existingContent),
+    draft,
+    note,
+  })
+
+  await writeFile(paths.analysisPhysicalPath, content, 'utf8')
+
+  return {
+    tenantId: paths.tenantId,
+    path: paths.analysisRelativePath,
+    content,
+    mode,
+    provider,
     alreadyExists: false,
     draft,
   }
