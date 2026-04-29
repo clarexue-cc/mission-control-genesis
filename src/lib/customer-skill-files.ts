@@ -9,6 +9,8 @@ import { resolveWithin } from '@/lib/paths'
 import { TENANT_ID_RE } from '@/lib/tenant-id'
 
 export type CustomerSkillFileStatus = 'created' | 'unchanged' | 'exists-different'
+export type CustomerSkillLifecycleStatus = 'Draft' | 'Tenant' | 'UAT'
+export type CustomerSkillDiskStatus = 'missing' | 'unchanged' | 'exists-different'
 
 export interface CustomerSkillFileRecord {
   skill_id: string
@@ -28,6 +30,31 @@ export interface CustomerSkillFilesResult {
   skipped: number
 }
 
+export interface CustomerSkillLifecycleRecord {
+  skill_id: string
+  skill_name: string
+  title: string
+  order: number
+  workflow_stage: string
+  inputs: string[]
+  outputs: string[]
+  handoff: string
+  human_confirmation: string
+  reason: string
+  path: string
+  vault_path: string
+  lifecycle_status: CustomerSkillLifecycleStatus
+  disk_status: CustomerSkillDiskStatus
+  hash: string
+}
+
+export interface CustomerSkillLifecycleResult {
+  tenant_id: string
+  skills_dir: string
+  uat_feedback_active: boolean
+  skills: CustomerSkillLifecycleRecord[]
+}
+
 interface CustomerSkillFilesPaths {
   tenantId: string
   skillsRelativeDir: string
@@ -45,6 +72,16 @@ async function fileReadable(filePath: string): Promise<boolean> {
 
 function sha256Hex(content: string): string {
   return createHash('sha256').update(content, 'utf8').digest('hex')
+}
+
+function parseJsonLine(line: string): Record<string, any> | null {
+  if (!line.trim()) return null
+  try {
+    const parsed = JSON.parse(line)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
 }
 
 function cleanDisplayValue(value: string): string {
@@ -94,6 +131,27 @@ export async function resolveCustomerSkillFilesPaths(tenantIdInput: string): Pro
     skillsRelativeDir,
     skillsPhysicalDir: resolveWithin(harnessRoot, skillsRelativeDir),
   }
+}
+
+async function hasTenantUatFeedback(tenantId: string): Promise<boolean> {
+  const harnessRoot = await resolveHarnessRoot()
+  const relativeFiles = [
+    `phase0/tenants/${tenantId}/uat-tasks.jsonl`,
+    `phase0/tenants/${tenantId}/uat-submissions.jsonl`,
+  ]
+
+  for (const relativeFile of relativeFiles) {
+    const filePath = resolveWithin(harnessRoot, relativeFile)
+    if (!await fileReadable(filePath)) continue
+    const content = await readFile(filePath, 'utf8')
+    const hasRecord = content
+      .split('\n')
+      .map(line => parseJsonLine(line))
+      .some(record => record?.tenant_id === tenantId && record?.status !== 'closed')
+    if (hasRecord) return true
+  }
+
+  return false
 }
 
 export function buildCustomerSkillFileContent(input: {
@@ -186,5 +244,68 @@ export async function generateCustomerSkillFiles(tenantIdInput: string): Promise
     created: generated.filter(item => item.status === 'created').length,
     unchanged: generated.filter(item => item.status === 'unchanged').length,
     skipped: generated.filter(item => item.status === 'exists-different').length,
+  }
+}
+
+export async function readCustomerSkillLifecycle(tenantIdInput: string): Promise<CustomerSkillLifecycleResult> {
+  const paths = await resolveCustomerSkillFilesPaths(tenantIdInput)
+  const state = await readCustomerAnalysisState(paths.tenantId)
+  if (!state.analysisExists) {
+    throw new Error('vault/intake-analysis.md is required before loading P9 Skills')
+  }
+  if (state.analysisMatchesIntake === false) {
+    throw new Error('vault/intake-analysis.md was generated from a different intake-raw.md hash; rerun P4 before P9')
+  }
+  if (!state.draft || !state.intakeRawHash) {
+    throw new Error('P4 machine-readable Skills blueprint is required before loading P9 Skills')
+  }
+
+  const names = uniqueSkillNames(state.draft.skill_candidates)
+  const uatFeedbackActive = await hasTenantUatFeedback(paths.tenantId)
+  const skills: CustomerSkillLifecycleRecord[] = []
+
+  for (const skill of state.draft.skill_candidates) {
+    const skillName = names.get(skill) || normalizeSkillFileName(skill.id, `skill-${skill.order}`)
+    const relativePath = `${paths.skillsRelativeDir}/${skillName}.md`
+    const vaultPath = `vault/skills/${skillName}.md`
+    const physicalPath = resolveWithin(paths.skillsPhysicalDir, `${skillName}.md`)
+    const content = buildCustomerSkillFileContent({
+      tenantId: paths.tenantId,
+      analysisPath: state.analysisPath,
+      intakeRawHash: state.intakeRawHash,
+      skill,
+    })
+    const hash = sha256Hex(content)
+    let diskStatus: CustomerSkillDiskStatus = 'missing'
+    if (await fileReadable(physicalPath)) {
+      const existing = await readFile(physicalPath, 'utf8')
+      diskStatus = existing === content ? 'unchanged' : 'exists-different'
+    }
+    const hasTenantFile = diskStatus !== 'missing'
+
+    skills.push({
+      skill_id: skill.id,
+      skill_name: skillName,
+      title: skill.title,
+      order: skill.order,
+      workflow_stage: skill.workflow_stage,
+      inputs: skill.inputs,
+      outputs: skill.outputs,
+      handoff: skill.handoff,
+      human_confirmation: skill.human_confirmation,
+      reason: skill.reason,
+      path: relativePath,
+      vault_path: vaultPath,
+      lifecycle_status: hasTenantFile ? (uatFeedbackActive ? 'UAT' : 'Tenant') : 'Draft',
+      disk_status: diskStatus,
+      hash,
+    })
+  }
+
+  return {
+    tenant_id: paths.tenantId,
+    skills_dir: paths.skillsRelativeDir,
+    uat_feedback_active: uatFeedbackActive,
+    skills,
   }
 }

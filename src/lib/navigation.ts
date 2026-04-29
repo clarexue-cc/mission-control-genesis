@@ -15,6 +15,7 @@ const TENANT_CONTEXT_PANELS = new Set([
   'onboarding/customer/confirm',
   'onboarding/customer/deploy',
   'onboarding/customer/soul',
+  'onboarding/customer/skills',
   'boundary',
   'skills',
   'tasks',

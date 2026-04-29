@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
-import { generateCustomerSkillFiles } from '@/lib/customer-skill-files'
+import { generateCustomerSkillFiles, readCustomerSkillLifecycle } from '@/lib/customer-skill-files'
 import { normalizeCustomerTenantId } from '@/lib/customer-intake'
 
 export const dynamic = 'force-dynamic'
@@ -41,6 +41,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, ...result })
   } catch (error: any) {
     const message = error?.message || 'Failed to generate customer Skill files'
+    const status = message.includes('different intake-raw.md hash') ? 409 : 400
+    return errorResponse(message, status)
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const auth = requireRole(request, 'admin')
+  if ('error' in auth) return authErrorResponse(auth.error || 'Authentication required', auth.status || 401)
+
+  let tenantId: string
+  try {
+    tenantId = parseTenantId(request.nextUrl.searchParams.get('tenant_id') || request.nextUrl.searchParams.get('tenant'))
+  } catch (error: any) {
+    return errorResponse(error?.message || 'Invalid tenant_id')
+  }
+
+  try {
+    const result = await readCustomerSkillLifecycle(tenantId)
+    return NextResponse.json({ ok: true, ...result }, {
+      headers: { 'Cache-Control': 'no-store' },
+    })
+  } catch (error: any) {
+    const message = error?.message || 'Failed to load customer Skill lifecycle'
     const status = message.includes('different intake-raw.md hash') ? 409 : 400
     return errorResponse(message, status)
   }

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { NextRequest } from 'next/server'
@@ -124,6 +124,20 @@ ${JSON.stringify(p4Draft, null, 2)}
 `, 'utf8')
   }
 
+  async function writeOpenUatTask() {
+    const uatPath = path.join(harnessRoot, 'phase0/tenants', tenantId, 'uat-tasks.jsonl')
+    await mkdir(path.dirname(uatPath), { recursive: true })
+    await appendFile(uatPath, `${JSON.stringify({
+      id: 'uat_p21_skill_review',
+      tenant_id: tenantId,
+      title: 'P21 验证 Media Intel Skills',
+      description: '客户正在验证 P9 注入后的 Skill 行为。',
+      status: 'open',
+      created_by: 'clare-admin',
+      created_at: '2026-04-29T00:00:00.000Z',
+    })}\n`, 'utf8')
+  }
+
   beforeEach(async () => {
     harnessRoot = await mkdtemp(path.join(os.tmpdir(), 'mc-ob-p9-'))
     process.env = {
@@ -170,6 +184,49 @@ ${JSON.stringify(p4Draft, null, 2)}
     expect(content).toContain('| handoff | 交给 source-evidence-mapper |')
     expect(content).toContain('| human_confirmation | 不需要 |')
     expect(content).toContain('| reason | 把 media-intel-v1 的关注项目、渠道和风险阈值转成可执行监控配置。 |')
+  })
+
+  it('reports Draft, Tenant, and UAT lifecycle status for P9 onboarding cards', async () => {
+    await writeP4Blueprint()
+    const { GET, POST } = await loadRoute()
+
+    const draftResponse = await GET(new NextRequest(`http://localhost/api/onboarding/customer/skills?tenant_id=${tenantId}`))
+    const draftBody = await draftResponse.json()
+
+    expect(draftResponse.status).toBe(200)
+    expect(draftBody.ok).toBe(true)
+    expect(draftBody.skills).toHaveLength(2)
+    expect(draftBody.skills[0]).toMatchObject({
+      skill_id: 'media-intel-topic-planner',
+      skill_name: 'media-intel-topic-planner',
+      title: 'Media Intel Topic Planner',
+      order: 1,
+      workflow_stage: '客户监控主题配置',
+      inputs: ['intake-raw.md', '客户关注项目', '渠道清单'],
+      outputs: ['监控主题矩阵', '风险阈值'],
+      handoff: '交给 source-evidence-mapper',
+      human_confirmation: '不需要',
+      reason: '把 media-intel-v1 的关注项目、渠道和风险阈值转成可执行监控配置。',
+      lifecycle_status: 'Draft',
+      vault_path: 'vault/skills/media-intel-topic-planner.md',
+      path: 'phase0/tenants/media-intel-v1/vault/skills/media-intel-topic-planner.md',
+    })
+
+    await POST(request({ tenant_id: tenantId }))
+    const tenantResponse = await GET(new NextRequest(`http://localhost/api/onboarding/customer/skills?tenant_id=${tenantId}`))
+    const tenantBody = await tenantResponse.json()
+
+    expect(tenantResponse.status).toBe(200)
+    expect(tenantBody.uat_feedback_active).toBe(false)
+    expect(tenantBody.skills.map((skill: any) => skill.lifecycle_status)).toEqual(['Tenant', 'Tenant'])
+
+    await writeOpenUatTask()
+    const uatResponse = await GET(new NextRequest(`http://localhost/api/onboarding/customer/skills?tenant_id=${tenantId}`))
+    const uatBody = await uatResponse.json()
+
+    expect(uatResponse.status).toBe(200)
+    expect(uatBody.uat_feedback_active).toBe(true)
+    expect(uatBody.skills.map((skill: any) => skill.lifecycle_status)).toEqual(['UAT', 'UAT'])
   })
 
   it('rejects non-admin generation', async () => {
