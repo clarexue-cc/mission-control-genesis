@@ -36,7 +36,7 @@ const navGroups: NavGroup[] = [
       { id: 'tasks', label: 'Tasks', icon: <TasksIcon />, priority: true, essential: true },
       { id: 'chat', label: 'Chat', icon: <ChatIcon />, priority: false, essential: true },
       { id: 'channels', label: 'Channels', icon: <ChannelsIcon />, priority: false },
-      { id: 'skills', label: 'Skills', icon: <SkillsIcon />, priority: false },
+      { id: 'skills', label: 'Skills Plaza', icon: <SkillsIcon />, priority: false, essential: true },
     ],
   },
   {
@@ -56,7 +56,7 @@ const navGroups: NavGroup[] = [
           { id: 'onboarding/customer/deploy', label: 'P6 Deploy', icon: <DeliveryIcon />, priority: false, essential: true },
           { id: 'onboarding/customer/soul', label: 'P7 SOUL/AGENTS', icon: <AgentsIcon />, priority: false, essential: true },
           { id: 'boundary', label: 'P8 Boundary', icon: <BoundaryIcon />, priority: false, essential: true },
-          { id: 'skills', label: 'P9 Skills', icon: <SkillsIcon />, priority: false, essential: true },
+          { id: 'onboarding/customer/skills', label: 'P9 Skills 配置', icon: <SkillsIcon />, priority: false, essential: true },
           { id: 'tasks', label: 'P21 UAT', icon: <TasksIcon />, priority: false, essential: true },
           { id: 'delivery', label: 'P22 Delivery', icon: <DeliveryIcon />, priority: false, essential: true },
         ],

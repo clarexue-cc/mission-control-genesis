@@ -48,6 +48,13 @@ Stop and fix the server before testing if port 3300 is not serving this worktree
 Tenant vault source-of-truth and template governance live in `docs/runbooks/template-management.md`.
 Template updates require PR review, and existing tenant vaults are not automatically migrated.
 
+## Skills Lifecycle
+
+Customer-specific Skills lifecycle and the P9 split from Skills Center live in
+`docs/runbooks/skills-lifecycle.md`. Current implementation is Draft (P4
+blueprint) → Tenant (P9 vault injection) → UAT (P21 feedback); Publish, Review,
+and ClawHub Marketplace are Phase 2 planning only.
+
 ## Docker
 
 ```bash
