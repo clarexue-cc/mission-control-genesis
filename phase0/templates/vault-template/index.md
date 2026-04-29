@@ -1,7 +1,9 @@
-# Vault 内容索引
+# {{TENANT_NAME}} Vault 内容索引
 
 > Agent 每次 session 开始时先读此文件，了解 vault 里有哪些内容可用。
 > 此文件由 Agent 自动维护，新增知识、Skill、决策时更新对应条目。
+> Tenant ID: {{TENANT_ID}}
+> Delivery Mode: {{DELIVERY_MODE}}
 
 ## Agent 私有空间
 | 文件 | 说明 | 更新频率 |
@@ -24,4 +26,4 @@
 | （部署后由 Agent 自动维护此列表） | |
 
 ---
-*最后更新：部署时自动生成*
+*最后更新：{{GENERATED_AT}}*

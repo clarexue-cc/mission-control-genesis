@@ -1,4 +1,13 @@
-# 当前任务
+# {{TENANT_NAME}} 当前任务
+
+> Tenant: {{TENANT_ID}}
+> Delivery Mode: {{DELIVERY_MODE}}
+
+## Agent Role
+{{ROLE}}
+
+## Agent Tone
+{{TONE}}
 
 ## 状态
 暂无进行中的任务。
