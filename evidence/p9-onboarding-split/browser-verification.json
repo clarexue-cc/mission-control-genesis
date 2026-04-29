@@ -1,0 +1,48 @@
+{
+  "verified_at": "2026-04-29T13:28:44.510Z",
+  "local_dev_url": "http://127.0.0.1:3033",
+  "tenant_id": "ceo-assistant-v1",
+  "checks": [
+    {
+      "name": "P9 Customer Onboarding page shows 4 CEO Skills with 7 fields",
+      "url": "/onboarding/customer/skills?tenant=ceo-assistant-v1&role=admin",
+      "result": "passed",
+      "evidence": "p9-onboarding-ceo-skills.png",
+      "markers": [
+        "CEO 资讯聚合",
+        "苏格拉底讨论伙伴",
+        "课程 PPT 生成",
+        "名人动态追踪",
+        "reason",
+        "workflow_stage",
+        "inputs",
+        "outputs",
+        "handoff",
+        "human_confirmation",
+        "vault/skills/*.md"
+      ]
+    },
+    {
+      "name": "Skills Center is Phase 2 ClawHub placeholder with read-only tenant inventory",
+      "url": "/skills?tenant=ceo-assistant-v1&role=admin",
+      "result": "passed",
+      "evidence": "skills-center-clawhub-placeholder.png",
+      "markers": [
+        "技能广场",
+        "ClawHub 技能广场（Phase 2 规划中）",
+        "已 Tenant 落地的 Skills（只读）",
+        "上传 / 审核 / 价格 / 版本 / 一键发布 待 Phase 2 实施"
+      ]
+    },
+    {
+      "name": "Customer Setup left nav highlights P9 Skills 配置",
+      "url": "/onboarding/customer/skills?tenant=ceo-assistant-v1&role=admin",
+      "result": "passed",
+      "evidence": "p9-left-nav-highlight.png",
+      "markers": [
+        "Customer Setup",
+        "P9 Skills 配置"
+      ]
+    }
+  ]
+}

@@ -108,7 +108,7 @@ Checkpoint URLs:
 - P6: `/onboarding/customer/deploy?role=admin&tenant=media-intel-v1`
 - P7: `/onboarding/customer/soul?role=admin&tenant=media-intel-v1`
 - P8: `/boundary?tenant=media-intel-v1`
-- P9: `/skills?tenant=media-intel-v1`
+- P9: `/onboarding/customer/skills?tenant=media-intel-v1`
 - P10: `/tests?tenant=media-intel-v1`
 - P11: `/logs?tenant=media-intel-v1`
 - P12: `/vault?tenant=media-intel-v1`
