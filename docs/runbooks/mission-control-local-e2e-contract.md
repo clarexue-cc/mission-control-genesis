@@ -59,15 +59,17 @@ server first. Do not continue testing against the wrong build.
 
 ## Login contract
 
-Local E2E login is fixed:
+Dev / preview E2E login is fixed to one account:
 
 ```text
-username: admin
-password: testpass1234!
+username: clare-admin
+password: dev-test-123
 ```
 
-Do not guess other accounts. In particular, do not burn time trying
-`testadmin` just because `.env.test` mentions it.
+Do not guess other accounts. The old `admin`, `testadmin`, and
+`admin@genesis.local` identities are not the Mission Control dev/preview login.
+`admin@genesis.local` belongs to Langfuse or other tracing backends and must not
+be reused for MC.
 
 If login fails, inspect the local test database first:
 
@@ -76,7 +78,7 @@ cd /Users/clare/Desktop/.worktrees/mission-control-fix-p5-approval-v2
 node -e "const Database=require('better-sqlite3'); const db=new Database('.data/mission-control.db'); console.log(db.prepare('select id, username, role, provider, is_approved from users').all())"
 ```
 
-For this local E2E database only, if the `admin` password hash has drifted,
+For this local E2E database only, if the `clare-admin` password hash has drifted,
 realign it to the test password instead of guessing:
 
 ```bash
@@ -85,8 +87,8 @@ const Database = require('better-sqlite3')
 const { hashPassword } = require('./src/lib/password.ts')
 const db = new Database('.data/mission-control.db')
 db.prepare('update users set password_hash = ?, updated_at = ? where username = ?')
-  .run(hashPassword('testpass1234!'), Math.floor(Date.now() / 1000), 'admin')
-console.log('admin test password reset for local E2E')
+  .run(hashPassword('dev-test-123'), Math.floor(Date.now() / 1000), 'clare-admin')
+console.log('clare-admin test password reset for local E2E')
 NODE
 ```
 
