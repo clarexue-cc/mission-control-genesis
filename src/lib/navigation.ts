@@ -9,6 +9,18 @@ export function panelHref(panel: string): string {
   return panel === 'overview' ? '/' : `/${panel}`
 }
 
+const TENANT_CONTEXT_PANELS = new Set([
+  'onboarding/customer',
+  'onboarding/customer/analyze',
+  'onboarding/customer/confirm',
+  'onboarding/customer/deploy',
+  'onboarding/customer/soul',
+  'boundary',
+  'skills',
+  'tasks',
+  'delivery',
+])
+
 const PREFETCHED_ROUTES = new Set<string>()
 const DEFAULT_PREFETCH_PANELS = [
   'overview',
@@ -29,7 +41,7 @@ function safePrefetch(router: ReturnType<typeof useRouter>, href: string) {
 export function useNavigateToPanel() {
   const router = useRouter()
   const pathname = usePathname()
-  const { setActiveTab, setChatPanelOpen } = useMissionControl()
+  const { activeTenant, setActiveTab, setChatPanelOpen } = useMissionControl()
 
   useEffect(() => {
     for (const panel of DEFAULT_PREFETCH_PANELS) {
@@ -39,7 +51,18 @@ export function useNavigateToPanel() {
   }, [pathname, router])
 
   return useCallback((panel: string) => {
-    const href = panelHref(panel)
+    const baseHref = panelHref(panel)
+    let href = baseHref
+    if (TENANT_CONTEXT_PANELS.has(panel)) {
+      const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+      const tenant = params.get('tenant') || params.get('tenant_id') || activeTenant?.slug
+      const role = params.get('role')
+      const nextParams = new URLSearchParams()
+      if (tenant) nextParams.set('tenant', tenant)
+      if (role) nextParams.set('role', role)
+      const query = nextParams.toString()
+      if (query) href = `${baseHref}?${query}`
+    }
     if (href === pathname) return
     safePrefetch(router, href)
     startNavigationTiming(pathname, href)
@@ -53,7 +76,7 @@ export function useNavigateToPanel() {
     startTransition(() => {
       router.push(href, { scroll: false })
     })
-  }, [pathname, router, setActiveTab, setChatPanelOpen])
+  }, [activeTenant?.slug, pathname, router, setActiveTab, setChatPanelOpen])
 }
 
 export function usePrefetchPanel() {

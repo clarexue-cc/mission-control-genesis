@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useMissionControl } from '@/store'
 import { Button } from '@/components/ui/button'
@@ -95,7 +96,9 @@ function getSourceLabel(source: string): string {
 
 export function SkillsPanel() {
   const t = useTranslations('skills')
+  const searchParams = useSearchParams()
   const { dashboardMode, activeTenant, skillsList, skillGroups, skillsTotal, setSkillsData } = useMissionControl()
+  const requestedTenant = searchParams.get('tenant') || searchParams.get('tenant_id')
   const [loading, setLoading] = useState(skillsList === null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -135,7 +138,7 @@ export function SkillsPanel() {
     message?: string
     securityStatus?: string
   } | null>(null)
-  const [blueprintTenant, setBlueprintTenant] = useState(activeTenant?.slug || 'media-intel-v1')
+  const [blueprintTenant, setBlueprintTenant] = useState(requestedTenant || activeTenant?.slug || 'media-intel-v1')
   const [blueprintSkills, setBlueprintSkills] = useState<BlueprintSkillCandidate[]>([])
   const [blueprintLoading, setBlueprintLoading] = useState(false)
   const [blueprintError, setBlueprintError] = useState<string | null>(null)
@@ -147,8 +150,12 @@ export function SkillsPanel() {
   }, [])
 
   useEffect(() => {
+    if (requestedTenant) {
+      setBlueprintTenant(requestedTenant)
+      return
+    }
     if (activeTenant?.slug) setBlueprintTenant(activeTenant.slug)
-  }, [activeTenant?.slug])
+  }, [activeTenant?.slug, requestedTenant])
 
   const loadSkills = useCallback(async (opts?: { initial?: boolean }) => {
     if (opts?.initial) setLoading(true)

@@ -12,9 +12,14 @@ export interface CustomerDeployStatusDisplay {
 }
 
 export const P6_MOCK_FALLBACK_NOTICE = '真实生产部署需配 docker-compose.yml 启动 OpenClaw 容器（panorama v6 闸门 2 任务）'
+export const P6_DEV_PREVIEW_NOTICE = '本机已完成 new-tenant.sh 初始化；这里展示开发预览名，底层 deploy-status 仍保留真实 container 名用于 runtime 对接。'
 
 function isMockFallbackDeploy(status?: CustomerDeployStatusDisplayInput | null): boolean {
   return status?.mode === 'mock-fallback' || status?.status === 'mock-success'
+}
+
+function isLocalTenantPreviewDeploy(status: CustomerDeployStatusDisplayInput, tenantId: string): boolean {
+  return status.mode === 'new-tenant-script' && status.container === `tenant-${tenantId}`
 }
 
 export function getCustomerDeployStatusDisplay(
@@ -36,6 +41,15 @@ export function getCustomerDeployStatusDisplay(
       modeLabel: '开发预览容器（dev-preview）',
       statusLabel: '成功（开发预览）',
       notice: P6_MOCK_FALLBACK_NOTICE,
+    }
+  }
+
+  if (isLocalTenantPreviewDeploy(status, tenantId)) {
+    return {
+      containerName: `${tenantId}-dev-preview`,
+      modeLabel: '开发预览容器（dev-preview）',
+      statusLabel: '成功（本机预览）',
+      notice: P6_DEV_PREVIEW_NOTICE,
     }
   }
 

@@ -131,12 +131,12 @@ export function CustomerSoulClient({ username }: { username: string }) {
   }
 
   return (
-    <main className="min-h-screen overflow-auto bg-background text-foreground">
+    <main className="h-screen overflow-y-auto bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
         <header className="border-b border-border pb-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">OB-S5</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P7 / OB-S5</p>
               <h1 className="mt-2 text-3xl font-semibold tracking-normal">SOUL / AGENTS 生成</h1>
             </div>
             <div className="flex items-center gap-2">
@@ -155,7 +155,7 @@ export function CustomerSoulClient({ username }: { username: string }) {
           </p>
         </header>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
+        <section className="grid gap-6 xl:grid-cols-[minmax(300px,0.52fr)_minmax(0,1.48fr)]">
           <form onSubmit={generate} className="space-y-5 rounded-lg border border-border bg-card p-5">
             <div>
               <label className="text-sm font-medium" htmlFor="tenant-id">Tenant ID</label>
