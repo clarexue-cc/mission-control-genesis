@@ -422,12 +422,12 @@ export function BoundaryEditorPanel() {
         </div>
       )}
 
-      <div className="grid min-h-[68vh] gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+      <div className="grid min-h-[68vh] gap-4 xl:grid-cols-[minmax(280px,0.42fr)_minmax(0,1.58fr)]">
         <section className={`${panelClassName} flex min-h-[60vh] flex-col gap-3 overflow-hidden p-4`}>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-foreground">规则原文</h2>
-              <p className="text-xs text-muted-foreground">左侧是机器会读取的 JSON，改动后右侧会同步刷新。</p>
+              <h2 className="text-sm font-semibold text-foreground">机器底稿</h2>
+              <p className="text-xs text-muted-foreground">一般不用看；右侧确认后这里会同步保存。</p>
             </div>
             <span className="text-xs text-muted-foreground">格式：JSON</span>
           </div>
@@ -503,6 +503,9 @@ export function BoundaryEditorPanel() {
                 </div>
                 <div className="mt-2 text-xs text-muted-foreground">
                   参考来源：P4 的 intake-analysis.md 边界草稿；P7 的 SOUL.md / AGENTS.md 禁止行为和工作规范。
+                </div>
+                <div className="mt-2 rounded-md border border-primary/20 bg-background/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                  要微调时，直接按编号说：第几条红线改成什么、删掉什么、补充什么。确认后再回写 boundary.yaml，不需要改左侧 JSON。
                 </div>
               </div>
 
