@@ -2,13 +2,11 @@
 
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import loader from '@monaco-editor/loader'
 import { Button } from '@/components/ui/button'
 import { useMissionControl } from '@/store'
 import {
-  createBlankDriftRule,
-  createBlankForbiddenRule,
   parseBoundaryRulesRaw,
   stringifyBoundaryRules,
   validateBoundaryRules,
@@ -65,32 +63,10 @@ interface ToastState {
 
 const tenantOptions = ['ceo-assistant-v1', 'media-intel-v1', 'web3-research-v1']
 const inputClassName = 'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/10'
-const textareaClassName = `${inputClassName} min-h-[86px] resize-y font-mono text-xs`
 const panelClassName = 'rounded-lg border border-border bg-card/70'
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error || 'Unknown error')
-}
-
-function nextRuleId(prefix: string) {
-  return `${prefix}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-function summarizeDrift(rule: DriftRule) {
-  return [rule.id, rule.category].filter(Boolean).join(' · ')
-}
-
-function groupForbiddenRules(rules: ForbiddenRule[]) {
-  return rules.reduce<Record<string, Array<{ rule: ForbiddenRule; index: number }>>>((groups, rule, index) => {
-    const key = rule.category || '未分组'
-    groups[key] = groups[key] || []
-    groups[key].push({ rule, index })
-    return groups
-  }, {})
-}
-
-function fieldList(value: string[] | undefined) {
-  return Array.isArray(value) ? value.join('\n') : ''
 }
 
 function displayMode(mode: BoundaryMode) {
@@ -120,8 +96,39 @@ function displayAction(value: string) {
   return value || '未设置'
 }
 
-function translatedForbiddenSummary(rule: ForbiddenRule) {
-  return `${displaySeverity(rule.severity)} · ${displayAction(rule.action)} · ${rule.category || '未分组'}`
+function forbiddenReason(rule: ForbiddenRule) {
+  const text = `${rule.label} ${(rule.patterns || []).join(' ')} ${rule.pattern} ${rule.response_template}`
+  if (/公开来源|推测|事实|商业判断|人物动态/.test(text)) {
+    return '保证后续内容可追溯，避免把传闻、推测或未核实判断写成事实。'
+  }
+  if (/人物评价|商业建议|争议|证据|不确定/.test(text)) {
+    return '人物评价、商业建议和争议内容容易被误读，必须保留证据和不确定性。'
+  }
+  if (/确认|发布|PPT|课程稿|邮件|社媒|对外/.test(text)) {
+    return '对外内容会影响客户口径和声誉，必须先经过 CEO / Clare 确认。'
+  }
+  if (/未授权|私密|账号|付费|内部文件|受限/.test(text)) {
+    return '避免越权获取或使用受限材料，保护客户隐私、版权和账号安全。'
+  }
+  return '这是 P4 边界草稿沉淀出的红线，用来防止后续 Agent 产物偏离客户要求。'
+}
+
+function ruleSignal(rule: ForbiddenRule | DriftRule) {
+  const maybePatterns = (rule as Partial<ForbiddenRule>).patterns
+  const patterns = Array.isArray(maybePatterns) ? maybePatterns : []
+  const preview = patterns.filter(Boolean).slice(0, 3)
+  if (preview.length > 0) {
+    return `${preview.join('；')}${patterns.length > preview.length ? `；另 ${patterns.length - preview.length} 条` : ''}`
+  }
+  return rule.pattern ? '使用已保存的正则/关键词规则判断' : '保存后由后续流程按 boundary.yaml 检查'
+}
+
+function forbiddenGuarantee(rule: ForbiddenRule) {
+  return `保存进 boundary.yaml 后，后续流程会按这些线索检查请求；命中时系统会“${displayAction(rule.action)}”，并返回固定提示。`
+}
+
+function driftGuarantee(rule: DriftRule) {
+  return `保存进 boundary.yaml 后，后续验证会按这条偏离线索检查 Agent 输出，避免内容跑偏。`
 }
 
 export function BoundaryEditorPanel() {
@@ -149,12 +156,10 @@ export function BoundaryEditorPanel() {
   const [modeNote, setModeNote] = useState('')
   const [p4BoundaryDraft, setP4BoundaryDraft] = useState<BoundaryRules | null>(null)
   const [p4BoundaryMessage, setP4BoundaryMessage] = useState('')
-  const [expandedRules, setExpandedRules] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<ToastState | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const dirty = editorValue !== savedValue
-  const forbiddenGroups = useMemo(() => groupForbiddenRules(rules?.forbidden_patterns || []), [rules])
   const forbiddenCount = rules?.forbidden_patterns.length || 0
   const driftCount = rules?.drift_patterns.length || 0
 
@@ -196,15 +201,6 @@ export function BoundaryEditorPanel() {
     }
     if (activeTenant?.slug) setTenant(activeTenant.slug)
   }, [activeTenant?.slug, urlTenant])
-
-  const toggleExpanded = useCallback((id: string) => {
-    setExpandedRules(current => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
 
   const applyRules = useCallback((nextRules: BoundaryRules) => {
     setRules(nextRules)
@@ -250,15 +246,9 @@ export function BoundaryEditorPanel() {
       if (body.rules) {
         setRules(body.rules)
         setValidationError(body.parse_error)
-        const firstIds = [
-          ...body.rules.forbidden_patterns.slice(0, 2).map(rule => `forbidden-${rule.id}`),
-          ...body.rules.drift_patterns.slice(0, 1).map(rule => `drift-${rule.id}`),
-        ]
-        setExpandedRules(new Set(firstIds))
       } else {
         setRules(null)
         setValidationError(body.parse_error || '边界规则 JSON 格式不正确')
-        setExpandedRules(new Set())
       }
 
       try {
@@ -273,8 +263,6 @@ export function BoundaryEditorPanel() {
             setRules(blueprint.boundary_rules)
             setEditorValue(draftContent)
             setValidationError(null)
-            const firstIds = blueprint.boundary_rules.forbidden_patterns.slice(0, 2).map(rule => `forbidden-${rule.id}`)
-            setExpandedRules(new Set(firstIds))
           }
         } else if (blueprintBody?.error) {
           setP4BoundaryMessage(blueprintBody.error)
@@ -311,26 +299,6 @@ export function BoundaryEditorPanel() {
       setValidationError(errorMessage(error))
     }
   }, [])
-
-  const updateForbiddenRule = useCallback((index: number, update: (rule: ForbiddenRule) => ForbiddenRule) => {
-    if (!rules) return
-    applyRules({
-      ...rules,
-      forbidden_patterns: rules.forbidden_patterns.map((rule, ruleIndex) => (
-        ruleIndex === index ? update(rule) : rule
-      )),
-    })
-  }, [applyRules, rules])
-
-  const updateDriftRule = useCallback((index: number, update: (rule: DriftRule) => DriftRule) => {
-    if (!rules) return
-    applyRules({
-      ...rules,
-      drift_patterns: rules.drift_patterns.map((rule, ruleIndex) => (
-        ruleIndex === index ? update(rule) : rule
-      )),
-    })
-  }, [applyRules, rules])
 
   const saveRules = useCallback(async () => {
     setSaving(true)
@@ -538,150 +506,82 @@ export function BoundaryEditorPanel() {
                 </div>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="space-y-1.5">
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">规则版本</span>
-                  <input
-                    className={inputClassName}
-                    value={rules.version}
-                    onChange={(event) => applyRules({ ...rules, version: event.target.value })}
-                  />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">最后更新</span>
-                  <input
-                    className={inputClassName}
-                    value={rules.last_updated}
-                    onChange={(event) => applyRules({ ...rules, last_updated: event.target.value })}
-                  />
-                </label>
+              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <span className="rounded-md border border-border bg-background/60 px-2.5 py-1">版本：{rules.version || '未设置'}</span>
+                <span className="rounded-md border border-border bg-background/60 px-2.5 py-1">更新日期：{rules.last_updated || '未设置'}</span>
+                <span className="rounded-md border border-border bg-background/60 px-2.5 py-1">确认视图：只看业务含义，不看内部字段</span>
               </div>
 
               {activeTab === 'forbidden' ? (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-foreground">按分组查看禁止规则</div>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        const blank = createBlankForbiddenRule()
-                        blank.id = nextRuleId('forbidden')
-                        applyRules({ ...rules, forbidden_patterns: [...rules.forbidden_patterns, blank] })
-                        setExpandedRules(current => new Set([...current, `forbidden-${blank.id}`]))
-                      }}
-                    >
-                      新增规则
-                    </Button>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">禁止规则清单</div>
+                    <p className="mt-1 text-xs text-muted-foreground">每条只需要确认：禁止什么、为什么禁止、系统怎么保证。</p>
                   </div>
 
-                  {Object.entries(forbiddenGroups).map(([category, entries]) => (
-                    <div key={category} className="rounded-lg border border-border bg-background/50">
-                      <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                        <div className="text-sm font-semibold text-foreground">{category}</div>
-                        <div className="text-xs text-muted-foreground">{entries.length} 条规则</div>
+                  {rules.forbidden_patterns.map((rule, index) => (
+                    <div key={rule.id || index} className="rounded-lg border border-border bg-card/70 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-primary">第 {index + 1} 条红线</div>
+                          <div className="mt-1 text-base font-semibold leading-6 text-foreground">{rule.label || '未命名禁止规则'}</div>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-1.5 text-xs">
+                          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-amber-700 dark:text-amber-200">
+                            {displaySeverity(rule.severity)}
+                          </span>
+                          <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-primary">
+                            {displayAction(rule.action)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="space-y-2 p-3">
-                        {entries.map(({ rule, index }) => {
-                          const key = `forbidden-${rule.id || index}`
-                          const expanded = expandedRules.has(key)
-                          return (
-                            <div key={key} className="rounded-md border border-border bg-card/60">
-                              <button
-                                type="button"
-                                onClick={() => toggleExpanded(key)}
-                                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left"
-                              >
-                                <span className="min-w-0">
-                                  <span className="block truncate text-sm font-medium text-foreground">{rule.label || rule.id}</span>
-                                  <span className="block truncate text-xs text-muted-foreground">{translatedForbiddenSummary(rule)}</span>
-                                </span>
-                                <span className="shrink-0 text-xs text-muted-foreground">{expanded ? '收起' : '展开'}</span>
-                              </button>
 
-                              {expanded && (
-                                <div className="space-y-3 border-t border-border p-3">
-                                  <div className="rounded-md border border-border bg-background/50 px-3 py-2 text-xs leading-5 text-muted-foreground">
-                                    判断方式：匹配到下面的关键词/正则时，系统按“{displayAction(rule.action)}”处理。给老板看时主要确认这条红线是否合理，不需要改内部英文值。
-                                  </div>
-                                  <div className="grid gap-3 md:grid-cols-2">
-                                    <RuleTextField label="规则 ID" value={rule.id} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, id: value }))} />
-                                    <RuleTextField label="规则分组" value={rule.category} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, category: value }))} />
-                                    <RuleTextField label={`风险等级：${displaySeverity(rule.severity)}`} value={rule.severity} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, severity: value }))} />
-                                    <RuleTextField label={`处理方式：${displayAction(rule.action)}`} value={rule.action} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, action: value }))} />
-                                    <RuleTextField label="老板可读标题" value={rule.label} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, label: value }))} />
-                                    <RuleTextField label="正则匹配" value={rule.pattern} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, pattern: value }))} />
-                                  </div>
-                                  <label className="block space-y-1.5">
-                                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">关键词 / 句式匹配</span>
-                                    <textarea
-                                      className={textareaClassName}
-                                      value={fieldList(rule.patterns)}
-                                      onChange={(event) => updateForbiddenRule(index, current => ({
-                                        ...current,
-                                        patterns: event.target.value.split('\n').map(item => item.trim()).filter(Boolean),
-                                      }))}
-                                    />
-                                  </label>
-                                  <label className="block space-y-1.5">
-                                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">触发后的提示语</span>
-                                    <textarea
-                                      className={textareaClassName}
-                                      value={rule.response_template}
-                                      onChange={(event) => updateForbiddenRule(index, current => ({ ...current, response_template: event.target.value }))}
-                                    />
-                                  </label>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
+                      <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+                        <div className="rounded-md border border-border bg-background/60 p-3">
+                          <div className="text-xs font-semibold text-muted-foreground">禁止什么</div>
+                          <p className="mt-1 leading-6 text-foreground">{rule.label || rule.id}</p>
+                        </div>
+                        <div className="rounded-md border border-border bg-background/60 p-3">
+                          <div className="text-xs font-semibold text-muted-foreground">为什么禁止</div>
+                          <p className="mt-1 leading-6 text-foreground">{forbiddenReason(rule)}</p>
+                        </div>
+                        <div className="rounded-md border border-border bg-background/60 p-3">
+                          <div className="text-xs font-semibold text-muted-foreground">怎么保证</div>
+                          <p className="mt-1 leading-6 text-foreground">{forbiddenGuarantee(rule)}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 rounded-md border border-dashed border-border bg-background/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                        系统识别线索：{ruleSignal(rule)}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-foreground">偏离规则</div>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        const blank = createBlankDriftRule()
-                        blank.id = nextRuleId('drift')
-                        applyRules({ ...rules, drift_patterns: [...rules.drift_patterns, blank] })
-                        setExpandedRules(current => new Set([...current, `drift-${blank.id}`]))
-                      }}
-                    >
-                      新增偏离规则
-                    </Button>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">偏离规则清单</div>
+                    <p className="mt-1 text-xs text-muted-foreground">用来发现 Agent 输出是否偏离客户设定。</p>
                   </div>
 
                   {rules.drift_patterns.map((rule, index) => {
-                    const key = `drift-${rule.id || index}`
-                    const expanded = expandedRules.has(key)
                     return (
-                      <div key={key} className="rounded-md border border-border bg-card/60">
-                        <button
-                          type="button"
-                          onClick={() => toggleExpanded(key)}
-                          className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left"
-                        >
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm font-medium text-foreground">{rule.id}</span>
-                            <span className="block truncate text-xs text-muted-foreground">{summarizeDrift(rule)}</span>
-                          </span>
-                          <span className="shrink-0 text-xs text-muted-foreground">{expanded ? '收起' : '展开'}</span>
-                        </button>
-
-                        {expanded && (
-                          <div className="space-y-3 border-t border-border p-3">
-                            <div className="grid gap-3 md:grid-cols-2">
-                              <RuleTextField label="规则 ID" value={rule.id} onChange={(value) => updateDriftRule(index, current => ({ ...current, id: value }))} />
-                              <RuleTextField label="规则分组" value={rule.category} onChange={(value) => updateDriftRule(index, current => ({ ...current, category: value }))} />
-                            </div>
-                            <RuleTextField label="正则匹配" value={rule.pattern} onChange={(value) => updateDriftRule(index, current => ({ ...current, pattern: value }))} />
+                      <div key={rule.id || index} className="rounded-lg border border-border bg-card/70 p-4">
+                        <div className="text-xs font-semibold text-primary">第 {index + 1} 条偏离检查</div>
+                        <div className="mt-1 text-base font-semibold text-foreground">{rule.id || '未命名偏离规则'}</div>
+                        <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">
+                          <div className="rounded-md border border-border bg-background/60 p-3">
+                            <div className="text-xs font-semibold text-muted-foreground">为什么关注</div>
+                            <p className="mt-1 leading-6 text-foreground">避免 Agent 输出偏离当前客户的角色、范围或交付标准。</p>
                           </div>
-                        )}
+                          <div className="rounded-md border border-border bg-background/60 p-3">
+                            <div className="text-xs font-semibold text-muted-foreground">怎么保证</div>
+                            <p className="mt-1 leading-6 text-foreground">{driftGuarantee(rule)}</p>
+                          </div>
+                        </div>
+                        <div className="mt-3 rounded-md border border-dashed border-border bg-background/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                          系统识别线索：{ruleSignal(rule)}
+                        </div>
                       </div>
                     )
                   })}
@@ -705,22 +605,5 @@ export function BoundaryEditorPanel() {
         </div>
       )}
     </div>
-  )
-}
-
-function RuleTextField({ label, value, onChange }: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-}) {
-  return (
-    <label className="space-y-1.5">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
-      <input
-        className={inputClassName}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
   )
 }
