@@ -1,0 +1,28 @@
+{
+  "base": "http://127.0.0.1:3032",
+  "screenshots": {
+    "p4": "evidence/pre-walk-fix/p4-ceo-skills.png",
+    "p22": "evidence/pre-walk-fix/p22-pdf-cjk-preflight.png",
+    "p6": "evidence/pre-walk-fix/p6-dev-preview.png"
+  },
+  "p4": {
+    "tenant_id": "ceo-assistant-v1",
+    "skill_ids": [
+      "ceo-news-aggregator",
+      "socratic-discussion-partner",
+      "course-ppt-generator",
+      "notable-person-tracker"
+    ]
+  },
+  "p22": {
+    "pdf": "evidence/pre-walk-fix/p22-checklist-luolaoshi.pdf",
+    "hasNotoCjk": true,
+    "hasToUnicode": true,
+    "hasLuoTeacherMarker": true,
+    "bytes": 6189
+  },
+  "p6": {
+    "container_display": "ceo-assistant-v1-dev-preview",
+    "notice": "真实生产部署需配 docker-compose.yml 启动 OpenClaw 容器（panorama v6 闸门 2 任务）"
+  }
+}
