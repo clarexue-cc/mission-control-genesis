@@ -6,13 +6,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 
 import {
+  createReadyToShipPdf,
   evaluateRuntime,
   getReadyToShipReport,
   getRuntimeHealthTarget,
+  preflightReadyToShipPdf,
   type ReadyToShipCheckRule,
 } from '@/lib/harness-ready-to-ship'
 
 const TENANT = 'media-intel-v1'
+
+function utf16BeHexForTest(value: string): string {
+  const buffer = Buffer.from(value, 'utf16le')
+  for (let index = 0; index < buffer.length; index += 2) {
+    const lowByte = buffer[index]
+    buffer[index] = buffer[index + 1]
+    buffer[index + 1] = lowByte
+  }
+  return buffer.toString('hex').toUpperCase()
+}
 
 function rule(id: string, name: string): ReadyToShipCheckRule {
   return {
@@ -168,5 +180,27 @@ describe('harness ready-to-ship runtime fallback', () => {
 
     expect(result.status).toBe('fail')
     expect(result.summary).toBe('Health returned status=degraded')
+  })
+
+  it('exports P22 PDF with CJK font declaration and ToUnicode mapping', async () => {
+    const report = await getReadyToShipReport({ tenant: TENANT })
+    const pdf = createReadyToShipPdf({
+      ...report,
+      tenant: '罗老师',
+      checks: report.checks.map((check, index) => index === 0
+        ? { ...check, check_name: '中文字体预检', summary: '不乱码标记' }
+        : check),
+    })
+    const raw = Buffer.from(pdf).toString('utf8')
+    const preflight = preflightReadyToShipPdf(pdf, '罗老师')
+
+    expect(preflight.ok).toBe(true)
+    expect(preflight.fontName).toBe('NotoSansCJKsc-Regular')
+    expect(preflight.hasToUnicode).toBe(true)
+    expect(preflight.hasExpectedChineseText).toBe(true)
+    expect(raw).toContain('/ToUnicode')
+    expect(raw).toContain('/BaseFont /NotoSansCJKsc-Regular')
+    expect(raw).toContain('beginbfchar')
+    expect(raw).toContain(utf16BeHexForTest('罗老师'))
   })
 })

@@ -93,6 +93,8 @@ const TEST_SUITES = [
   { id: 'drift', label: 'Drift', file: 'drift-6-cc.md', expected: 6 },
 ] as const
 
+const PDF_CJK_FONT_NAME = 'NotoSansCJKsc-Regular'
+
 function normalizeProfile(value: unknown): ReadyToShipProfile {
   return value === 'green' || value === 'all-green' ? 'green' : 'strict'
 }
@@ -511,6 +513,78 @@ function utf16BeHex(value: string): string {
   return buffer.toString('hex').toUpperCase()
 }
 
+function codeUnitHex(codeUnit: number): string {
+  return codeUnit.toString(16).toUpperCase().padStart(4, '0')
+}
+
+function buildToUnicodeCMap(lines: string[]): string {
+  const codeUnits = new Set<number>()
+  for (const line of lines) {
+    for (let index = 0; index < line.length; index += 1) {
+      codeUnits.add(line.charCodeAt(index))
+    }
+  }
+
+  const orderedCodeUnits = Array.from(codeUnits).sort((left, right) => left - right)
+  const bfCharBlocks: string[] = []
+  for (let index = 0; index < orderedCodeUnits.length; index += 100) {
+    const chunk = orderedCodeUnits.slice(index, index + 100)
+    bfCharBlocks.push([
+      `${chunk.length} beginbfchar`,
+      ...chunk.map(codeUnit => `<${codeUnitHex(codeUnit)}> <${codeUnitHex(codeUnit)}>`),
+      'endbfchar',
+    ].join('\n'))
+  }
+
+  return [
+    '/CIDInit /ProcSet findresource begin',
+    '12 dict begin',
+    'begincmap',
+    '/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def',
+    '/CMapName /MissionControlReadyToShipCJK def',
+    '/CMapType 2 def',
+    '1 begincodespacerange',
+    '<0000> <FFFF>',
+    'endcodespacerange',
+    ...bfCharBlocks,
+    'endcmap',
+    'CMapName currentdict /CMap defineresource pop',
+    'end',
+    'end',
+  ].join('\n')
+}
+
+export interface ReadyToShipPdfPreflight {
+  ok: boolean
+  fontName: string | null
+  hasCjkFont: boolean
+  hasToUnicode: boolean
+  hasExpectedChineseText: boolean
+  issues: string[]
+}
+
+export function preflightReadyToShipPdf(pdf: Uint8Array, expectedChineseText = ''): ReadyToShipPdfPreflight {
+  const raw = Buffer.from(pdf).toString('utf8')
+  const fontName = /\/BaseFont\s+\/([A-Za-z0-9_.-]+)/.exec(raw)?.[1] || null
+  const hasCjkFont = raw.includes(`/BaseFont /${PDF_CJK_FONT_NAME}`)
+  const hasToUnicode = raw.includes('/ToUnicode') && raw.includes('begincmap') && raw.includes('beginbfchar')
+  const hasExpectedChineseText = expectedChineseText ? raw.includes(utf16BeHex(expectedChineseText)) : true
+  const issues = [
+    hasCjkFont ? '' : `PDF missing CJK font declaration ${PDF_CJK_FONT_NAME}`,
+    hasToUnicode ? '' : 'PDF missing ToUnicode CMap mapping',
+    hasExpectedChineseText ? '' : 'PDF missing expected UTF-16BE Chinese text marker',
+  ].filter(Boolean)
+
+  return {
+    ok: issues.length === 0,
+    fontName,
+    hasCjkFont,
+    hasToUnicode,
+    hasExpectedChineseText,
+    issues,
+  }
+}
+
 export function createReadyToShipPdf(report: ReadyToShipReport): Uint8Array {
   const lines = [
     'Mission Control Ready-to-Ship Checklist',
@@ -537,14 +611,16 @@ export function createReadyToShipPdf(report: ReadyToShipReport): Uint8Array {
     ].filter(Boolean)),
     'ET',
   ].join('\n')
+  const toUnicode = buildToUnicodeCMap(lines)
 
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
-    '<< /Type /Font /Subtype /Type0 /BaseFont /STSong-Light /Encoding /UniGB-UCS2-H /DescendantFonts [6 0 R] >>',
+    `<< /Type /Font /Subtype /Type0 /BaseFont /${PDF_CJK_FONT_NAME} /Encoding /Identity-H /DescendantFonts [6 0 R] /ToUnicode 7 0 R >>`,
     `<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}\nendstream`,
-    '<< /Type /Font /Subtype /CIDFontType0 /BaseFont /STSong-Light /CIDSystemInfo << /Registry (Adobe) /Ordering (GB1) /Supplement 2 >> /DW 1000 >>',
+    `<< /Type /Font /Subtype /CIDFontType0 /BaseFont /${PDF_CJK_FONT_NAME} /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /DW 1000 /CIDToGIDMap /Identity >>`,
+    `<< /Length ${Buffer.byteLength(toUnicode)} >>\nstream\n${toUnicode}\nendstream`,
   ]
 
   let pdf = '%PDF-1.4\n'
