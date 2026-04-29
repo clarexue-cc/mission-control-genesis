@@ -27,6 +27,22 @@ pnpm start            # production
 node .next/standalone/server.js   # standalone mode (after build)
 ```
 
+## Clare Mac Mini Local E2E
+
+When Clare asks to "open MC" or continue customer setup testing on the mac mini,
+do not open a stale checkout or generic localhost instance. Follow the operating
+contract in `docs/runbooks/mission-control-local-e2e-contract.md`.
+
+Current canonical local test build:
+
+- Worktree: `/Users/clare/Desktop/.worktrees/mission-control-fix-p5-approval-v2`
+- URL: `http://127.0.0.1:3300/`
+- Expected default page: Customer Setup P4 for tenant `media-intel-v1`
+- Dashboard fallback: `http://127.0.0.1:3300/overview`
+- Local E2E login: `admin / testpass1234!`
+
+Stop and fix the server before testing if port 3300 is not serving this worktree.
+
 ## Docker
 
 ```bash
