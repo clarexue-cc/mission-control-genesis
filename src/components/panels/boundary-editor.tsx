@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import loader from '@monaco-editor/loader'
 import { Button } from '@/components/ui/button'
@@ -98,7 +99,10 @@ function fieldList(value: string[] | undefined) {
 
 export function BoundaryEditorPanel() {
   const { activeTenant } = useMissionControl()
-  const [tenant, setTenant] = useState(activeTenant?.slug || 'media-intel-v1')
+  const searchParams = useSearchParams()
+  const requestedTenant = searchParams.get('tenant') || searchParams.get('tenant_id')
+  const urlTenant = requestedTenant && tenantOptions.includes(requestedTenant) ? requestedTenant : ''
+  const [tenant, setTenant] = useState(urlTenant || activeTenant?.slug || 'media-intel-v1')
   const [availableTenants, setAvailableTenants] = useState(tenantOptions)
   const [activeTab, setActiveTab] = useState<RuleTab>('forbidden')
   const [loading, setLoading] = useState(true)
@@ -159,8 +163,12 @@ export function BoundaryEditorPanel() {
   }, [])
 
   useEffect(() => {
+    if (urlTenant) {
+      setTenant(urlTenant)
+      return
+    }
     if (activeTenant?.slug) setTenant(activeTenant.slug)
-  }, [activeTenant?.slug])
+  }, [activeTenant?.slug, urlTenant])
 
   const toggleExpanded = useCallback((id: string) => {
     setExpandedRules(current => {
