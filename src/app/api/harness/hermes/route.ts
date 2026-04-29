@@ -24,8 +24,10 @@ interface HermesTargetStatus {
 
 const VAULT_ROOT = process.env.MC_OBSIDIAN_VAULT_ROOT || process.env.OBSIDIAN_VAULT_ROOT || '/Users/clare/Desktop/obsidian/openclaw'
 const STALE_SECONDS = Number.parseInt(process.env.HERMES_STALE_SECONDS || `${6 * 60 * 60}`, 10)
-const PID_FILE = process.env.HERMES_DAEMON_PID_FILE || path.join(VAULT_ROOT, 'Agent-Shared', 'hermes-daemon.pid')
+const RUNTIME_DIR = process.env.HERMES_RUNTIME_DIR || path.join(process.env.TMPDIR || '/tmp', 'mission-control-hermes')
+const PID_FILE = process.env.HERMES_DAEMON_PID_FILE || path.join(RUNTIME_DIR, 'hermes-daemon.pid')
 const LOG_FILE = process.env.HERMES_LOG_FILE || path.join(VAULT_ROOT, 'Agent-Shared', 'hermes-log.md')
+const ALERTS_FILE = process.env.HERMES_ALERTS_FILE || path.join(VAULT_ROOT, 'Agent-Shared', 'hermes-alerts.jsonl')
 
 function scriptPath(name: string): string {
   return path.join(process.cwd(), 'phase0', 'scripts', name)
@@ -139,6 +141,7 @@ async function runHermesScript(script: string, args: string[]) {
       HERMES_STALE_SECONDS: String(STALE_SECONDS),
       HERMES_DAEMON_PID_FILE: PID_FILE,
       HERMES_LOG_FILE: LOG_FILE,
+      HERMES_ALERTS_FILE: ALERTS_FILE,
     },
   })
 }

@@ -1,0 +1,6 @@
+$ MC_OBSIDIAN_VAULT_ROOT="$VAULT_ROOT" HERMES_LOG_FILE="$SOUL_PATH" bash phase0/scripts/hermes-daemon.sh once
+Hermes write denied: /Users/clare/Desktop/.worktrees/mission-control-arch-vault-sot/phase0/tenants/test-tenant-arch/vault/Agent-TEMPLATE/SOUL.md
+exit_code=13
+
+$ test ! -e "$SOUL_PATH" && echo "SOUL.md was not written"
+SOUL.md was not written

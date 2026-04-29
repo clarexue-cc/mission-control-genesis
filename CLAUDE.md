@@ -43,6 +43,11 @@ Current canonical local test build:
 
 Stop and fix the server before testing if port 3300 is not serving this worktree.
 
+## Tenant Vault Templates
+
+Tenant vault source-of-truth and template governance live in `docs/runbooks/template-management.md`.
+Template updates require PR review, and existing tenant vaults are not automatically migrated.
+
 ## Docker
 
 ```bash

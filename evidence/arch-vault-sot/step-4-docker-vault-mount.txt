@@ -1,0 +1,13 @@
+$ docker ps | grep mission-control-arch-vault-sot
+NAMES                             PORTS                                                                   STATUS
+mission-control-arch-vault-sot    0.0.0.0:3031->3000/tcp, [::]:3031->3000/tcp                             Up 26 seconds (healthy)
+
+$ docker inspect /vault mount
+/var/lib/docker/volumes/mc_arch_vault_sot_mc-data/_data -> /app/.data RW= true
+/host_mnt/Users/clare/Desktop/.worktrees/mission-control-arch-vault-sot/phase0/tenants/test-tenant-arch/vault -> /vault RW= true
+
+$ docker-compose exec mission-control cat /vault/host-vault-check.txt
+host wrote before container
+
+$ cat phase0/tenants/test-tenant-arch/vault/container-write-check.txt
+container wrote through /vault
