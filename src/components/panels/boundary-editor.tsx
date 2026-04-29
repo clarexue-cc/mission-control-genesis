@@ -355,6 +355,7 @@ export function BoundaryEditorPanel() {
     <div className="relative flex h-full flex-col gap-4 px-1 pb-6">
       <div className={`${panelClassName} flex flex-col gap-4 p-5 lg:flex-row lg:items-start lg:justify-between`}>
         <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P8 / Boundary</p>
           <h1 className="text-2xl font-semibold text-foreground">Boundary Editor</h1>
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             <span className="rounded-md border border-border px-2.5 py-1">Path: {filePath || '-'}</span>
