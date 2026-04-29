@@ -25,6 +25,12 @@ describe('docker-compose.yml schema', () => {
     expect(content).toContain('memory:')
     expect(content).toContain('cpus:')
   })
+
+  it('mounts the tenant vault source of truth at /vault', () => {
+    expect(content).toContain('- VAULT_PATH=/vault')
+    expect(content).toContain('- ./phase0/tenants/${TENANT_ID:-demo-arch-test-tenant}/vault:/vault')
+    expect(content).not.toContain('/Users/clare/Desktop/obsidian/openclaw')
+  })
 })
 
 describe('Dockerfile runtime stage', () => {
@@ -44,5 +50,10 @@ describe('Dockerfile runtime stage', () => {
 
   it('copies schema.sql for migrations', () => {
     expect(content).toContain('schema.sql')
+  })
+
+  it('does not copy tenant vault data into the runtime image', () => {
+    expect(content).not.toContain('COPY phase0/tenants')
+    expect(content).not.toContain('COPY --from=build /app/phase0/tenants')
   })
 })

@@ -12,6 +12,7 @@ services:
       # If your gateway runs in another container, set this to the container name instead.
       - OPENCLAW_GATEWAY_HOST=${OPENCLAW_GATEWAY_HOST:-host.docker.internal}
       - OPENCLAW_GATEWAY_PORT=${OPENCLAW_GATEWAY_PORT:-18789}
+      - VAULT_PATH=/vault
       # ── Browser-side gateway connection (user's browser → gateway) ──
       # NEXT_PUBLIC_GATEWAY_HOST must be reachable from the user's browser, NOT from
       # inside the container. For local Docker: leave empty (auto-detected from browser).
@@ -31,6 +32,7 @@ services:
         required: false
     volumes:
       - mc-data:/app/.data
+      - ./phase0/tenants/${TENANT_ID:-demo-arch-test-tenant}/vault:/vault
       # Optional: mount your OpenClaw state directory read-only so Mission Control
       # can read agent configs and memory. Uncomment and adjust the host path:
       # - ${OPENCLAW_HOME:-~/.openclaw}:/run/openclaw:ro
