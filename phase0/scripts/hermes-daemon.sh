@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask "${HERMES_DAEMON_UMASK:-077}"
 
 VAULT_ROOT="${OBSIDIAN_VAULT_ROOT:-${MC_OBSIDIAN_VAULT_ROOT:-/Users/clare/Desktop/obsidian/openclaw}}"
 INTERVAL_SECONDS="${HERMES_DAEMON_INTERVAL_SECONDS:-7200}"
 STALE_SECONDS="${HERMES_STALE_SECONDS:-21600}"
-PID_FILE="${HERMES_DAEMON_PID_FILE:-$VAULT_ROOT/Agent-Shared/hermes-daemon.pid}"
+RUNTIME_DIR="${HERMES_RUNTIME_DIR:-${TMPDIR:-/tmp}/mission-control-hermes}"
+PID_FILE="${HERMES_DAEMON_PID_FILE:-$RUNTIME_DIR/hermes-daemon.pid}"
 LOG_FILE="${HERMES_LOG_FILE:-$VAULT_ROOT/Agent-Shared/hermes-log.md}"
-RUNTIME_LOG="${HERMES_RUNTIME_LOG:-$VAULT_ROOT/Agent-Shared/hermes-daemon.runtime.log}"
+ALERTS_FILE="${HERMES_ALERTS_FILE:-$VAULT_ROOT/Agent-Shared/hermes-alerts.jsonl}"
+RUNTIME_LOG="${HERMES_RUNTIME_LOG:-$RUNTIME_DIR/hermes-daemon.runtime.log}"
 
 timestamp() {
   date -u +"%Y-%m-%dT%H:%M:%SZ"
@@ -21,6 +24,7 @@ mtime_epoch() {
 }
 
 ensure_log() {
+  assert_hermes_write_allowed "$LOG_FILE"
   mkdir -p "$(dirname "$LOG_FILE")"
   if [ ! -f "$LOG_FILE" ]; then
     {
@@ -33,6 +37,27 @@ ensure_log() {
 append_log() {
   ensure_log
   printf '%s\n' "$1" >> "$LOG_FILE"
+}
+
+assert_hermes_write_allowed() {
+  local target="$1"
+  case "$target" in
+    "$VAULT_ROOT/Agent-Shared/hermes-log.md"|"$VAULT_ROOT/Agent-Shared/hermes-alerts.jsonl")
+      return 0
+      ;;
+    *)
+      echo "Hermes write denied: $target" >&2
+      return 13
+      ;;
+  esac
+}
+
+append_alert() {
+  local agent_name="$1"
+  local message="$2"
+  assert_hermes_write_allowed "$ALERTS_FILE"
+  mkdir -p "$(dirname "$ALERTS_FILE")"
+  node -e 'const fs=require("node:fs"); const [file, agent, message]=process.argv.slice(1); fs.appendFileSync(file, JSON.stringify({ ts: new Date().toISOString(), agent, message }) + "\n")' "$ALERTS_FILE" "$agent_name" "$message"
 }
 
 scan_once() {
@@ -54,7 +79,9 @@ scan_once() {
 
     local context_file="$agent_dir/working-context.md"
     if [ ! -f "$context_file" ]; then
-      append_log "- $(timestamp) | $agent_name | ALERT | 卡死告警: missing working-context.md"
+      local message="卡死告警: missing working-context.md"
+      append_log "- $(timestamp) | $agent_name | ALERT | $message"
+      append_alert "$agent_name" "$message"
       continue
     fi
 
@@ -62,7 +89,9 @@ scan_once() {
     modified="$(mtime_epoch "$context_file")"
     age=$((now - modified))
     if [ "$age" -gt "$STALE_SECONDS" ]; then
-      append_log "- $(timestamp) | $agent_name | ALERT | 卡死告警: working-context.md ${age}s 未更新，超过 ${STALE_SECONDS}s 阈值"
+      local message="卡死告警: working-context.md ${age}s 未更新，超过 ${STALE_SECONDS}s 阈值"
+      append_log "- $(timestamp) | $agent_name | ALERT | $message"
+      append_alert "$agent_name" "$message"
     else
       append_log "- $(timestamp) | $agent_name | OK | heartbeat_age=${age}s"
     fi
@@ -70,7 +99,9 @@ scan_once() {
   shopt -u nullglob
 
   if [ "$found" -eq 0 ]; then
-    append_log "- $(timestamp) | Hermes | ALERT | 卡死告警: no Agent-* directories found under $VAULT_ROOT"
+    local message="卡死告警: no Agent-* directories found under $VAULT_ROOT"
+    append_log "- $(timestamp) | Hermes | ALERT | $message"
+    append_alert "Hermes" "$message"
   fi
 }
 
@@ -85,6 +116,7 @@ is_running() {
 
 start_daemon() {
   mkdir -p "$(dirname "$PID_FILE")"
+  mkdir -p "$(dirname "$RUNTIME_LOG")"
   if is_running; then
     echo "Hermes daemon already running with pid $(cat "$PID_FILE")"
     exit 0
