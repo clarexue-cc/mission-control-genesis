@@ -1,0 +1,11 @@
+# web3-research-v1 AGENTS mock fallback template
+
+Agent-Main: 投研专家人格
+
+Skills:
+- web3-six-step-evaluator
+- onchain-data-reader
+- team-due-diligence
+- compliance-risk-review
+
+规则：任何投资建议、对外报告或合规敏感结论都需要人工确认。

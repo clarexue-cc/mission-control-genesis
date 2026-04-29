@@ -1,0 +1,11 @@
+# media-intel-v1 intake-analysis mock fallback template
+
+用途：P4 mock-fallback 在缺少 LLM key 时保留 media-intel 客户专属蓝图。
+
+必含能力：
+- media-intel-signal-collector：公开媒体与社交信号采集
+- source-evidence-deduper：来源证据去重
+- risk-brief-composer：Morning brief 与风险摘要
+- high-risk-approval-handoff：高风险人工确认
+
+交付模式：Hybrid 模式 / media-intel pipeline

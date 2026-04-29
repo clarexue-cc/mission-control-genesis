@@ -1,0 +1,11 @@
+# media-intel-v1 AGENTS mock fallback template
+
+Agent-Main: 媒体情报人格
+
+Skills:
+- media-intel-signal-collector
+- source-evidence-deduper
+- risk-brief-composer
+- high-risk-approval-handoff
+
+规则：所有外发、审批、生产变更都需要 Clare 明确确认。
