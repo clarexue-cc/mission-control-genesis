@@ -1,0 +1,11 @@
+# ceo-assistant-v1 intake-analysis mock fallback template
+
+用途：P4 mock-fallback 在缺少 LLM key 时生成 CEO 助理客户专属蓝图。
+
+必含能力：
+- ceo-news-aggregator：CEO 资讯聚合
+- socratic-discussion-partner：苏格拉底讨论
+- course-ppt-generator：课程 PPT 生成
+- notable-person-tracker：名人动态追踪
+
+交付模式：Hybrid 模式 / 7 步 pipeline

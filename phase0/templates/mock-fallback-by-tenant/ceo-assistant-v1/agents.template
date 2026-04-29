@@ -1,0 +1,11 @@
+# ceo-assistant-v1 AGENTS mock fallback template
+
+Agent-Main: CEO 助理人格
+
+Skills:
+- ceo-news-aggregator
+- socratic-discussion-partner
+- course-ppt-generator
+- notable-person-tracker
+
+规则：所有 PPT、人物评价和对外内容必须人工确认。

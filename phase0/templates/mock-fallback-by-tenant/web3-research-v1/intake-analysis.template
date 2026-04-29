@@ -1,0 +1,11 @@
+# web3-research-v1 intake-analysis mock fallback template
+
+用途：P4 mock-fallback 在缺少 LLM key 时生成 Web3 投研客户专属蓝图。
+
+必含能力：
+- web3-six-step-evaluator：Web3 六步法判断
+- onchain-data-reader：链上数据核验
+- team-due-diligence：团队尽调
+- compliance-risk-review：合规审查
+
+交付模式：Hybrid 模式 / Web3 投研 pipeline

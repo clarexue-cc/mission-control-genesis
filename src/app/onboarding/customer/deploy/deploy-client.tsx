@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { getCustomerDeployStatusDisplay } from '@/lib/customer-deploy-display'
 
 interface VaultTreeNode {
   path: string
@@ -61,18 +62,6 @@ function formatDeployTime(value?: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
-}
-
-function modeLabel(mode?: string) {
-  if (mode === 'mock-fallback') return '本机模拟部署'
-  if (!mode) return '未生成'
-  return mode
-}
-
-function statusLabel(status?: string) {
-  if (status === 'mock-success') return '成功（本机模拟）'
-  if (!status) return '未生成'
-  return status
 }
 
 const VAULT_TEMPLATE_SOURCE = 'phase0/templates/vault-template'
@@ -187,8 +176,9 @@ export function CustomerDeployClient({ username }: { username: string }) {
   const deploymentReady = Boolean(deployStatus)
   const allVaultNodes = useMemo(() => flattenNodes(vaultTree), [vaultTree])
   const hasVaultPath = (logicalPath: string) => logicalPath === 'vault' ? hasVaultTree : allVaultNodes.some(node => node.path === logicalPath)
-  const deployStatusLabel = deploymentReady ? statusLabel(deployStatus?.status) : '等待触发'
   const activeTenantId = result?.tenant_id || state?.tenant_id || tenantId
+  const deployDisplay = getCustomerDeployStatusDisplay(deployStatus, activeTenantId)
+  const deployStatusLabel = deploymentReady ? deployDisplay.statusLabel : '等待触发'
   const tenantVaultRoot = `phase0/tenants/${activeTenantId}/vault`
 
   async function loadState(nextTenantId = tenantId) {
@@ -369,17 +359,22 @@ export function CustomerDeployClient({ username }: { username: string }) {
                       <p className="mt-1 text-xs text-muted-foreground">P6 生成</p>
                     </div>
                     <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary">
-                      {statusLabel(deployStatus.status)}
+                      {deployDisplay.statusLabel}
                     </span>
                   </div>
                   <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <KeyInfo label="容器名" value={deployStatus.container} highlight />
-                    <KeyInfo label="运行方式" value={modeLabel(deployStatus.mode)} />
+                    <KeyInfo label="容器名" value={deployDisplay.containerName} highlight />
+                    <KeyInfo label="运行方式" value={deployDisplay.modeLabel} />
                     <KeyInfo label="完成时间" value={formatDeployTime(deployStatus.deployed_at)} />
                     <KeyInfo label="Vault 初始化" value={vaultReady ? '已完成' : '未完成'} highlight={vaultReady} />
                     <KeyInfo label="状态文件" value={state?.deploy_status_path || result?.deploy_status_path || '未生成'} />
                     <KeyInfo label="下一节点" value={vaultReady && hasVaultTree ? 'P7 可继续' : '停在 P6'} highlight={vaultReady && hasVaultTree} />
                   </div>
+                  {deployDisplay.notice && (
+                    <div className="mt-4 rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-950">
+                      {deployDisplay.notice}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="rounded-md border border-amber-500/35 bg-amber-500/10 p-4">
@@ -434,9 +429,9 @@ export function CustomerDeployClient({ username }: { username: string }) {
                   {deployStatus && (
                     <div>
                       <h3 className="text-sm font-semibold">container / deploy-status.json</h3>
-                      <div className="mt-3 break-all text-sm text-primary">{deployStatus.container}</div>
+                      <div className="mt-3 break-all text-sm text-primary">{deployDisplay.containerName}</div>
                       <pre className="mt-3 max-h-72 overflow-auto rounded-md border border-border bg-card p-3 text-xs leading-relaxed">
-                        {JSON.stringify(deployStatus, null, 2)}
+                        {JSON.stringify({ ...deployStatus, container: deployDisplay.containerName }, null, 2)}
                       </pre>
                     </div>
                   )}
