@@ -76,17 +76,13 @@ function nextRuleId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-function summarizeForbidden(rule: ForbiddenRule) {
-  return [rule.id, rule.category, rule.severity, rule.action].filter(Boolean).join(' · ')
-}
-
 function summarizeDrift(rule: DriftRule) {
   return [rule.id, rule.category].filter(Boolean).join(' · ')
 }
 
 function groupForbiddenRules(rules: ForbiddenRule[]) {
   return rules.reduce<Record<string, Array<{ rule: ForbiddenRule; index: number }>>>((groups, rule, index) => {
-    const key = rule.category || 'uncategorized'
+    const key = rule.category || '未分组'
     groups[key] = groups[key] || []
     groups[key].push({ rule, index })
     return groups
@@ -95,6 +91,37 @@ function groupForbiddenRules(rules: ForbiddenRule[]) {
 
 function fieldList(value: string[] | undefined) {
   return Array.isArray(value) ? value.join('\n') : ''
+}
+
+function displayMode(mode: BoundaryMode) {
+  return mode === 'mock-fallback' ? '本机模拟模式' : '正式 OpenClaw 模式'
+}
+
+function displayReloadStrategy(strategy: ReloadStrategy) {
+  if (strategy === 'mock-fallback') return '写入本机测试文件'
+  if (strategy === 'restart') return '保存后重启生效'
+  return '保存后 reload 生效'
+}
+
+function displaySeverity(value: string) {
+  const normalized = value.toLowerCase()
+  if (normalized === 'critical') return '最高风险'
+  if (normalized === 'high') return '高风险'
+  if (normalized === 'medium') return '中风险'
+  if (normalized === 'low') return '低风险'
+  return value || '未设置'
+}
+
+function displayAction(value: string) {
+  const normalized = value.toLowerCase()
+  if (normalized === 'block') return '直接拦截'
+  if (normalized === 'warn') return '提醒确认'
+  if (normalized === 'review') return '转人工确认'
+  return value || '未设置'
+}
+
+function translatedForbiddenSummary(rule: ForbiddenRule) {
+  return `${displaySeverity(rule.severity)} · ${displayAction(rule.action)} · ${rule.category || '未分组'}`
 }
 
 export function BoundaryEditorPanel() {
@@ -194,7 +221,7 @@ export function BoundaryEditorPanel() {
   const applyP4BoundaryDraft = useCallback(() => {
     if (!p4BoundaryDraft) return
     applyRules(p4BoundaryDraft)
-    setP4BoundaryMessage(`Loaded P4 boundary draft for ${tenant}`)
+    setP4BoundaryMessage(`已载入 ${tenant} 的 P4 边界草稿`)
   }, [applyRules, p4BoundaryDraft, tenant])
 
   const loadRules = useCallback(async (nextTenant: string) => {
@@ -205,7 +232,7 @@ export function BoundaryEditorPanel() {
     try {
       const response = await fetch(`/api/harness/boundary-rules?tenant=${encodeURIComponent(nextTenant)}`, { cache: 'no-store' })
       const body = await response.json() as BoundaryRulesResponse
-      if (!response.ok) throw new Error(body.error || 'Failed to load boundary rules')
+      if (!response.ok) throw new Error(body.error || '边界规则加载失败')
 
       setAvailableTenants(body.tenants?.length ? body.tenants : tenantOptions)
       setFilePath(body.path)
@@ -230,7 +257,7 @@ export function BoundaryEditorPanel() {
         setExpandedRules(new Set(firstIds))
       } else {
         setRules(null)
-        setValidationError(body.parse_error || 'Boundary rules JSON is invalid')
+        setValidationError(body.parse_error || '边界规则 JSON 格式不正确')
         setExpandedRules(new Set())
       }
 
@@ -240,7 +267,7 @@ export function BoundaryEditorPanel() {
         if (blueprintResponse.ok && blueprintBody?.boundary_rules) {
           const blueprint = blueprintBody as CustomerBlueprintResponse
           setP4BoundaryDraft(blueprint.boundary_rules)
-          setP4BoundaryMessage(`P4 boundary draft loaded for ${blueprint.tenant_id}`)
+          setP4BoundaryMessage(`已载入 ${blueprint.tenant_id} 的 P4 边界草稿`)
           if (!body.exists && blueprint.boundary_rules.forbidden_patterns?.length) {
             const draftContent = stringifyBoundaryRules(blueprint.boundary_rules)
             setRules(blueprint.boundary_rules)
@@ -317,7 +344,7 @@ export function BoundaryEditorPanel() {
         body: JSON.stringify({ tenant, content: normalized, ...(hash ? { hash } : {}) }),
       })
       const body = await response.json() as ReloadResponse
-      if (!response.ok) throw new Error(body.error || 'Failed to save boundary rules')
+      if (!response.ok) throw new Error(body.error || '边界规则保存失败')
 
       setRules(parseBoundaryRulesRaw(normalized))
       setEditorValue(normalized)
@@ -329,13 +356,13 @@ export function BoundaryEditorPanel() {
       setValidationError(null)
       showToast({
         kind: 'success',
-        title: body.method === 'mock-fallback' ? '已 reload (mock-fallback)' : '已 reload',
-        detail: body.note || `${tenant} boundary rules saved${body.latency_ms !== undefined ? ` in ${body.latency_ms}ms` : ''}`,
+        title: body.method === 'mock-fallback' ? '已保存并模拟 reload' : '已保存并 reload',
+        detail: body.note || `${tenant} 的边界规则已保存${body.latency_ms !== undefined ? `，耗时 ${body.latency_ms}ms` : ''}`,
       })
     } catch (error) {
       showToast({
         kind: 'error',
-        title: 'Save failed',
+        title: '保存失败',
         detail: errorMessage(error),
       })
     } finally {
@@ -346,7 +373,7 @@ export function BoundaryEditorPanel() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="text-sm text-muted-foreground">Loading boundary rules...</div>
+        <div className="text-sm text-muted-foreground">正在加载边界规则...</div>
       </div>
     )
   }
@@ -355,20 +382,23 @@ export function BoundaryEditorPanel() {
     <div className="relative flex h-full flex-col gap-4 px-1 pb-6">
       <div className={`${panelClassName} flex flex-col gap-4 p-5 lg:flex-row lg:items-start lg:justify-between`}>
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P8 / Boundary</p>
-          <h1 className="text-2xl font-semibold text-foreground">Boundary Editor</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P8 / 边界规则</p>
+          <h1 className="text-2xl font-semibold text-foreground">边界规则确认</h1>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            P4 先产出边界草稿，P7 写进 Agent 的工作说明，P8 在这里保存成后续系统会读取的正式红线。
+          </p>
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <span className="rounded-md border border-border px-2.5 py-1">Path: {filePath || '-'}</span>
-            <span className="rounded-md border border-border px-2.5 py-1">{exists ? 'On disk' : 'Generated draft'}</span>
-            <span className="rounded-md border border-border px-2.5 py-1">Mode: {mode}</span>
-            <span className="rounded-md border border-border px-2.5 py-1">Apply: {reloadStrategy}</span>
-            <span className="rounded-md border border-border px-2.5 py-1">{dirty ? 'Unsaved changes' : 'In sync'}</span>
+            <span className="rounded-md border border-border px-2.5 py-1">保存位置：{filePath || '-'}</span>
+            <span className="rounded-md border border-border px-2.5 py-1">{exists ? '已落盘' : '草稿待保存'}</span>
+            <span className="rounded-md border border-border px-2.5 py-1">运行模式：{displayMode(mode)}</span>
+            <span className="rounded-md border border-border px-2.5 py-1">生效方式：{displayReloadStrategy(reloadStrategy)}</span>
+            <span className="rounded-md border border-border px-2.5 py-1">{dirty ? '有未保存修改' : '已同步'}</span>
           </div>
         </div>
 
         <div className="flex flex-wrap items-end gap-2">
           <label className="min-w-[240px] space-y-1.5">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Tenant template</span>
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">当前客户</span>
             <select
               className={inputClassName}
               value={tenant}
@@ -381,15 +411,15 @@ export function BoundaryEditorPanel() {
             </select>
           </label>
           <Button variant="ghost" onClick={() => loadRules(tenant)} disabled={loading || saving}>
-            Refresh
+            刷新
           </Button>
           {p4BoundaryDraft && (
             <Button variant="outline" onClick={applyP4BoundaryDraft} disabled={loading || saving}>
-              Apply P4 Draft
+              套用 P4 草稿
             </Button>
           )}
           <Button onClick={() => saveRules()} disabled={saving || !writable || Boolean(validationError) || editorValue.trim().length === 0}>
-            {saving ? 'Saving...' : 'Save & Reload'}
+            {saving ? '保存中...' : '保存并生效'}
           </Button>
         </div>
       </div>
@@ -408,13 +438,13 @@ export function BoundaryEditorPanel() {
 
       {!writable && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-          Mission Control cannot write this boundary file from the current process.
+          当前 Mission Control 进程没有权限写入这个边界文件。
         </div>
       )}
 
       {mode === 'mock-fallback' && (
         <div className="rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
-          {modeNote || 'Dev mock fallback is active; writes are saved locally for dry run validation.'}
+          {modeNote || '当前是本机模拟模式：保存会写入本地测试文件，用来跑通 dry run 验证。'}
         </div>
       )}
 
@@ -428,10 +458,10 @@ export function BoundaryEditorPanel() {
         <section className={`${panelClassName} flex min-h-[60vh] flex-col gap-3 overflow-hidden p-4`}>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Rules Source</h2>
-              <p className="text-xs text-muted-foreground">Edit JSON directly; valid changes refresh the form.</p>
+              <h2 className="text-sm font-semibold text-foreground">规则原文</h2>
+              <p className="text-xs text-muted-foreground">左侧是机器会读取的 JSON，改动后右侧会同步刷新。</p>
             </div>
-            <span className="text-xs text-muted-foreground">Language: json</span>
+            <span className="text-xs text-muted-foreground">格式：JSON</span>
           </div>
           <div className="min-h-[560px] flex-1 overflow-hidden rounded-md border border-border">
             {monacoReady ? (
@@ -454,7 +484,7 @@ export function BoundaryEditorPanel() {
               />
             ) : (
               <div className="flex h-full min-h-[560px] items-center justify-center bg-background/80 text-sm text-muted-foreground">
-                Loading editor...
+                正在加载编辑器...
               </div>
             )}
           </div>
@@ -463,8 +493,8 @@ export function BoundaryEditorPanel() {
         <section className={`${panelClassName} flex min-h-[60vh] flex-col overflow-hidden`}>
           <div className="flex items-center justify-between border-b border-border p-4">
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Structured Form</h2>
-              <p className="text-xs text-muted-foreground">Form edits write back to the source immediately.</p>
+              <h2 className="text-sm font-semibold text-foreground">结构化检查</h2>
+              <p className="text-xs text-muted-foreground">这里把机器规则翻成可检查的表单，保存后才进入后续流程。</p>
             </div>
             <div className="flex rounded-md border border-border bg-background p-1">
               <button
@@ -472,27 +502,45 @@ export function BoundaryEditorPanel() {
                 onClick={() => setActiveTab('forbidden')}
                 className={`rounded px-3 py-1.5 text-xs transition ${activeTab === 'forbidden' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
-                Forbidden ({forbiddenCount})
+                禁止规则 ({forbiddenCount})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('drift')}
                 className={`rounded px-3 py-1.5 text-xs transition ${activeTab === 'drift' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
-                Drift ({driftCount})
+                偏离规则 ({driftCount})
               </button>
             </div>
           </div>
 
           {!rules ? (
             <div className="m-4 rounded-lg border border-border bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-              Fix JSON validation errors in the editor to unlock the structured form.
+              请先修复左侧 JSON 格式错误，右侧检查表才会恢复。
             </div>
           ) : (
             <div className="flex-1 space-y-4 overflow-y-auto p-4">
+              <div className="rounded-lg border border-primary/25 bg-primary/10 p-3 text-sm text-primary">
+                <div className="font-semibold text-foreground">老板这一步主要确认三件事</div>
+                <div className="mt-2 grid gap-2 text-xs leading-5 text-muted-foreground md:grid-cols-3">
+                  <div className="rounded-md border border-primary/20 bg-background/60 p-2">
+                    1. 规则是不是当前客户 <span className="font-medium text-foreground">{tenant}</span>，没有混进别的客户。
+                  </div>
+                  <div className="rounded-md border border-primary/20 bg-background/60 p-2">
+                    2. 禁止规则是否来自 P4 的边界草稿，并且和 P7 的 Agent 设定一致。
+                  </div>
+                  <div className="rounded-md border border-primary/20 bg-background/60 p-2">
+                    3. 这些红线是否会影响后续 P9 Skills、P13 记忆验证和 P22 交付报告。
+                  </div>
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  参考来源：P4 的 intake-analysis.md 边界草稿；P7 的 SOUL.md / AGENTS.md 禁止行为和工作规范。
+                </div>
+              </div>
+
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="space-y-1.5">
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Version</span>
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">规则版本</span>
                   <input
                     className={inputClassName}
                     value={rules.version}
@@ -500,7 +548,7 @@ export function BoundaryEditorPanel() {
                   />
                 </label>
                 <label className="space-y-1.5">
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Last updated</span>
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">最后更新</span>
                   <input
                     className={inputClassName}
                     value={rules.last_updated}
@@ -512,7 +560,7 @@ export function BoundaryEditorPanel() {
               {activeTab === 'forbidden' ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-foreground">Forbidden patterns by category</div>
+                    <div className="text-sm font-semibold text-foreground">按分组查看禁止规则</div>
                     <Button
                       variant="ghost"
                       onClick={() => {
@@ -522,7 +570,7 @@ export function BoundaryEditorPanel() {
                         setExpandedRules(current => new Set([...current, `forbidden-${blank.id}`]))
                       }}
                     >
-                      Add Rule
+                      新增规则
                     </Button>
                   </div>
 
@@ -530,7 +578,7 @@ export function BoundaryEditorPanel() {
                     <div key={category} className="rounded-lg border border-border bg-background/50">
                       <div className="flex items-center justify-between border-b border-border px-3 py-2">
                         <div className="text-sm font-semibold text-foreground">{category}</div>
-                        <div className="text-xs text-muted-foreground">{entries.length} rules</div>
+                        <div className="text-xs text-muted-foreground">{entries.length} 条规则</div>
                       </div>
                       <div className="space-y-2 p-3">
                         {entries.map(({ rule, index }) => {
@@ -545,23 +593,26 @@ export function BoundaryEditorPanel() {
                               >
                                 <span className="min-w-0">
                                   <span className="block truncate text-sm font-medium text-foreground">{rule.label || rule.id}</span>
-                                  <span className="block truncate text-xs text-muted-foreground">{summarizeForbidden(rule)}</span>
+                                  <span className="block truncate text-xs text-muted-foreground">{translatedForbiddenSummary(rule)}</span>
                                 </span>
-                                <span className="shrink-0 text-xs text-muted-foreground">{expanded ? 'Collapse' : 'Expand'}</span>
+                                <span className="shrink-0 text-xs text-muted-foreground">{expanded ? '收起' : '展开'}</span>
                               </button>
 
                               {expanded && (
                                 <div className="space-y-3 border-t border-border p-3">
+                                  <div className="rounded-md border border-border bg-background/50 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                                    判断方式：匹配到下面的关键词/正则时，系统按“{displayAction(rule.action)}”处理。给老板看时主要确认这条红线是否合理，不需要改内部英文值。
+                                  </div>
                                   <div className="grid gap-3 md:grid-cols-2">
-                                    <RuleTextField label="ID" value={rule.id} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, id: value }))} />
-                                    <RuleTextField label="Category" value={rule.category} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, category: value }))} />
-                                    <RuleTextField label="Severity" value={rule.severity} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, severity: value }))} />
-                                    <RuleTextField label="Action" value={rule.action} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, action: value }))} />
-                                    <RuleTextField label="Label" value={rule.label} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, label: value }))} />
-                                    <RuleTextField label="Regex pattern" value={rule.pattern} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, pattern: value }))} />
+                                    <RuleTextField label="规则 ID" value={rule.id} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, id: value }))} />
+                                    <RuleTextField label="规则分组" value={rule.category} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, category: value }))} />
+                                    <RuleTextField label={`风险等级：${displaySeverity(rule.severity)}`} value={rule.severity} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, severity: value }))} />
+                                    <RuleTextField label={`处理方式：${displayAction(rule.action)}`} value={rule.action} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, action: value }))} />
+                                    <RuleTextField label="老板可读标题" value={rule.label} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, label: value }))} />
+                                    <RuleTextField label="正则匹配" value={rule.pattern} onChange={(value) => updateForbiddenRule(index, current => ({ ...current, pattern: value }))} />
                                   </div>
                                   <label className="block space-y-1.5">
-                                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Keyword patterns</span>
+                                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">关键词 / 句式匹配</span>
                                     <textarea
                                       className={textareaClassName}
                                       value={fieldList(rule.patterns)}
@@ -572,7 +623,7 @@ export function BoundaryEditorPanel() {
                                     />
                                   </label>
                                   <label className="block space-y-1.5">
-                                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Response template</span>
+                                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">触发后的提示语</span>
                                     <textarea
                                       className={textareaClassName}
                                       value={rule.response_template}
@@ -591,7 +642,7 @@ export function BoundaryEditorPanel() {
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-foreground">Drift patterns</div>
+                    <div className="text-sm font-semibold text-foreground">偏离规则</div>
                     <Button
                       variant="ghost"
                       onClick={() => {
@@ -601,7 +652,7 @@ export function BoundaryEditorPanel() {
                         setExpandedRules(current => new Set([...current, `drift-${blank.id}`]))
                       }}
                     >
-                      Add Drift
+                      新增偏离规则
                     </Button>
                   </div>
 
@@ -619,16 +670,16 @@ export function BoundaryEditorPanel() {
                             <span className="block truncate text-sm font-medium text-foreground">{rule.id}</span>
                             <span className="block truncate text-xs text-muted-foreground">{summarizeDrift(rule)}</span>
                           </span>
-                          <span className="shrink-0 text-xs text-muted-foreground">{expanded ? 'Collapse' : 'Expand'}</span>
+                          <span className="shrink-0 text-xs text-muted-foreground">{expanded ? '收起' : '展开'}</span>
                         </button>
 
                         {expanded && (
                           <div className="space-y-3 border-t border-border p-3">
                             <div className="grid gap-3 md:grid-cols-2">
-                              <RuleTextField label="ID" value={rule.id} onChange={(value) => updateDriftRule(index, current => ({ ...current, id: value }))} />
-                              <RuleTextField label="Category" value={rule.category} onChange={(value) => updateDriftRule(index, current => ({ ...current, category: value }))} />
+                              <RuleTextField label="规则 ID" value={rule.id} onChange={(value) => updateDriftRule(index, current => ({ ...current, id: value }))} />
+                              <RuleTextField label="规则分组" value={rule.category} onChange={(value) => updateDriftRule(index, current => ({ ...current, category: value }))} />
                             </div>
-                            <RuleTextField label="Regex pattern" value={rule.pattern} onChange={(value) => updateDriftRule(index, current => ({ ...current, pattern: value }))} />
+                            <RuleTextField label="正则匹配" value={rule.pattern} onChange={(value) => updateDriftRule(index, current => ({ ...current, pattern: value }))} />
                           </div>
                         )}
                       </div>
