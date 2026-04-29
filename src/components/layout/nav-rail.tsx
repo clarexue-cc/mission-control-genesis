@@ -55,6 +55,10 @@ const navGroups: NavGroup[] = [
           { id: 'onboarding/customer/confirm', label: 'P5 Approval', icon: <ApprovalsIcon />, priority: false, essential: true },
           { id: 'onboarding/customer/deploy', label: 'P6 Deploy', icon: <DeliveryIcon />, priority: false, essential: true },
           { id: 'onboarding/customer/soul', label: 'P7 SOUL/AGENTS', icon: <AgentsIcon />, priority: false, essential: true },
+          { id: 'boundary', label: 'P8 Boundary', icon: <BoundaryIcon />, priority: false, essential: true },
+          { id: 'skills', label: 'P9 Skills', icon: <SkillsIcon />, priority: false, essential: true },
+          { id: 'tasks', label: 'P21 UAT', icon: <TasksIcon />, priority: false, essential: true },
+          { id: 'delivery', label: 'P22 Delivery', icon: <DeliveryIcon />, priority: false, essential: true },
         ],
       },
     ],
@@ -162,6 +166,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
 
   // Translate a nav item label using the translation key map
   function tLabel(id: string, fallback: string): string {
+    if (/^P\d+\b/.test(fallback)) return fallback
     const key = navItemTranslationKeys[id]
     return key ? tn(key) : fallback
   }
