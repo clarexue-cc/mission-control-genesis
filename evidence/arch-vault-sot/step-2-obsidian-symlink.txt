@@ -1,0 +1,8 @@
+$ ls -ld /Users/clare/Desktop/obsidian/openclaw/test-tenant-arch
+lrwxr-xr-x@ 1 clare  staff  100 Apr 29 12:08 /Users/clare/Desktop/obsidian/openclaw/test-tenant-arch -> /Users/clare/Desktop/.worktrees/mission-control-arch-vault-sot/phase0/tenants/test-tenant-arch/vault
+
+$ readlink /Users/clare/Desktop/obsidian/openclaw/test-tenant-arch
+/Users/clare/Desktop/.worktrees/mission-control-arch-vault-sot/phase0/tenants/test-tenant-arch/vault
+
+$ realpath /Users/clare/Desktop/obsidian/openclaw/test-tenant-arch
+/Users/clare/Desktop/.worktrees/mission-control-arch-vault-sot/phase0/tenants/test-tenant-arch/vault

@@ -1,0 +1,6 @@
+$ phase0/scripts/new-tenant.sh test-tenant-arch
+tenant=test-tenant-arch
+vault_source=/Users/clare/Desktop/.worktrees/mission-control-arch-vault-sot/phase0/tenants/test-tenant-arch/vault
+obsidian_view=/Users/clare/Desktop/obsidian/openclaw/test-tenant-arch
+blueprint=none
+container=tenant-test-tenant-arch
