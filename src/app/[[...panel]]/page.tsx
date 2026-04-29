@@ -63,6 +63,7 @@ import { useServerEvents } from '@/lib/use-server-events'
 import { completeNavigationTiming } from '@/lib/navigation-metrics'
 import { panelHref, useNavigateToPanel } from '@/lib/navigation'
 import { clearOnboardingDismissedThisSession, clearOnboardingReplayFromStart, getOnboardingSessionDecision, markOnboardingReplayFromStart, readOnboardingDismissedThisSession } from '@/lib/onboarding-session'
+import { resolveEffectiveInterfaceMode } from '@/lib/mc-stable-mode'
 import { Button } from '@/components/ui/button'
 import { useMissionControl } from '@/store'
 import { canAccessPanel, isCustomerRole, readEffectiveRoleFromBrowser, type EffectiveRole } from '@/lib/rbac'
@@ -527,7 +528,7 @@ function ContentRouter({ tab, effectiveRole }: { tab: string; effectiveRole: Eff
   }
 
   // Guard: show nudge for non-essential panels in essential mode
-  if (interfaceMode === 'essential' && !ESSENTIAL_PANELS.has(tab)) {
+  if (resolveEffectiveInterfaceMode(interfaceMode) === 'essential' && !ESSENTIAL_PANELS.has(tab)) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
         <p className="text-sm text-muted-foreground">
