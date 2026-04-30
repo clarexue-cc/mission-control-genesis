@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useNavigateToPanel } from '@/lib/navigation'
+import { resolveCustomerTenantId, resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
 type CheckStatus = 'pass' | 'warn' | 'fail' | 'not_run'
 type OverallStatus = 'ready' | 'warning' | 'blocked' | 'not_run'
@@ -124,6 +125,11 @@ function readProfileFromLocation(): 'strict' | 'green' {
   return value === 'green' || value === 'all-green' ? 'green' : 'strict'
 }
 
+function readTenantFromLocation(): string {
+  if (typeof window === 'undefined') return resolveDefaultCustomerTenantId()
+  return resolveCustomerTenantId(new URLSearchParams(window.location.search))
+}
+
 function StatusLights({ status }: { status: CheckStatus }) {
   return (
     <div className="flex items-center gap-1.5" aria-label={`status ${status}`}>
@@ -138,8 +144,8 @@ function StatusLights({ status }: { status: CheckStatus }) {
 
 export function DeliveryChecklistPanel() {
   const navigateToPanel = useNavigateToPanel()
-  const [tenant, setTenant] = useState('media-intel-v1')
-  const [availableTenants, setAvailableTenants] = useState(['media-intel-v1', 'ceo-assistant-v1', 'web3-research-v1'])
+  const [tenant, setTenant] = useState(readTenantFromLocation)
+  const [availableTenants, setAvailableTenants] = useState(['ceo-assistant-v1', 'media-intel-v1', 'web3-research-v1'])
   const [profile, setProfile] = useState<'strict' | 'green'>('strict')
   const [report, setReport] = useState<ReadyToShipReport | null>(null)
   const [loading, setLoading] = useState(true)
@@ -166,7 +172,7 @@ export function DeliveryChecklistPanel() {
       const body = await response.json() as ReadyToShipReport
       if (!response.ok) throw new Error(body.error || 'Failed to run ready-to-ship checks')
       setReport(body)
-      setAvailableTenants(body.tenants?.length ? body.tenants : ['media-intel-v1', 'ceo-assistant-v1', 'web3-research-v1'])
+      setAvailableTenants(body.tenants?.length ? body.tenants : ['ceo-assistant-v1', 'media-intel-v1', 'web3-research-v1'])
       const firstProblem = body.checks.find(check => check.status === 'fail' || check.status === 'warn')
       setExpanded(firstProblem ? new Set([firstProblem.check_id]) : new Set())
     } catch (nextError) {

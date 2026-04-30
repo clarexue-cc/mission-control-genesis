@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
 type TestSuite = 'golden' | 'adversarial' | 'cross-session'
 type RunStatus = 'idle' | 'running' | 'completed' | 'failed'
@@ -50,6 +51,7 @@ interface CaseRun {
 }
 
 const tenantOptions = [
+  'ceo-assistant-v1',
   'tenant-tg-001',
   'tenant-luo-001-dev',
   'tenant-luo-001',
@@ -95,7 +97,7 @@ function upsertCase(cases: CaseRun[], next: CaseRun) {
 }
 
 export function TestConsolePanel() {
-  const [tenant, setTenant] = useState('tenant-tg-001')
+  const [tenant, setTenant] = useState(resolveDefaultCustomerTenantId())
   const [runStatus, setRunStatus] = useState<RunStatus>('idle')
   const [runningSuite, setRunningSuite] = useState<TestSuite | null>(null)
   const [runId, setRunId] = useState<string | null>(null)

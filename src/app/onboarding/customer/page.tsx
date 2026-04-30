@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
 interface UploadResult {
   ok: boolean
@@ -12,6 +13,7 @@ interface UploadResult {
 }
 
 const MAX_BYTES = 100 * 1024 * 1024
+const DEFAULT_TENANT_ID = resolveDefaultCustomerTenantId()
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -20,9 +22,9 @@ function formatBytes(bytes: number): string {
 }
 
 export default function CustomerOnboardingPage() {
-  const [tenantId, setTenantId] = useState('demo-dry-run-2')
-  const [tenantName, setTenantName] = useState('demo-dry-run-2 客户接入')
-  const [summary, setSummary] = useState('demo-dry-run-2：客户访谈材料上传验证。')
+  const [tenantId, setTenantId] = useState(DEFAULT_TENANT_ID)
+  const [tenantName, setTenantName] = useState(`${DEFAULT_TENANT_ID} 客户接入`)
+  const [summary, setSummary] = useState(`${DEFAULT_TENANT_ID}：客户访谈材料上传验证。`)
   const [file, setFile] = useState<File | null>(null)
   const [result, setResult] = useState<UploadResult | null>(null)
   const [error, setError] = useState('')

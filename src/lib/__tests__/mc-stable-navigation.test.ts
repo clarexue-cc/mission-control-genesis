@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   isNavigationItemHiddenByInterfaceMode,
   resolveEffectiveInterfaceMode,
+  resolveInitialSidebarExpanded,
+  resolveNextSidebarExpanded,
   shouldShowInterfaceModeSwitcher,
 } from '@/lib/mc-stable-mode'
 
@@ -34,5 +36,17 @@ describe('mc stable navigation mode', () => {
     expect(shouldShowInterfaceModeSwitcher(true, { NODE_ENV: 'development' } as NodeJS.ProcessEnv)).toBe(false)
     expect(shouldShowInterfaceModeSwitcher(true, { NODE_ENV: 'production' } as NodeJS.ProcessEnv)).toBe(true)
     expect(shouldShowInterfaceModeSwitcher(false, { NODE_ENV: 'production' } as NodeJS.ProcessEnv)).toBe(false)
+  })
+
+  it('keeps the sidebar expanded during fixed dev navigation', () => {
+    const fixedEnv = { NODE_ENV: 'production', NEXT_PUBLIC_MC_NAV_FIXED: 'true' } as NodeJS.ProcessEnv
+    const productionEnv = { NODE_ENV: 'production' } as NodeJS.ProcessEnv
+
+    expect(resolveInitialSidebarExpanded(null, fixedEnv)).toBe(true)
+    expect(resolveInitialSidebarExpanded('false', fixedEnv)).toBe(true)
+    expect(resolveNextSidebarExpanded(false, fixedEnv)).toBe(true)
+    expect(resolveNextSidebarExpanded(true, fixedEnv)).toBe(true)
+    expect(resolveInitialSidebarExpanded('false', productionEnv)).toBe(false)
+    expect(resolveNextSidebarExpanded(true, productionEnv)).toBe(false)
   })
 })

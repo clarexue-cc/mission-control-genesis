@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
 interface BlueprintSkillCandidate {
   id: string
@@ -53,7 +54,7 @@ interface GenerateResponse {
   error?: string
 }
 
-const DEFAULT_TENANT_ID = 'media-intel-v1'
+const DEFAULT_TENANT_ID = resolveDefaultCustomerTenantId()
 
 const CUSTOMER_SETUP_STEPS = [
   { label: 'P3 Intake', href: '/onboarding/customer' },

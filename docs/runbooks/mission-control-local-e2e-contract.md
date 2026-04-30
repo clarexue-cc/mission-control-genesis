@@ -36,7 +36,7 @@ Expected default behavior:
 
 - `/` redirects to the latest Customer Setup page.
 - Current latest page is P4 customer blueprint generation:
-  `/onboarding/customer/analyze?tenant=media-intel-v1`.
+  `/onboarding/customer/analyze?tenant=ceo-assistant-v1`.
 - The main Mission Control dashboard is `/overview`.
 - Do not use `/` as a dashboard return target during customer setup testing.
 
@@ -99,23 +99,27 @@ Never save the test password in Chrome.
 Current P6-P22 test target tenant:
 
 ```text
-media-intel-v1
+ceo-assistant-v1
 ```
+
+During dev / preview validation, pages without an explicit `?tenant=` must
+resolve to `ceo-assistant-v1`. URL overrides are still allowed for targeted
+multi-tenant checks.
 
 Stop for Clare confirmation at every checkpoint. Capture evidence before moving
 to the next P node.
 
 Checkpoint URLs:
 
-- P6: `/onboarding/customer/deploy?role=admin&tenant=media-intel-v1`
-- P7: `/onboarding/customer/soul?role=admin&tenant=media-intel-v1`
-- P8: `/boundary?tenant=media-intel-v1`
-- P9: `/onboarding/customer/skills?tenant=media-intel-v1`
-- P10: `/tests?tenant=media-intel-v1`
-- P11: `/logs?tenant=media-intel-v1`
-- P12: `/vault?tenant=media-intel-v1`
+- P6: `/onboarding/customer/deploy?role=admin&tenant=ceo-assistant-v1`
+- P7: `/onboarding/customer/soul?role=admin&tenant=ceo-assistant-v1`
+- P8: `/boundary?tenant=ceo-assistant-v1`
+- P9: `/onboarding/customer/skills?tenant=ceo-assistant-v1`
+- P10: `/tests?tenant=ceo-assistant-v1`
+- P11: `/logs?tenant=ceo-assistant-v1`
+- P12: `/vault?tenant=ceo-assistant-v1`
 - P13: cross-session recall through Test Console plus vault evidence
-- P14: `/hermes?tenant=media-intel-v1`
+- P14: `/hermes?tenant=ceo-assistant-v1`
 - P15: Hermes stuck-alert simulation plus Alerts evidence
 - P16: Cost Tracker plus Exec Approvals evidence
 - P17: Alerts aggregation plus Activity Feed evidence

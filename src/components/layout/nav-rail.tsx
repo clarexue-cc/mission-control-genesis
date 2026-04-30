@@ -11,7 +11,12 @@ import { APP_VERSION } from '@/lib/version'
 import { getPluginNavItems } from '@/lib/plugins'
 import { canAccessPanel, isCustomerRole, type EffectiveRole } from '@/lib/rbac'
 import { getCustomerPanelLabel } from '@/components/panels/customer-view-overrides'
-import { isNavigationItemHiddenByInterfaceMode, shouldShowInterfaceModeSwitcher } from '@/lib/mc-stable-mode'
+import {
+  FIXED_DEV_DEFAULT_TENANT_ID,
+  isFixedDevPreviewMode,
+  isNavigationItemHiddenByInterfaceMode,
+  shouldShowInterfaceModeSwitcher,
+} from '@/lib/mc-stable-mode'
 
 interface NavItem {
   id: string
@@ -884,6 +889,7 @@ function ContextSwitcher({ currentUser, isAdmin, isLocal, isConnected, tenants, 
   const tenantName = activeTenant?.display_name || defaultOrgName
   const projectName = activeProject?.name
   const contextLine = projectName ? `${tenantName} / ${projectName}` : tenantName
+  const showFixedTenantHint = isFixedDevPreviewMode()
   const connectionLabel = isLocal ? tcs('localMode') : isConnected ? tcs('connected') : tcs('disconnected')
   const connectionDotClass = isLocal ? 'bg-void-cyan' : isConnected ? 'bg-green-500' : 'bg-red-500'
 
@@ -1057,6 +1063,11 @@ function ContextSwitcher({ currentUser, isAdmin, isLocal, isConnected, tenants, 
                 <div className="mx-2 border-t border-border my-1" />
                 <div className="px-3 pt-2 pb-1">
                   <span className="text-[10px] tracking-wider text-muted-foreground/60 font-semibold">{tcs('organizations')}</span>
+                  {showFixedTenantHint && (
+                    <div className="mt-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-[10px] leading-snug text-primary">
+                      当前测试默认 {FIXED_DEV_DEFAULT_TENANT_ID}
+                    </div>
+                  )}
                 </div>
                 <div className="px-1">
                   {/* Default org */}

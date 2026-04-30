@@ -67,6 +67,7 @@ function initializeSchema() {
   if (!db) return;
   try {
     runMigrations(db);
+    ensureFixedDevPreviewTenant(db);
     seedAdminUserFromEnv(db);
 
     // Initialize webhook event listener (once)
@@ -146,6 +147,60 @@ export function resolveSeedAuthPassword(env: NodeJS.ProcessEnv = process.env): s
   }
 
   return resolveSeedAuthPasswordFallback(env)
+}
+
+function ensureFixedDevPreviewTenant(dbConn: Database.Database): void {
+  if (!isFixedDevPreviewMode()) return
+
+  const tenantsTable = dbConn
+    .prepare(`SELECT 1 as ok FROM sqlite_master WHERE type = 'table' AND name = 'tenants'`)
+    .get() as { ok?: number } | undefined
+  const workspacesTable = dbConn
+    .prepare(`SELECT 1 as ok FROM sqlite_master WHERE type = 'table' AND name = 'workspaces'`)
+    .get() as { ok?: number } | undefined
+  if (!tenantsTable?.ok || !workspacesTable?.ok) return
+
+  const tenantSlug = 'ceo-assistant-v1'
+  const now = Math.floor(Date.now() / 1000)
+  const existing = dbConn.prepare('SELECT id FROM tenants WHERE slug = ? LIMIT 1').get(tenantSlug) as { id?: number } | undefined
+  let tenantId = existing?.id ? Number(existing.id) : 0
+
+  if (!tenantId) {
+    const home = String(process.env.HOME || '/tmp').trim() || '/tmp'
+    const tenantCols = new Set((dbConn.prepare('PRAGMA table_info(tenants)').all() as Array<{ name: string }>).map(col => col.name))
+    const values: Record<string, string | number | null> = {
+      slug: tenantSlug,
+      display_name: tenantSlug,
+      linux_user: 'ceo_assistant_v1',
+      plan_tier: 'standard',
+      status: 'active',
+      openclaw_home: `${home}/.openclaw/tenants/${tenantSlug}`,
+      workspace_root: `${home}/workspace/${tenantSlug}`,
+      config: '{}',
+      created_by: 'system',
+      owner_gateway: process.env.MC_DEFAULT_OWNER_GATEWAY || process.env.MC_DEFAULT_GATEWAY_NAME || 'primary',
+      created_at: now,
+      updated_at: now,
+    }
+    const insertCols = Object.keys(values).filter(col => tenantCols.has(col))
+    const placeholders = insertCols.map(() => '?').join(', ')
+    const result = dbConn.prepare(`
+      INSERT INTO tenants (${insertCols.join(', ')})
+      VALUES (${placeholders})
+    `).run(...insertCols.map(col => values[col]))
+    tenantId = Number(result.lastInsertRowid)
+  } else {
+    dbConn.prepare(`
+      UPDATE tenants
+      SET display_name = ?, status = ?, updated_at = ?
+      WHERE id = ?
+    `).run(tenantSlug, 'active', now, tenantId)
+  }
+
+  const workspaceCols = new Set((dbConn.prepare('PRAGMA table_info(workspaces)').all() as Array<{ name: string }>).map(col => col.name))
+  if (workspaceCols.has('tenant_id')) {
+    dbConn.prepare('UPDATE workspaces SET tenant_id = ? WHERE id = 1').run(tenantId)
+  }
 }
 
 function seedAdminUserFromEnv(dbConn: Database.Database): void {

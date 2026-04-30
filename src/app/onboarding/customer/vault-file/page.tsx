@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { validateSession } from '@/lib/auth'
 import { normalizeCustomerTenantId } from '@/lib/customer-intake'
 import { resolveHarnessRoot } from '@/lib/harness-boundary'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 import { resolveWithin } from '@/lib/paths'
 import { LEGACY_MC_SESSION_COOKIE_NAME, MC_SESSION_COOKIE_NAME } from '@/lib/session-cookie'
 
@@ -104,7 +105,7 @@ export default async function CustomerVaultFilePage({
   }
 
   const params = (await searchParams) || {}
-  const tenant = normalizeCustomerTenantId(firstParam(params.tenant) || 'media-intel-v1')
+  const tenant = normalizeCustomerTenantId(firstParam(params.tenant) || resolveDefaultCustomerTenantId())
   const relativePath = normalizeVaultRelativePath(params.path)
   const harnessRoot = await resolveHarnessRoot()
   const vaultRoot = resolveWithin(harnessRoot, `phase0/tenants/${tenant}/vault`)
