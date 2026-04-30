@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
 interface WorkflowStep {
   order: number
@@ -80,7 +81,7 @@ interface ConfirmResult {
 type ApprovalStatus = 'loading' | 'missing-intake' | 'missing-blueprint' | 'ready' | 'approved' | 'stale' | 'error'
 
 const DEFAULT_CONFIRMATION_TEXT = 'Clare 已审阅并确认 P4 客户蓝图，批准进入 tenant 部署。'
-const DEFAULT_TENANT_ID = 'media-intel-v1'
+const DEFAULT_TENANT_ID = resolveDefaultCustomerTenantId()
 
 function shortHash(value: string | null | undefined): string {
   return value ? `${value.slice(0, 10)}...${value.slice(-8)}` : '未生成'

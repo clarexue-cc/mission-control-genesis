@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 import { getUatTask, listUatSubmissions } from '@/lib/uat-tasks'
 
 function authError(error: string, status: 401 | 403) {
@@ -18,7 +19,7 @@ export async function GET(
   if ('error' in auth) return authError(auth.error || 'Authentication required', auth.status || 401)
 
   const { id } = await params
-  const tenantId = request.nextUrl.searchParams.get('tenant_id') || request.nextUrl.searchParams.get('tenant') || 'tenant-tg-001'
+  const tenantId = request.nextUrl.searchParams.get('tenant_id') || request.nextUrl.searchParams.get('tenant') || resolveDefaultCustomerTenantId()
 
   try {
     const task = await getUatTask(tenantId, id)

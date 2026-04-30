@@ -4,6 +4,7 @@ import { mutationLimiter } from '@/lib/rate-limit'
 import { resolveEffectiveRole } from '@/lib/rbac'
 import { getDatabase } from '@/lib/db'
 import { createUatTask, listCustomerUatTasks } from '@/lib/uat-tasks'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
 function authError(error: string, status: 401 | 403) {
   return NextResponse.json({ error }, { status })
@@ -37,7 +38,7 @@ function resolveTenantParam(request: NextRequest, auth: { user: { tenant_id?: nu
   return request.nextUrl.searchParams.get('tenant_id')
     || request.nextUrl.searchParams.get('tenant')
     || tenantFromAuth(auth)
-    || 'tenant-tg-001'
+    || resolveDefaultCustomerTenantId()
 }
 
 export async function GET(request: NextRequest) {

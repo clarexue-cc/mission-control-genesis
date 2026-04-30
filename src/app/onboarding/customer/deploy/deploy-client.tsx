@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { getCustomerDeployStatusDisplay } from '@/lib/customer-deploy-display'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
 interface VaultTreeNode {
   path: string
@@ -46,7 +47,7 @@ interface DeployResult {
 }
 
 type Progress = 'pending' | 'running' | 'success' | 'failed'
-const DEFAULT_TENANT_ID = 'media-intel-v1'
+const DEFAULT_TENANT_ID = resolveDefaultCustomerTenantId()
 
 function flattenNodes(nodes: VaultTreeNode[]): VaultTreeNode[] {
   return nodes.flatMap(node => [node, ...flattenNodes(node.children || [])])

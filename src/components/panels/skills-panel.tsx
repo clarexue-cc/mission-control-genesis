@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useMissionControl } from '@/store'
 import { Button } from '@/components/ui/button'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
 interface TenantSkillInventoryItem {
   tenant_id: string
@@ -63,7 +64,7 @@ export function SkillsPanel() {
     loadInventory().catch(() => {})
   }, [])
 
-  const tenantForCta = activeTenant?.slug || skills[0]?.tenant_id || 'media-intel-v1'
+  const tenantForCta = activeTenant?.slug || skills[0]?.tenant_id || resolveDefaultCustomerTenantId()
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 p-4 md:p-6">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { useMissionControl } from '@/store'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
 type UatTaskStatus = 'open' | 'closed' | 'submitted'
 
@@ -54,7 +55,7 @@ interface CustomerBlueprintResponse {
 }
 
 const feedbackChoices = ['结果正确', '内容有帮助', '语气合适', '需要修改', '可以上线']
-const defaultTenantId = 'tenant-tg-001'
+const defaultTenantId = resolveDefaultCustomerTenantId()
 const panelClassName = 'rounded-lg border border-border bg-card/70'
 
 function formatDateTime(value?: string) {

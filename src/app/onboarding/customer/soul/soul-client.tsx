@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
 interface SoulState {
   ok: boolean
@@ -34,7 +35,7 @@ interface SoulResult {
 
 type Progress = 'pending' | 'generating' | 'success' | 'failed'
 
-const DEFAULT_TENANT_ID = 'media-intel-v1'
+const DEFAULT_TENANT_ID = resolveDefaultCustomerTenantId()
 
 function previewText(value: string | null | undefined, maxLines = 20): string {
   return (value || '').split('\n').slice(0, maxLines).join('\n')

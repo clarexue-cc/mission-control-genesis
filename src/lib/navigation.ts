@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { startTransition, useCallback, useEffect } from 'react'
 import { startNavigationTiming } from '@/lib/navigation-metrics'
 import { useMissionControl } from '@/store'
+import { resolveCustomerTenantId } from '@/lib/mc-stable-mode'
 
 export function panelHref(panel: string): string {
   return panel === 'overview' ? '/' : `/${panel}`
@@ -56,7 +57,7 @@ export function useNavigateToPanel() {
     let href = baseHref
     if (TENANT_CONTEXT_PANELS.has(panel)) {
       const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
-      const tenant = params.get('tenant') || params.get('tenant_id') || activeTenant?.slug
+      const tenant = resolveCustomerTenantId(params, activeTenant?.slug)
       const role = params.get('role')
       const nextParams = new URLSearchParams()
       if (tenant) nextParams.set('tenant', tenant)

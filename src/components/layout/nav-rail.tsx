@@ -11,6 +11,12 @@ import { APP_VERSION } from '@/lib/version'
 import { getPluginNavItems } from '@/lib/plugins'
 import { canAccessPanel, isCustomerRole, type EffectiveRole } from '@/lib/rbac'
 import { getCustomerPanelLabel } from '@/components/panels/customer-view-overrides'
+import {
+  FIXED_DEV_DEFAULT_TENANT_ID,
+  isFixedDevPreviewMode,
+  isNavigationItemHiddenByInterfaceMode,
+  shouldShowInterfaceModeSwitcher,
+} from '@/lib/mc-stable-mode'
 
 interface NavItem {
   id: string
@@ -207,8 +213,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
   }, [activeTenant?.id])
 
   // In local mode, hide gateway-only panels. Non-admin users don't see admin-only panels.
-  // In essential mode, hide non-essential panels.
-  const isEssential = interfaceMode === 'essential'
+  // In fixed dev/preview navigation, interface mode filtering is disabled so the rail stays stable.
   function filterItems(items: NavItem[]): NavItem[] {
     return items
       .map(i => {
@@ -221,7 +226,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
         if (isCustomer) return i
         if (isLocal && gatewayOnlyPanels.has(i.id)) return null
         if (!isAdmin && adminOnlyPanels.has(i.id)) return null
-        if (isEssential && !i.essential) return null
+        if (isNavigationItemHiddenByInterfaceMode(i, interfaceMode)) return null
         return i
       })
       .filter((i): i is NavItem => i !== null)
@@ -520,6 +525,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
             fetchOsUsers={fetchOsUsers}
             interfaceMode={interfaceMode}
             setInterfaceMode={setInterfaceMode}
+            showInterfaceModeSwitcher={shouldShowInterfaceModeSwitcher(isAdmin)}
             activeTab={activeTab}
           />
         )}
@@ -843,7 +849,7 @@ function OrgRow({ label, initial, active, colorClass, onClick, isActiveOrg, proj
   )
 }
 
-function ContextSwitcher({ currentUser, isAdmin, isLocal, isConnected, tenants, osUsers, activeTenant, onSwitchTenant, projects, activeProject, onSwitchProject, expanded, defaultOrgName, navigateToPanel, fetchTenants, fetchOsUsers, interfaceMode, setInterfaceMode, activeTab }: {
+function ContextSwitcher({ currentUser, isAdmin, isLocal, isConnected, tenants, osUsers, activeTenant, onSwitchTenant, projects, activeProject, onSwitchProject, expanded, defaultOrgName, navigateToPanel, fetchTenants, fetchOsUsers, interfaceMode, setInterfaceMode, showInterfaceModeSwitcher, activeTab }: {
   currentUser: import('@/store').CurrentUser | null
   isAdmin: boolean
   isLocal: boolean
@@ -862,6 +868,7 @@ function ContextSwitcher({ currentUser, isAdmin, isLocal, isConnected, tenants, 
   fetchOsUsers: () => Promise<void>
   interfaceMode: 'essential' | 'full'
   setInterfaceMode: (mode: 'essential' | 'full') => void
+  showInterfaceModeSwitcher: boolean
   activeTab: string
 }) {
   const { setShowProjectManagerModal } = useMissionControl()
@@ -882,6 +889,7 @@ function ContextSwitcher({ currentUser, isAdmin, isLocal, isConnected, tenants, 
   const tenantName = activeTenant?.display_name || defaultOrgName
   const projectName = activeProject?.name
   const contextLine = projectName ? `${tenantName} / ${projectName}` : tenantName
+  const showFixedTenantHint = isFixedDevPreviewMode()
   const connectionLabel = isLocal ? tcs('localMode') : isConnected ? tcs('connected') : tcs('disconnected')
   const connectionDotClass = isLocal ? 'bg-void-cyan' : isConnected ? 'bg-green-500' : 'bg-red-500'
 
@@ -980,44 +988,48 @@ function ContextSwitcher({ currentUser, isAdmin, isLocal, isConnected, tenants, 
             </div>
 
             {/* Interface mode toggle */}
-            <div className="mx-2 border-t border-border my-1" />
-            <div className="px-3 py-1.5 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{tcs('interface')}</span>
-              <div className="flex rounded-md border border-border overflow-hidden">
-                <button
-                  onClick={async () => {
-                    if (interfaceMode === 'essential') return
-                    setInterfaceMode('essential')
-                    const essentialIds = new Set(['overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings'])
-                    if (!essentialIds.has(activeTab)) navigateToPanel('overview')
-                    try { await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ settings: { 'general.interface_mode': 'essential' } }) }) } catch {}
-                  }}
-                  className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium transition-colors ${
-                    interfaceMode === 'essential'
-                      ? 'bg-void-amber/15 text-void-amber'
-                      : 'text-muted-foreground/60 hover:text-muted-foreground'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${interfaceMode === 'essential' ? 'bg-void-amber' : 'bg-muted-foreground/30'}`} />
-                  {tcs('essential')}
-                </button>
-                <button
-                  onClick={async () => {
-                    if (interfaceMode === 'full') return
-                    setInterfaceMode('full')
-                    try { await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ settings: { 'general.interface_mode': 'full' } }) }) } catch {}
-                  }}
-                  className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium transition-colors border-l border-border ${
-                    interfaceMode === 'full'
-                      ? 'bg-void-cyan/15 text-void-cyan'
-                      : 'text-muted-foreground/60 hover:text-muted-foreground'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${interfaceMode === 'full' ? 'bg-void-cyan' : 'bg-muted-foreground/30'}`} />
-                  {tcs('full')}
-                </button>
-              </div>
-            </div>
+            {showInterfaceModeSwitcher && (
+              <>
+                <div className="mx-2 border-t border-border my-1" />
+                <div className="px-3 py-1.5 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">{tcs('interface')}</span>
+                  <div className="flex rounded-md border border-border overflow-hidden">
+                    <button
+                      onClick={async () => {
+                        if (interfaceMode === 'essential') return
+                        setInterfaceMode('essential')
+                        const essentialIds = new Set(['overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings'])
+                        if (!essentialIds.has(activeTab)) navigateToPanel('overview')
+                        try { await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ settings: { 'general.interface_mode': 'essential' } }) }) } catch {}
+                      }}
+                      className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium transition-colors ${
+                        interfaceMode === 'essential'
+                          ? 'bg-void-amber/15 text-void-amber'
+                          : 'text-muted-foreground/60 hover:text-muted-foreground'
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${interfaceMode === 'essential' ? 'bg-void-amber' : 'bg-muted-foreground/30'}`} />
+                      {tcs('essential')}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (interfaceMode === 'full') return
+                        setInterfaceMode('full')
+                        try { await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ settings: { 'general.interface_mode': 'full' } }) }) } catch {}
+                      }}
+                      className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium transition-colors border-l border-border ${
+                        interfaceMode === 'full'
+                          ? 'bg-void-cyan/15 text-void-cyan'
+                          : 'text-muted-foreground/60 hover:text-muted-foreground'
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${interfaceMode === 'full' ? 'bg-void-cyan' : 'bg-muted-foreground/30'}`} />
+                      {tcs('full')}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Quick navigation */}
             <div className="mx-2 border-t border-border my-1" />
@@ -1051,6 +1063,11 @@ function ContextSwitcher({ currentUser, isAdmin, isLocal, isConnected, tenants, 
                 <div className="mx-2 border-t border-border my-1" />
                 <div className="px-3 pt-2 pb-1">
                   <span className="text-[10px] tracking-wider text-muted-foreground/60 font-semibold">{tcs('organizations')}</span>
+                  {showFixedTenantHint && (
+                    <div className="mt-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-[10px] leading-snug text-primary">
+                      当前测试默认 {FIXED_DEV_DEFAULT_TENANT_ID}
+                    </div>
+                  )}
                 </div>
                 <div className="px-1">
                   {/* Default org */}

@@ -190,8 +190,8 @@ const gatewayPort = String(await findAvailablePort(gatewayHost))
 const baseEnv = {
   ...process.env,
   API_KEY: process.env.API_KEY || 'test-api-key-e2e-12345',
-  AUTH_USER: process.env.AUTH_USER || 'admin',
-  AUTH_PASS: process.env.AUTH_PASS || 'admin',
+  AUTH_USER: process.env.AUTH_USER || 'clare-admin',
+  AUTH_PASS: process.env.AUTH_PASS || 'dev-test-123',
   HOSTNAME: '127.0.0.1',
   PORT: '3005',
   MISSION_CONTROL_TEST_MODE: process.env.MISSION_CONTROL_TEST_MODE || '1',

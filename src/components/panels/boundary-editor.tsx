@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import loader from '@monaco-editor/loader'
 import { Button } from '@/components/ui/button'
 import { useMissionControl } from '@/store'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 import {
   parseBoundaryRulesRaw,
   stringifyBoundaryRules,
@@ -62,6 +63,7 @@ interface ToastState {
 }
 
 const tenantOptions = ['ceo-assistant-v1', 'media-intel-v1', 'web3-research-v1']
+const defaultTenantId = resolveDefaultCustomerTenantId()
 const inputClassName = 'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/10'
 const panelClassName = 'rounded-lg border border-border bg-card/70'
 
@@ -136,7 +138,7 @@ export function BoundaryEditorPanel() {
   const searchParams = useSearchParams()
   const requestedTenant = searchParams.get('tenant') || searchParams.get('tenant_id')
   const urlTenant = requestedTenant && tenantOptions.includes(requestedTenant) ? requestedTenant : ''
-  const [tenant, setTenant] = useState(urlTenant || activeTenant?.slug || 'media-intel-v1')
+  const [tenant, setTenant] = useState(urlTenant || activeTenant?.slug || defaultTenantId)
   const [availableTenants, setAvailableTenants] = useState(tenantOptions)
   const [activeTab, setActiveTab] = useState<RuleTab>('forbidden')
   const [loading, setLoading] = useState(true)
@@ -199,7 +201,7 @@ export function BoundaryEditorPanel() {
       setTenant(urlTenant)
       return
     }
-    if (activeTenant?.slug) setTenant(activeTenant.slug)
+    setTenant(activeTenant?.slug || defaultTenantId)
   }, [activeTenant?.slug, urlTenant])
 
   const applyRules = useCallback((nextRules: BoundaryRules) => {

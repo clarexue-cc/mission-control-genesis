@@ -36,7 +36,7 @@ Expected default behavior:
 
 - `/` redirects to the latest Customer Setup page.
 - Current latest page is P4 customer blueprint generation:
-  `/onboarding/customer/analyze?tenant=media-intel-v1`.
+  `/onboarding/customer/analyze?tenant=ceo-assistant-v1`.
 - The main Mission Control dashboard is `/overview`.
 - Do not use `/` as a dashboard return target during customer setup testing.
 
@@ -59,15 +59,17 @@ server first. Do not continue testing against the wrong build.
 
 ## Login contract
 
-Local E2E login is fixed:
+Dev / preview E2E login is fixed to one account:
 
 ```text
-username: admin
-password: testpass1234!
+username: clare-admin
+password: dev-test-123
 ```
 
-Do not guess other accounts. In particular, do not burn time trying
-`testadmin` just because `.env.test` mentions it.
+Do not guess other accounts. The old `admin`, `testadmin`, and
+`admin@genesis.local` identities are not the Mission Control dev/preview login.
+`admin@genesis.local` belongs to Langfuse or other tracing backends and must not
+be reused for MC.
 
 If login fails, inspect the local test database first:
 
@@ -76,7 +78,7 @@ cd /Users/clare/Desktop/.worktrees/mission-control-fix-p5-approval-v2
 node -e "const Database=require('better-sqlite3'); const db=new Database('.data/mission-control.db'); console.log(db.prepare('select id, username, role, provider, is_approved from users').all())"
 ```
 
-For this local E2E database only, if the `admin` password hash has drifted,
+For this local E2E database only, if the `clare-admin` password hash has drifted,
 realign it to the test password instead of guessing:
 
 ```bash
@@ -85,8 +87,8 @@ const Database = require('better-sqlite3')
 const { hashPassword } = require('./src/lib/password.ts')
 const db = new Database('.data/mission-control.db')
 db.prepare('update users set password_hash = ?, updated_at = ? where username = ?')
-  .run(hashPassword('testpass1234!'), Math.floor(Date.now() / 1000), 'admin')
-console.log('admin test password reset for local E2E')
+  .run(hashPassword('dev-test-123'), Math.floor(Date.now() / 1000), 'clare-admin')
+console.log('clare-admin test password reset for local E2E')
 NODE
 ```
 
@@ -97,23 +99,27 @@ Never save the test password in Chrome.
 Current P6-P22 test target tenant:
 
 ```text
-media-intel-v1
+ceo-assistant-v1
 ```
+
+During dev / preview validation, pages without an explicit `?tenant=` must
+resolve to `ceo-assistant-v1`. URL overrides are still allowed for targeted
+multi-tenant checks.
 
 Stop for Clare confirmation at every checkpoint. Capture evidence before moving
 to the next P node.
 
 Checkpoint URLs:
 
-- P6: `/onboarding/customer/deploy?role=admin&tenant=media-intel-v1`
-- P7: `/onboarding/customer/soul?role=admin&tenant=media-intel-v1`
-- P8: `/boundary?tenant=media-intel-v1`
-- P9: `/onboarding/customer/skills?tenant=media-intel-v1`
-- P10: `/tests?tenant=media-intel-v1`
-- P11: `/logs?tenant=media-intel-v1`
-- P12: `/vault?tenant=media-intel-v1`
+- P6: `/onboarding/customer/deploy?role=admin&tenant=ceo-assistant-v1`
+- P7: `/onboarding/customer/soul?role=admin&tenant=ceo-assistant-v1`
+- P8: `/boundary?tenant=ceo-assistant-v1`
+- P9: `/onboarding/customer/skills?tenant=ceo-assistant-v1`
+- P10: `/tests?tenant=ceo-assistant-v1`
+- P11: `/logs?tenant=ceo-assistant-v1`
+- P12: `/vault?tenant=ceo-assistant-v1`
 - P13: cross-session recall through Test Console plus vault evidence
-- P14: `/hermes?tenant=media-intel-v1`
+- P14: `/hermes?tenant=ceo-assistant-v1`
 - P15: Hermes stuck-alert simulation plus Alerts evidence
 - P16: Cost Tracker plus Exec Approvals evidence
 - P17: Alerts aggregation plus Activity Feed evidence

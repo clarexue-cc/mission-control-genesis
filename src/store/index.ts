@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { MODEL_CATALOG } from '@/lib/models'
+import { resolveInitialSidebarExpanded, resolveNextSidebarExpanded, resolveStableActiveTenant } from '@/lib/mc-stable-mode'
 
 export type JsonPrimitive = string | number | boolean | null
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue | undefined }
@@ -836,8 +837,10 @@ export const useMissionControl = create<MissionControlStore>()(
       try {
         if (tenant) {
           localStorage.setItem('mc-active-tenant', JSON.stringify(tenant))
+          localStorage.setItem('mc-active-tenant-user-selected', '1')
         } else {
           localStorage.removeItem('mc-active-tenant')
+          localStorage.removeItem('mc-active-tenant-user-selected')
         }
       } catch {}
       set({ activeTenant: tenant })
@@ -849,7 +852,24 @@ export const useMissionControl = create<MissionControlStore>()(
         if (!res.ok) return
         const data = await res.json()
         const tenantList = Array.isArray(data?.tenants) ? data.tenants : []
-        set({ tenants: tenantList })
+        const currentTenant = get().activeTenant
+        let userSelected = false
+        try {
+          userSelected = localStorage.getItem('mc-active-tenant-user-selected') === '1'
+        } catch {}
+        const stableActiveTenant = resolveStableActiveTenant({
+          tenants: tenantList,
+          storedTenant: currentTenant,
+          userSelected,
+        })
+        try {
+          if (stableActiveTenant) {
+            localStorage.setItem('mc-active-tenant', JSON.stringify(stableActiveTenant))
+          } else if (currentTenant) {
+            localStorage.removeItem('mc-active-tenant')
+          }
+        } catch {}
+        set({ tenants: tenantList, activeTenant: stableActiveTenant })
       } catch {}
     },
     fetchOsUsers: async () => {
@@ -953,7 +973,7 @@ export const useMissionControl = create<MissionControlStore>()(
     activeTab: 'overview',
     sidebarExpanded: (() => {
       if (typeof window === 'undefined') return false
-      try { return localStorage.getItem('mc-sidebar-expanded') === 'true' } catch { return false }
+      try { return resolveInitialSidebarExpanded(localStorage.getItem('mc-sidebar-expanded')) } catch { return resolveInitialSidebarExpanded(null) }
     })(),
     collapsedGroups: (() => {
       if (typeof window === 'undefined') return [] as string[]
@@ -976,13 +996,14 @@ export const useMissionControl = create<MissionControlStore>()(
     setActiveTab: (tab) => set({ activeTab: tab }),
     toggleSidebar: () =>
       set((state) => {
-        const next = !state.sidebarExpanded
+        const next = resolveNextSidebarExpanded(state.sidebarExpanded)
         try { localStorage.setItem('mc-sidebar-expanded', String(next)) } catch {}
         return { sidebarExpanded: next }
       }),
     setSidebarExpanded: (expanded) => {
-      try { localStorage.setItem('mc-sidebar-expanded', String(expanded)) } catch {}
-      set({ sidebarExpanded: expanded })
+      const next = resolveInitialSidebarExpanded(String(expanded))
+      try { localStorage.setItem('mc-sidebar-expanded', String(next)) } catch {}
+      set({ sidebarExpanded: next })
     },
     toggleGroup: (groupId) =>
       set((state) => {

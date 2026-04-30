@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
 interface SkillCandidate {
   id: string
@@ -84,7 +85,7 @@ interface AnalyzeResult {
 type Progress = 'pending' | 'analyzing' | 'success' | 'failed'
 type EditorSection = 'workflow' | 'soul' | 'skills' | 'boundary' | 'uat'
 
-const DEFAULT_TENANT_ID = 'media-intel-v1'
+const DEFAULT_TENANT_ID = resolveDefaultCustomerTenantId()
 const DELIVERY_MODES = ['Pipeline', 'Toolkit', 'Hybrid']
 const EDITOR_SECTIONS: Array<{ id: EditorSection; label: string }> = [
   { id: 'workflow', label: 'Workflow' },
