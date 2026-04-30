@@ -1,6 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('@/lib/mc-stable-mode', () => ({
+  resolveDefaultCustomerTenantId: () => 'ceo-assistant-v1',
+}))
+
 import { TestConsolePanel } from '@/components/panels/test-console'
 
 describe('TestConsolePanel', () => {
@@ -11,6 +15,8 @@ describe('TestConsolePanel', () => {
         tenant: 'ceo-assistant-v1',
         template: 'ceo-assistant-v1',
         total: 46,
+        harness_root: '/Users/clare/Desktop/genesis-harness',
+        runner_path: '/Users/clare/Desktop/genesis-harness/tools/tg-test-runner.ts',
         suites: [
           {
             id: 'golden',
@@ -66,5 +72,18 @@ describe('TestConsolePanel', () => {
     expect(screen.getByText('phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md')).toBeInTheDocument()
     expect(screen.getByText('回答必须匹配对应 skill 的输出要求。')).toBeInTheDocument()
     expect(screen.getByText('优化 P9 skills / AGENTS routing。')).toBeInTheDocument()
+  })
+
+  it('shows the harness test plan P10 consumes without becoming the harness operations page', async () => {
+    render(<TestConsolePanel />)
+
+    expect(await screen.findByText('Harness Test Plan')).toBeInTheDocument()
+    expect(screen.getByText('P10 consumes plan')).toBeInTheDocument()
+    expect(screen.getByText('Harness root')).toBeInTheDocument()
+    expect(screen.getByText('/Users/clare/Desktop/genesis-harness')).toBeInTheDocument()
+    expect(screen.getByText('Harness runner')).toBeInTheDocument()
+    expect(screen.getByText('/Users/clare/Desktop/genesis-harness/tools/tg-test-runner.ts')).toBeInTheDocument()
+    expect(screen.getByText('Runtime target')).toBeInTheDocument()
+    expect(screen.getByText('docker exec ceo-assistant-v1')).toBeInTheDocument()
   })
 })

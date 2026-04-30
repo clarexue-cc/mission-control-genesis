@@ -128,6 +128,7 @@ const navGroups: NavGroup[] = [
     label: 'ADMIN',
     items: [
       { id: 'monitor', label: 'Monitor', icon: <MonitorIcon />, priority: false },
+      { id: 'harness', label: 'Harness', icon: <TestsIcon />, priority: false },
       { id: 'hermes', label: 'Hermes', icon: <HermesIcon />, priority: false },
       { id: 'security', label: 'Security', icon: <SecurityIcon />, priority: false },
       { id: 'users', label: 'Users', icon: <UsersIcon />, priority: false },
@@ -187,7 +188,7 @@ const gatewayOnlyPanels = new Set([
   'gateways', 'gateway-config', 'channels', 'nodes', 'exec-approvals',
   ...getPluginNavItems().filter(pi => pi.gatewayOnly).map(pi => pi.id),
 ])
-const adminOnlyPanels = new Set<string>(['tests', 'boundary', 'delivery', 'vault', 'hermes'])
+const adminOnlyPanels = new Set<string>(['tests', 'boundary', 'delivery', 'vault', 'harness', 'hermes'])
 
 export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: EffectiveRole }) {
   const { activeTab, connection, dashboardMode, currentUser, activeTenant, tenants, osUsers, setActiveTenant, fetchTenants, fetchOsUsers, activeProject, projects, setActiveProject, fetchProjects, sidebarExpanded, collapsedGroups, toggleSidebar, toggleGroup, defaultOrgName, interfaceMode, setInterfaceMode } = useMissionControl()
