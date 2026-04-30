@@ -74,10 +74,11 @@ describe('TestConsolePanel', () => {
     expect(screen.getByText('优化 P9 skills / AGENTS routing。')).toBeInTheDocument()
   })
 
-  it('shows harness source and runtime target inside P10 instead of relying on Monitor', async () => {
+  it('shows the harness test plan P10 consumes without becoming the harness operations page', async () => {
     render(<TestConsolePanel />)
 
-    expect(await screen.findByText('Harness Source of Truth')).toBeInTheDocument()
+    expect(await screen.findByText('Harness Test Plan')).toBeInTheDocument()
+    expect(screen.getByText('P10 consumes plan')).toBeInTheDocument()
     expect(screen.getByText('Harness root')).toBeInTheDocument()
     expect(screen.getByText('/Users/clare/Desktop/genesis-harness')).toBeInTheDocument()
     expect(screen.getByText('Harness runner')).toBeInTheDocument()

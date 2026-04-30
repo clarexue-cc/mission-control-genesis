@@ -32,6 +32,7 @@ import { OfficePanel } from '@/components/panels/office-panel'
 import { GitHubSyncPanel } from '@/components/panels/github-sync-panel'
 import { SkillsPanel } from '@/components/panels/skills-panel'
 import { TestConsolePanel } from '@/components/panels/test-console'
+import { HarnessPanel } from '@/components/panels/harness-panel'
 import { BoundaryEditorPanel } from '@/components/panels/boundary-editor'
 import { DeliveryChecklistPanel } from '@/components/panels/delivery-checklist'
 import { CustomerHeaderBar, CustomerViewOverrides } from '@/components/panels/customer-view-overrides'
@@ -632,6 +633,8 @@ function ContentRouter({ tab, effectiveRole }: { tab: string; effectiveRole: Eff
       return <OfficePanel />
     case 'monitor':
       return <SystemMonitorPanel />
+    case 'harness':
+      return <HarnessPanel />
     case 'hermes':
       return <HermesControlPanel />
     case 'skills':

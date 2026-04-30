@@ -404,15 +404,15 @@ export function TestConsolePanel() {
       <section className="rounded-lg border border-border bg-card/70 p-4 shadow-sm">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Harness Source of Truth</h2>
+            <h2 className="text-sm font-semibold text-foreground">Harness Test Plan</h2>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              {planStatus === 'loading' && 'Loading harness source...'}
-              {planStatus === 'failed' && `Harness source unavailable: ${planError}`}
+              {planStatus === 'loading' && 'Loading harness test plan...'}
+              {planStatus === 'failed' && `Harness test plan unavailable: ${planError}`}
               {planStatus === 'ready' && `template=${testPlan?.template} / cases=${planCaseTotal} / tenant=${testPlan?.tenant}`}
             </p>
           </div>
           <span className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs text-primary">
-            P10 reads harness
+            P10 consumes plan
           </span>
         </div>
 

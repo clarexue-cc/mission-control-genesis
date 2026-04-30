@@ -36,6 +36,15 @@ interface HealthCheck {
   action?: string
 }
 
+interface RuntimeContainer {
+  name: string
+  command: string
+  status: CheckStatus
+  detail: string
+  running: boolean
+  health: string | null
+}
+
 const SUITES: Array<{
   id: string
   label: RunnerSuite
@@ -170,6 +179,114 @@ function overallStatus(checks: HealthCheck[]): HealthStatus {
   return 'ready'
 }
 
+function inspectRuntimeContainer(tenant: string): Promise<RuntimeContainer> {
+  const command = `docker exec ${tenant}`
+  const dockerBin = process.env.MC_HARNESS_DOCKER_BIN || 'docker'
+
+  return new Promise(resolve => {
+    const child = spawn(dockerBin, ['inspect', tenant], {
+      env: process.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    let stdout = ''
+    let stderr = ''
+    let settled = false
+    const finish = (container: RuntimeContainer) => {
+      if (settled) return
+      settled = true
+      resolve(container)
+    }
+    const timer = setTimeout(() => {
+      child.kill('SIGTERM')
+      finish({
+        name: tenant,
+        command,
+        status: 'fail',
+        detail: 'docker inspect timed out',
+        running: false,
+        health: null,
+      })
+    }, 5_000)
+
+    child.stdout.setEncoding('utf8')
+    child.stderr.setEncoding('utf8')
+    child.stdout.on('data', chunk => { stdout += chunk })
+    child.stderr.on('data', chunk => { stderr += chunk })
+    child.on('error', error => {
+      clearTimeout(timer)
+      finish({
+        name: tenant,
+        command,
+        status: 'fail',
+        detail: error.message,
+        running: false,
+        health: null,
+      })
+    })
+    child.on('close', code => {
+      clearTimeout(timer)
+      if (code !== 0) {
+        finish({
+          name: tenant,
+          command,
+          status: 'fail',
+          detail: stderr.trim() || `docker inspect exited with ${code}`,
+          running: false,
+          health: null,
+        })
+        return
+      }
+
+      try {
+        const parsed = JSON.parse(stdout) as Array<{ State?: { Running?: boolean; Health?: { Status?: string } } }>
+        const state = parsed[0]?.State
+        const running = state?.Running === true
+        const health = typeof state?.Health?.Status === 'string' ? state.Health.Status : null
+        if (!running) {
+          finish({
+            name: tenant,
+            command,
+            status: 'fail',
+            detail: `${tenant} container is not running`,
+            running: false,
+            health,
+          })
+          return
+        }
+        if (health && health !== 'healthy') {
+          finish({
+            name: tenant,
+            command,
+            status: health === 'starting' ? 'warn' : 'fail',
+            detail: `${tenant} container health is ${health}`,
+            running: true,
+            health,
+          })
+          return
+        }
+        finish({
+          name: tenant,
+          command,
+          status: 'pass',
+          detail: health ? `${tenant} is running and ${health}` : `${tenant} is running`,
+          running: true,
+          health,
+        })
+      } catch (error: any) {
+        finish({
+          name: tenant,
+          command,
+          status: 'fail',
+          detail: error?.message || 'docker inspect returned invalid JSON',
+          running: false,
+          health: null,
+        })
+      }
+    })
+  })
+}
+
 export async function GET(request: NextRequest) {
   const auth = requireRole(request, 'viewer')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -185,6 +302,7 @@ export async function GET(request: NextRequest) {
   let harnessRoot = ''
   let runnerPath: string | null = null
   let runner: RunnerListPayload | null = null
+  const runtimeTarget = `docker exec ${tenant}`
 
   try {
     harnessRoot = await resolveHarnessRoot()
@@ -197,7 +315,7 @@ export async function GET(request: NextRequest) {
       detail: error?.message || 'Genesis harness root not found',
       action: 'Set MC_HARNESS_ROOT / GENESIS_HARNESS_ROOT or place genesis-harness next to MC.',
     })
-    return NextResponse.json({ status: 'blocked', tenant, template: null, total_cases: 0, harness_root: null, runner_path: null, suites: [], checks, latest_report: null })
+    return NextResponse.json({ status: 'blocked', tenant, template: null, total_cases: 0, harness_root: null, runner_path: null, runtime_target: runtimeTarget, container: null, suites: [], checks, latest_report: null })
   }
 
   runnerPath = await resolveRunnerPath(harnessRoot)
@@ -209,7 +327,7 @@ export async function GET(request: NextRequest) {
       detail: 'tg-test-runner.ts not found',
       action: 'Restore tools/tg-test-runner.ts or configure MC_HARNESS_TEST_RUNNER.',
     })
-    return NextResponse.json({ status: 'blocked', tenant, template: null, total_cases: 0, harness_root: harnessRoot, runner_path: null, suites: [], checks, latest_report: await findLatestReport(harnessRoot) })
+    return NextResponse.json({ status: 'blocked', tenant, template: null, total_cases: 0, harness_root: harnessRoot, runner_path: null, runtime_target: runtimeTarget, container: null, suites: [], checks, latest_report: await findLatestReport(harnessRoot) })
   }
   checks.push({ id: 'runner_path', label: 'Runner path', status: 'pass', detail: runnerPath })
 
@@ -224,8 +342,17 @@ export async function GET(request: NextRequest) {
       detail: error?.message || 'Runner failed to parse cases',
       action: 'Fix tools/tg-test-runner.ts or the template tests files before running P10.',
     })
-    return NextResponse.json({ status: 'blocked', tenant, template: null, total_cases: 0, harness_root: harnessRoot, runner_path: runnerPath, suites: [], checks, latest_report: await findLatestReport(harnessRoot) })
+    return NextResponse.json({ status: 'blocked', tenant, template: null, total_cases: 0, harness_root: harnessRoot, runner_path: runnerPath, runtime_target: runtimeTarget, container: null, suites: [], checks, latest_report: await findLatestReport(harnessRoot) })
   }
+
+  const container = await inspectRuntimeContainer(tenant)
+  checks.push({
+    id: 'runtime_container',
+    label: 'Runtime container',
+    status: container.status,
+    detail: container.detail,
+    action: container.status === 'pass' ? undefined : 'Start or map the tenant container before running P10.',
+  })
 
   const templateRoot = resolveWithin(harnessRoot, `phase0/templates/${runner.template}`)
   const templateExists = await exists(templateRoot)
@@ -265,6 +392,8 @@ export async function GET(request: NextRequest) {
     total_cases: runner.total,
     harness_root: harnessRoot,
     runner_path: runnerPath,
+    runtime_target: runtimeTarget,
+    container,
     suites,
     checks,
     latest_report: await findLatestReport(harnessRoot),
