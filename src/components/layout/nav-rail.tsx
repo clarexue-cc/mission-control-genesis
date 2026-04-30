@@ -9,6 +9,7 @@ import { useNavigateToPanel, usePrefetchPanel } from '@/lib/navigation'
 import { Button } from '@/components/ui/button'
 import { APP_VERSION } from '@/lib/version'
 import { getPluginNavItems } from '@/lib/plugins'
+import { customerCheckpointNavItems } from '@/lib/customer-checkpoint-navigation'
 import { canAccessPanel, isCustomerRole, type EffectiveRole } from '@/lib/rbac'
 import { getCustomerPanelLabel } from '@/components/panels/customer-view-overrides'
 import {
@@ -20,10 +21,13 @@ import {
 
 interface NavItem {
   id: string
+  targetPanel?: string
   label: string
   icon: React.ReactNode
   priority: boolean // Show in mobile bottom bar
   essential?: boolean // Visible in Essential interface mode (default false)
+  tenantScoped?: boolean
+  role?: EffectiveRole
   children?: NavItem[] // Nested sub-items (expandable parent)
 }
 
@@ -32,6 +36,39 @@ interface NavGroup {
   label?: string // undefined = no header (core group)
   items: NavItem[]
 }
+
+function customerCheckpointIcon(panel: string) {
+  if (panel === 'tests') return <TestsIcon />
+  if (panel === 'logs') return <LogsIcon />
+  if (panel === 'vault') return <VaultIcon />
+  if (panel === 'memory') return <MemoryIcon />
+  if (panel === 'hermes') return <HermesIcon />
+  if (panel === 'alerts') return <AlertIcon />
+  if (panel === 'cost-tracker') return <TokensIcon />
+  if (panel === 'exec-approvals') return <ApprovalsIcon />
+  if (panel === 'activity') return <ActivityIcon />
+  if (panel === 'channels') return <ChannelsIcon />
+  if (panel === 'tasks') return <TasksIcon />
+  if (panel === 'delivery') return <DeliveryIcon />
+  if (panel === 'boundary') return <BoundaryIcon />
+  if (panel === 'onboarding/customer/skills') return <SkillsIcon />
+  if (panel === 'onboarding/customer/soul') return <AgentsIcon />
+  if (panel === 'onboarding/customer/confirm') return <ApprovalsIcon />
+  if (panel === 'onboarding/customer/deploy') return <DeliveryIcon />
+  if (panel === 'onboarding/customer/analyze') return <SkillsIcon />
+  return <TasksIcon />
+}
+
+const customerCheckpointChildren: NavItem[] = customerCheckpointNavItems.map(item => ({
+  id: item.id,
+  targetPanel: item.panel,
+  label: item.label,
+  icon: customerCheckpointIcon(item.panel),
+  priority: false,
+  essential: true,
+  tenantScoped: item.tenantScoped,
+  role: item.role,
+}))
 
 const navGroups: NavGroup[] = [
   {
@@ -55,17 +92,7 @@ const navGroups: NavGroup[] = [
         icon: <TasksIcon />,
         priority: false,
         essential: true,
-        children: [
-          { id: 'onboarding/customer', label: 'P3 Intake', icon: <TasksIcon />, priority: false, essential: true },
-          { id: 'onboarding/customer/analyze', label: 'P4 Blueprint', icon: <SkillsIcon />, priority: false, essential: true },
-          { id: 'onboarding/customer/confirm', label: 'P5 Approval', icon: <ApprovalsIcon />, priority: false, essential: true },
-          { id: 'onboarding/customer/deploy', label: 'P6 Deploy', icon: <DeliveryIcon />, priority: false, essential: true },
-          { id: 'onboarding/customer/soul', label: 'P7 SOUL/AGENTS', icon: <AgentsIcon />, priority: false, essential: true },
-          { id: 'boundary', label: 'P8 Boundary', icon: <BoundaryIcon />, priority: false, essential: true },
-          { id: 'onboarding/customer/skills', label: 'P9 Skills 配置', icon: <SkillsIcon />, priority: false, essential: true },
-          { id: 'tasks', label: 'P21 UAT', icon: <TasksIcon />, priority: false, essential: true },
-          { id: 'delivery', label: 'P22 Delivery', icon: <DeliveryIcon />, priority: false, essential: true },
-        ],
+        children: customerCheckpointChildren,
       },
     ],
   },
@@ -222,10 +249,11 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
           if (filteredChildren.length === 0) return null
           return { ...i, children: filteredChildren }
         }
-        if (isCustomer && !canAccessPanel(effectiveRole, i.id)) return null
+        const panel = i.targetPanel ?? i.id
+        if (isCustomer && !canAccessPanel(effectiveRole, panel)) return null
         if (isCustomer) return i
-        if (isLocal && gatewayOnlyPanels.has(i.id)) return null
-        if (!isAdmin && adminOnlyPanels.has(i.id)) return null
+        if (isLocal && gatewayOnlyPanels.has(panel)) return null
+        if (!isAdmin && adminOnlyPanels.has(panel)) return null
         if (isNavigationItemHiddenByInterfaceMode(i, interfaceMode)) return null
         return i
       })
@@ -259,7 +287,21 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
     return items.flatMap(i => i.children ? [i, ...flattenItems(i.children)] : [i])
   }
   const filteredAllNavItems = filteredGroups.flatMap(g => flattenItems(g.items))
-  function isNavItemActive(id: string): boolean {
+  function navPanel(item: NavItem): string {
+    return item.targetPanel ?? item.id
+  }
+  function navigateNavItem(item: NavItem) {
+    navigateToPanel(navPanel(item), { role: item.role, tenantScoped: item.tenantScoped })
+  }
+  function prefetchNavItem(item: NavItem) {
+    prefetchPanel(navPanel(item))
+  }
+  function isNavItemActive(item: NavItem): boolean {
+    const id = navPanel(item)
+    if (item.role) {
+      const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+      if (params.get('role') !== item.role) return false
+    }
     if (activeTab === id) return true
     if (!id.includes('/')) return false
     const href = `/${id}`
@@ -360,15 +402,15 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
               {/* Group items */}
               <div
                 className={`overflow-hidden transition-all duration-150 ease-in-out ${
-                  sidebarExpanded && collapsedGroups.includes(group.id) ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'
+                  sidebarExpanded && collapsedGroups.includes(group.id) ? 'max-h-0 opacity-0' : 'max-h-[1200px] opacity-100'
                 }`}
               >
                 <div className={`flex flex-col ${sidebarExpanded ? 'gap-0.5 px-2' : 'items-center gap-1'}`}>
                   {group.items.map((item) => {
-                    const itemActive = isNavItemActive(item.id)
+                    const itemActive = isNavItemActive(item)
                     if (item.children) {
                       const isParentExpanded = expandedParents.has(item.id)
-                      const childActive = item.children.some(c => isNavItemActive(c.id))
+                      const childActive = item.children.some(c => isNavItemActive(c))
                       if (!sidebarExpanded) {
                         // Collapsed mode: clicking parent navigates to first child
                         return (
@@ -377,8 +419,8 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
                             item={item}
                             active={childActive}
                             expanded={false}
-                            onClick={() => navigateToPanel(item.children![0].id)}
-                            onPrefetch={() => item.children?.forEach(child => prefetchPanel(child.id))}
+                            onClick={() => navigateNavItem(item.children![0])}
+                            onPrefetch={() => item.children?.forEach(child => prefetchNavItem(child))}
                           />
                         )
                       }
@@ -388,8 +430,8 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
                             <Button
                               variant="ghost"
                               onClick={() => toggleParent(item.id)}
-                              onMouseEnter={() => { prefetchPanel(item.id); item.children?.forEach(child => prefetchPanel(child.id)) }}
-                              onFocus={() => item.children?.forEach(child => prefetchPanel(child.id))}
+                              onMouseEnter={() => { prefetchNavItem(item); item.children?.forEach(child => prefetchNavItem(child)) }}
+                              onFocus={() => item.children?.forEach(child => prefetchNavItem(child))}
                               className={`flex-1 flex items-center gap-2 px-2 py-1.5 h-auto rounded-lg rounded-r-none text-left justify-start relative ${
                                 itemActive
                                   ? 'bg-primary/15 text-primary hover:bg-primary/20'
@@ -425,7 +467,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
                           </div>
                           <div
                             className={`overflow-hidden transition-all duration-150 ease-in-out ${
-                              isParentExpanded ? 'max-h-[200px] opacity-100' : 'max-h-0 opacity-0'
+                              isParentExpanded ? 'max-h-[760px] opacity-100' : 'max-h-0 opacity-0'
                             }`}
                           >
                             <div className="flex flex-col gap-0.5 pl-4 mt-0.5">
@@ -433,10 +475,10 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
                                 <NavButton
                                   key={child.id}
                                   item={child}
-                                  active={isNavItemActive(child.id)}
+                                  active={isNavItemActive(child)}
                                   expanded={true}
-                                  onClick={() => navigateToPanel(child.id)}
-                                  onPrefetch={() => prefetchPanel(child.id)}
+                                  onClick={() => navigateNavItem(child)}
+                                  onPrefetch={() => prefetchNavItem(child)}
                                   nested
                                 />
                               ))}
@@ -451,8 +493,8 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
                         item={item}
                         active={itemActive}
                         expanded={sidebarExpanded}
-                        onClick={() => navigateToPanel(item.id)}
-                        onPrefetch={() => prefetchPanel(item.id)}
+                        onClick={() => navigateNavItem(item)}
+                        onPrefetch={() => prefetchNavItem(item)}
                       />
                     )
                   })}
@@ -532,7 +574,12 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
       </nav>
 
       {/* Mobile: Bottom tab bar */}
-      <MobileBottomBar activeTab={activeTab} navigateToPanel={navigateToPanel} groups={filteredGroups} items={filteredAllNavItems} />
+      <MobileBottomBar
+        navigateNavItem={navigateNavItem}
+        isNavItemActive={isNavItemActive}
+        groups={filteredGroups}
+        items={filteredAllNavItems}
+      />
     </>
   )
 }
@@ -598,17 +645,16 @@ function NavButton({ item, active, expanded, onClick, onPrefetch, nested }: {
   )
 }
 
-function MobileBottomBar({ activeTab, navigateToPanel, groups, items }: {
-  activeTab: string
-  navigateToPanel: (tab: string) => void
+function MobileBottomBar({ navigateNavItem, isNavItemActive, groups, items }: {
+  navigateNavItem: (item: NavItem) => void
+  isNavItemActive: (item: NavItem) => boolean
   groups: NavGroup[]
   items: NavItem[]
 }) {
   const tn = useTranslations('nav')
   const [sheetOpen, setSheetOpen] = useState(false)
   const priorityItems = items.filter(i => i.priority)
-  const nonPriorityIds = new Set(items.filter(i => !i.priority).map(i => i.id))
-  const moreIsActive = nonPriorityIds.has(activeTab)
+  const moreIsActive = items.some(i => !i.priority && isNavItemActive(i))
 
   return (
     <>
@@ -618,9 +664,9 @@ function MobileBottomBar({ activeTab, navigateToPanel, groups, items }: {
             <Button
               key={item.id}
               variant="ghost"
-              onClick={() => navigateToPanel(item.id)}
+              onClick={() => navigateNavItem(item)}
               className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg min-w-[48px] min-h-[48px] h-auto ${
-                activeTab === item.id
+                isNavItemActive(item)
                   ? 'text-primary hover:text-primary'
                   : ''
               }`}
@@ -656,19 +702,19 @@ function MobileBottomBar({ activeTab, navigateToPanel, groups, items }: {
       <MobileBottomSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        activeTab={activeTab}
-        navigateToPanel={navigateToPanel}
+        navigateNavItem={navigateNavItem}
+        isNavItemActive={isNavItemActive}
         groups={groups}
       />
     </>
   )
 }
 
-function MobileBottomSheet({ open, onClose, activeTab, navigateToPanel, groups }: {
+function MobileBottomSheet({ open, onClose, navigateNavItem, isNavItemActive, groups }: {
   open: boolean
   onClose: () => void
-  activeTab: string
-  navigateToPanel: (tab: string) => void
+  navigateNavItem: (item: NavItem) => void
+  isNavItemActive: (item: NavItem) => boolean
   groups: NavGroup[]
 }) {
   // Track mount state for animation
@@ -734,11 +780,11 @@ function MobileBottomSheet({ open, onClose, activeTab, navigateToPanel, groups }
                     key={item.id}
                     variant="ghost"
                     onClick={() => {
-                      navigateToPanel(item.id)
+                      navigateNavItem(item)
                       handleClose()
                     }}
                     className={`flex items-center gap-2.5 px-3 min-h-[48px] h-auto rounded-lg justify-start ${
-                      activeTab === item.id
+                      isNavItemActive(item)
                         ? 'bg-primary/15 text-primary hover:bg-primary/20'
                         : 'text-foreground'
                     }`}

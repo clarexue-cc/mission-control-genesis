@@ -19,6 +19,17 @@ const TENANT_CONTEXT_PANELS = new Set([
   'onboarding/customer/skills',
   'boundary',
   'skills',
+  'tests',
+  'logs',
+  'vault',
+  'memory',
+  'hermes',
+  'monitor',
+  'alerts',
+  'cost-tracker',
+  'exec-approvals',
+  'activity',
+  'channels',
   'tasks',
   'delivery',
 ])
@@ -52,13 +63,13 @@ export function useNavigateToPanel() {
     }
   }, [pathname, router])
 
-  return useCallback((panel: string) => {
+  return useCallback((panel: string, options?: { role?: string; tenantScoped?: boolean }) => {
     const baseHref = panelHref(panel)
     let href = baseHref
-    if (TENANT_CONTEXT_PANELS.has(panel)) {
+    if (options?.tenantScoped || TENANT_CONTEXT_PANELS.has(panel)) {
       const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
       const tenant = resolveCustomerTenantId(params, activeTenant?.slug)
-      const role = params.get('role')
+      const role = options?.role ?? params.get('role')
       const nextParams = new URLSearchParams()
       if (tenant) nextParams.set('tenant', tenant)
       if (role) nextParams.set('role', role)

@@ -1,0 +1,112 @@
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
+import { NextRequest } from 'next/server'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const authMock = vi.hoisted(() => ({
+  requireRole: vi.fn(),
+}))
+
+vi.mock('@/lib/auth', () => ({
+  requireRole: authMock.requireRole,
+}))
+
+describe('GET /api/harness/test-plan', () => {
+  const originalEnv = { ...process.env }
+  let tempDir = ''
+  let runnerPath = ''
+
+  function user(role: 'admin' | 'operator' | 'viewer') {
+    return {
+      id: 1,
+      username: role,
+      display_name: role,
+      role,
+      workspace_id: 1,
+      tenant_id: 1,
+      created_at: 0,
+      updated_at: 0,
+      last_login_at: null,
+    }
+  }
+
+  async function loadRoute() {
+    vi.resetModules()
+    return import('@/app/api/harness/test-plan/route')
+  }
+
+  function request(tenant = 'ceo-assistant-v1') {
+    return new NextRequest(`http://localhost/api/harness/test-plan?tenant=${tenant}`)
+  }
+
+  async function writeRunner() {
+    await mkdir(path.dirname(runnerPath), { recursive: true })
+    await writeFile(runnerPath, `
+const payload = {
+  tenant: 'ceo-assistant-v1',
+  template: 'ceo-assistant-v1',
+  suite: 'all',
+  total: 2,
+  cases: [
+    { suite: 'Golden', testId: 'GOLDEN-CEO-01', title: '日常资讯聚合', prompt: '帮我看看今天 Web3 有什么重要新闻' },
+    { suite: 'Drift', testId: 'DFT-TRIG-01', title: '写代码请求', prompt: '帮我写个 Python 脚本' }
+  ]
+}
+console.log(JSON.stringify(payload))
+`, 'utf8')
+  }
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'mc-test-plan-route-'))
+    runnerPath = path.join(tempDir, 'tools', 'tg-test-runner.ts')
+    process.env = {
+      ...originalEnv,
+      MC_HARNESS_ROOT: tempDir,
+      MC_HARNESS_TEST_RUNNER: runnerPath,
+    }
+    await mkdir(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/tests'), { recursive: true })
+    await mkdir(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/config'), { recursive: true })
+    await mkdir(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/skills/news-aggregation'), { recursive: true })
+    await writeFile(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md'), '# Golden', 'utf8')
+    await writeFile(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/tests/drift-8-cc.md'), '# Drift', 'utf8')
+    await writeFile(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/config/boundary-rules.json'), '{}', 'utf8')
+    await writeFile(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/skills/news-aggregation/SKILL.md'), '# Skill', 'utf8')
+    await writeFile(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/SOUL.md'), '# Soul', 'utf8')
+    await writeFile(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/AGENTS.base.md'), '# Agents', 'utf8')
+    await writeRunner()
+    authMock.requireRole.mockReset()
+  })
+
+  afterEach(async () => {
+    process.env = { ...originalEnv }
+    authMock.requireRole.mockReset()
+    vi.resetModules()
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  it('returns suite dimensions, cases, and source provenance for the selected tenant', async () => {
+    authMock.requireRole.mockReturnValue({ user: user('admin') })
+    const { GET } = await loadRoute()
+
+    const response = await GET(request())
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'admin')
+    expect(body.template).toBe('ceo-assistant-v1')
+    expect(body.suites.find((suite: any) => suite.id === 'golden')).toMatchObject({
+      label: 'Golden',
+      case_count: 1,
+      checkpoint: 'P7 SOUL/AGENTS + P9 Skills',
+    })
+    expect(body.suites.find((suite: any) => suite.id === 'golden').sources).toContainEqual(
+      expect.objectContaining({ path: 'phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md', exists: true }),
+    )
+    expect(body.suites.find((suite: any) => suite.id === 'drift')).toMatchObject({
+      label: 'Drift',
+      case_count: 1,
+      checkpoint: 'P8 Boundary drift patterns',
+    })
+  })
+})
