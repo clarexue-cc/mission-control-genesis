@@ -24,6 +24,7 @@ const TENANT_CONTEXT_PANELS = new Set([
   'vault',
   'memory',
   'hermes',
+  'monitor',
   'alerts',
   'cost-tracker',
   'exec-approvals',

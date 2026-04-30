@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { useSmartPoll } from '@/lib/use-smart-poll'
+import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts'
 
 interface CpuData {
@@ -72,6 +73,38 @@ interface TimePoint {
   netTxRate: number
 }
 
+interface HarnessHealthCheck {
+  id: string
+  label: string
+  status: 'pass' | 'warn' | 'fail'
+  detail: string
+  action?: string
+}
+
+interface HarnessHealthSuite {
+  id: string
+  label: string
+  expected: number
+  actual: number
+  status: 'pass' | 'warn' | 'fail'
+  file: string
+}
+
+interface HarnessHealth {
+  status: 'ready' | 'warning' | 'blocked'
+  tenant: string
+  template: string | null
+  total_cases: number
+  harness_root: string | null
+  runner_path: string | null
+  suites: HarnessHealthSuite[]
+  checks: HarnessHealthCheck[]
+  latest_report?: {
+    path: string
+    updated_at: string
+  } | null
+}
+
 const MAX_POINTS = 60
 
 function formatBytes(bytes: number): string {
@@ -92,11 +125,20 @@ function formatTime(ts: number): string {
   return `${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`
 }
 
+function healthClassName(status: HarnessHealth['status'] | HarnessHealthCheck['status']) {
+  if (status === 'ready' || status === 'pass') return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+  if (status === 'warning' || status === 'warn') return 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+  return 'border-red-500/30 bg-red-500/10 text-red-300'
+}
+
 export function SystemMonitorPanel() {
   const [latest, setLatest] = useState<Snapshot | null>(null)
+  const [harnessHealth, setHarnessHealth] = useState<HarnessHealth | null>(null)
   const [history, setHistory] = useState<TimePoint[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [harnessError, setHarnessError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const harnessAbortRef = useRef<AbortController | null>(null)
   const prevNetRef = useRef<{ timestamp: number; network: NetworkData[] } | null>(null)
 
   const fetchData = useCallback(async () => {
@@ -158,7 +200,25 @@ export function SystemMonitorPanel() {
     }
   }, [])
 
+  const fetchHarnessHealth = useCallback(async () => {
+    harnessAbortRef.current?.abort()
+    const controller = new AbortController()
+    harnessAbortRef.current = controller
+
+    try {
+      const tenant = resolveDefaultCustomerTenantId()
+      const res = await fetch(`/api/harness/health?tenant=${encodeURIComponent(tenant)}`, { signal: controller.signal })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`)
+      setHarnessHealth(data as HarnessHealth)
+      setHarnessError(null)
+    } catch (err: any) {
+      if (err.name !== 'AbortError') setHarnessError(err.message)
+    }
+  }, [])
+
   useSmartPoll(fetchData, 2000)
+  useSmartPoll(fetchHarnessHealth, 15000)
 
   if (!latest) {
     return (
@@ -174,6 +234,85 @@ export function SystemMonitorPanel() {
         <h2 className="text-lg font-semibold">System Monitor</h2>
         {error && <span className="text-xs text-red-500">{error}</span>}
       </div>
+
+      <section className="rounded-xl border border-border bg-card p-4">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-medium">Harness Health</h3>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {harnessHealth
+                ? `${harnessHealth.tenant} → ${harnessHealth.template || 'template missing'} · ${harnessHealth.total_cases} cases`
+                : harnessError ? `Error: ${harnessError}` : 'Loading harness checks...'}
+            </div>
+          </div>
+          {harnessHealth && (
+            <span className={`rounded-md border px-2.5 py-1 text-xs font-medium ${healthClassName(harnessHealth.status)}`}>
+              {harnessHealth.status}
+            </span>
+          )}
+        </div>
+
+        {harnessHealth && (
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+            <div className="space-y-3">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="rounded-lg border border-border bg-background/40 p-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Harness root</div>
+                  <div className="mt-1 truncate font-mono text-xs text-foreground" title={harnessHealth.harness_root || ''}>{harnessHealth.harness_root || '-'}</div>
+                </div>
+                <div className="rounded-lg border border-border bg-background/40 p-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Runner</div>
+                  <div className="mt-1 truncate font-mono text-xs text-foreground" title={harnessHealth.runner_path || ''}>{harnessHealth.runner_path || '-'}</div>
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-4">
+                {harnessHealth.suites.map(suite => (
+                  <div key={suite.id} className="rounded-lg border border-border bg-background/40 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-foreground">{suite.label}</span>
+                      <span className={`rounded border px-1.5 py-0.5 text-[11px] ${healthClassName(suite.status)}`}>{suite.status}</span>
+                    </div>
+                    <div className="mt-2 font-mono text-lg font-semibold tabular-nums">{suite.actual}/{suite.expected}</div>
+                    <div className="mt-1 truncate text-[11px] text-muted-foreground" title={suite.file}>{suite.file}</div>
+                  </div>
+                ))}
+              </div>
+              {harnessHealth.latest_report && (
+                <div className="rounded-lg border border-border bg-background/40 p-3 text-xs">
+                  <span className="text-muted-foreground">Latest report: </span>
+                  <span className="font-mono text-foreground">{harnessHealth.latest_report.path}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="overflow-hidden rounded-lg border border-border">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-secondary/60 uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2">Check</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Detail</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border bg-background/30">
+                  {harnessHealth.checks.map(check => (
+                    <tr key={check.id} className="align-top">
+                      <td className="px-3 py-2 font-medium text-foreground">{check.label}</td>
+                      <td className="px-3 py-2">
+                        <span className={`rounded border px-1.5 py-0.5 text-[11px] ${healthClassName(check.status)}`}>{check.status}</span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="break-words text-muted-foreground">{check.detail}</div>
+                        {check.action && <div className="mt-1 text-amber-300">{check.action}</div>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* CPU */}
