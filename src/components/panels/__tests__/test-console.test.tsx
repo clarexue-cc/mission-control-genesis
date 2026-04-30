@@ -9,4 +9,13 @@ describe('TestConsolePanel', () => {
 
     expect(screen.getByRole('heading', { name: 'P10 Test Console', level: 1 })).toBeInTheDocument()
   })
+
+  it('exposes all P10 test suites', () => {
+    render(<TestConsolePanel />)
+
+    expect(screen.getByRole('button', { name: /Golden\s+10/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Adversarial\s+25/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Cross-session\s+3/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Drift\s+8/ })).toBeInTheDocument()
+  })
 })

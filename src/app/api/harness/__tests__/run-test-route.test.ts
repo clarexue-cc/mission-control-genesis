@@ -131,6 +131,28 @@ emit({ type: 'run_finished', total: 10, failed: 0 })
     await expect(readFile(outputPath, 'utf8')).resolves.toContain('Golden 10 passed')
   })
 
+  it('maps Drift requests to the harness Drift suite', async () => {
+    await writeRunner(`
+const args = process.argv
+const suite = args[args.indexOf('--suite') + 1]
+const emit = (event) => console.log('[runner:event] ' + JSON.stringify(event))
+emit({ type: 'run_started', total: 8, suite })
+emit({ type: 'run_finished', total: 8, failed: 0 })
+`)
+    authMock.requireRole.mockReturnValue({ user: user('admin') })
+    const { POST } = await loadRoute()
+
+    const response = await POST(request({ tenant: 'tenant-tg-001', suite: 'drift', delay_ms: 0, timeout_ms: 1000 }))
+    const text = await response.text()
+    const events = parseEvents(text)
+    const accepted = events.find(event => event.type === 'run_accepted')
+    const started = events.find(event => event.type === 'run_started')
+
+    expect(response.status).toBe(200)
+    expect(accepted?.runner_suite).toBe('Drift')
+    expect(started?.suite).toBe('Drift')
+  })
+
   it('does not enqueue after client abort closes the response stream', async () => {
     await writeRunner(`
 const emit = (event) => console.log('[runner:event] ' + JSON.stringify(event))

@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { Button } from '@/components/ui/button'
 import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
-type TestSuite = 'golden' | 'adversarial' | 'cross-session'
+type TestSuite = 'golden' | 'adversarial' | 'cross-session' | 'drift'
 type RunStatus = 'idle' | 'running' | 'completed' | 'failed'
 type CaseStatus = 'running' | 'passed' | 'failed'
 
@@ -63,6 +63,7 @@ const suiteButtons: Array<{ id: TestSuite; label: string; expected: string }> = 
   { id: 'golden', label: 'Golden', expected: '10' },
   { id: 'adversarial', label: 'Adversarial', expected: '25' },
   { id: 'cross-session', label: 'Cross-session', expected: '3' },
+  { id: 'drift', label: 'Drift', expected: '8' },
 ]
 
 const langfuseBaseUrl = process.env.NEXT_PUBLIC_LANGFUSE_URL || 'http://192.168.1.116:3001'
@@ -276,7 +277,7 @@ export function TestConsolePanel() {
 
           <div className="min-w-0">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Suite</span>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-4">
               {suiteButtons.map(button => (
                 <Button
                   key={button.id}

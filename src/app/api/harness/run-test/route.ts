@@ -9,8 +9,8 @@ import { requireRole } from '@/lib/auth'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-type ApiSuite = 'golden' | 'adversarial' | 'cross-session'
-type RunnerSuite = 'Golden' | 'Adversarial' | 'Cross-session'
+type ApiSuite = 'golden' | 'adversarial' | 'cross-session' | 'drift'
+type RunnerSuite = 'Golden' | 'Adversarial' | 'Cross-session' | 'Drift'
 
 interface RunTestBody {
   tenant?: unknown
@@ -34,6 +34,7 @@ const SUITE_MAP: Record<ApiSuite, RunnerSuite> = {
   golden: 'Golden',
   adversarial: 'Adversarial',
   'cross-session': 'Cross-session',
+  drift: 'Drift',
 }
 
 async function exists(filePath: string): Promise<boolean> {
@@ -55,10 +56,10 @@ function normalizeTenant(value: unknown): string {
 
 function normalizeSuite(value: unknown): ApiSuite {
   const suite = typeof value === 'string' ? value.trim().toLowerCase() : ''
-  if (suite === 'golden' || suite === 'adversarial' || suite === 'cross-session') {
+  if (suite === 'golden' || suite === 'adversarial' || suite === 'cross-session' || suite === 'drift') {
     return suite
   }
-  throw new Error('suite must be golden, adversarial, or cross-session')
+  throw new Error('suite must be golden, adversarial, cross-session, or drift')
 }
 
 function normalizeMs(value: unknown, fallback: number, min: number, max: number): number {
