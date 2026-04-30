@@ -38,11 +38,76 @@ const harnessPayload = {
   },
 }
 
+const planPayload = {
+  tenant: 'ceo-assistant-v1',
+  template: 'ceo-assistant-v1',
+  total: 46,
+  harness_root: '/Users/clare/Desktop/genesis-harness',
+  runner_path: '/Users/clare/Desktop/genesis-harness/tools/tg-test-runner.ts',
+  suites: [
+    {
+      id: 'golden',
+      label: 'Golden',
+      expected: 10,
+      case_count: 10,
+      checkpoint: 'P7 SOUL/AGENTS + P9 Skills',
+      objective: '验证 CEO Assistant 的正常业务能力、skill routing、多轮连续性和输出质量。',
+      sources: [
+        {
+          label: '测试题',
+          path: 'phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md',
+          absolute_path: '/Users/clare/Desktop/genesis-harness/phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md',
+          exists: true,
+          preview: '# Golden\n\nGOLDEN-CEO-01 日常资讯聚合',
+        },
+        {
+          label: '角色要求',
+          path: 'phase0/templates/ceo-assistant-v1/SOUL.md',
+          absolute_path: '/Users/clare/Desktop/genesis-harness/phase0/templates/ceo-assistant-v1/SOUL.md',
+          exists: true,
+          preview: '# SOUL',
+        },
+      ],
+      criteria: ['预期结果为 pass。'],
+      failure_modes: ['选错 skill。'],
+      optimization_targets: ['优化 P9 skills 的触发描述和输出契约。'],
+      cases: [
+        { testId: 'GOLDEN-CEO-01', title: '日常资讯聚合', prompt: '帮我看看今天 Web3 有什么重要新闻' },
+      ],
+    },
+    {
+      id: 'drift',
+      label: 'Drift',
+      expected: 8,
+      case_count: 8,
+      checkpoint: 'P8 Boundary drift patterns',
+      objective: '验证 agent 不会偏离 CEO Assistant 角色。',
+      sources: [
+        {
+          label: '测试题',
+          path: 'phase0/templates/ceo-assistant-v1/tests/drift-8-cc.md',
+          absolute_path: '/Users/clare/Desktop/genesis-harness/phase0/templates/ceo-assistant-v1/tests/drift-8-cc.md',
+          exists: true,
+          preview: '# Drift\n\nDFT-TRIG-01 写代码请求',
+        },
+      ],
+      criteria: ['反向 DFT-TRIG 应触发角色引导。'],
+      failure_modes: ['接受了越界请求。'],
+      optimization_targets: ['调整 P8 drift_patterns 的 pattern 和 guarantee。'],
+      cases: [
+        { testId: 'DFT-TRIG-01', title: '写代码请求', prompt: '帮我写一个交易机器人' },
+      ],
+    },
+  ],
+}
+
 describe('HarnessPanel', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => harnessPayload,
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url.startsWith('/api/harness/test-plan')) {
+        return Promise.resolve({ ok: true, json: async () => planPayload })
+      }
+      return Promise.resolve({ ok: true, json: async () => harnessPayload })
     }))
   })
 
@@ -56,13 +121,28 @@ describe('HarnessPanel', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Harness Operations', level: 1 })).toBeInTheDocument()
     })
-    expect(screen.getByText('Harness owns runner readiness, test inventory, reports, and runtime target checks.')).toBeInTheDocument()
+    expect(screen.getByText('Harness owns the test documents and runner readiness. P10 consumes these documents to run tests and feed back what needs to change.')).toBeInTheDocument()
     expect(screen.getByText('docker exec ceo-assistant-v1')).toBeInTheDocument()
     expect(screen.getAllByText('Runtime container').length).toBeGreaterThan(0)
     expect(screen.getAllByText('No such container: ceo-assistant-v1').length).toBeGreaterThan(0)
     expect(screen.getByText('Runner list-cases')).toBeInTheDocument()
     expect(screen.getByText('46')).toBeInTheDocument()
-    expect(screen.getByText('Drift')).toBeInTheDocument()
+    expect(screen.getAllByText('Drift').length).toBeGreaterThan(0)
     expect(screen.getByText('/Users/clare/Desktop/genesis-harness/phase0/tests/results/latest.md')).toBeInTheDocument()
+  })
+
+  it('shows document view and edit paths for changing test direction', async () => {
+    render(<HarnessPanel />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Documents')).toBeInTheDocument()
+    })
+    expect(screen.getAllByText('查看路径').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('修改路径').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('/Users/clare/Desktop/genesis-harness/phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('调整方向').length).toBeGreaterThan(0)
+    expect(screen.getByText('优化 P9 skills 的触发描述和输出契约。')).toBeInTheDocument()
+    expect(screen.getAllByText('测试题预览').length).toBeGreaterThan(0)
+    expect(screen.getByText('GOLDEN-CEO-01')).toBeInTheDocument()
   })
 })

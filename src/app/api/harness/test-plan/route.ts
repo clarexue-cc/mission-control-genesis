@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { constants } from 'node:fs'
-import { access } from 'node:fs/promises'
+import { access, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
@@ -186,18 +186,49 @@ function runListCases(harnessRoot: string, runnerPath: string, tenant: string): 
   })
 }
 
+async function readPreview(filePath: string): Promise<string | null> {
+  try {
+    const content = await readFile(filePath, 'utf8')
+    return content.length > 2000 ? `${content.slice(0, 2000)}\n...` : content
+  } catch {
+    return null
+  }
+}
+
 async function source(harnessRoot: string, template: string, label: string, relative: string) {
   const filePath = path.join(harnessRoot, relative)
-  return { label, path: relative, exists: await exists(filePath) }
+  const readable = await exists(filePath)
+  return {
+    label,
+    path: relative,
+    absolute_path: filePath,
+    exists: readable,
+    preview: readable ? await readPreview(filePath) : null,
+  }
 }
 
 async function firstExistingSource(harnessRoot: string, template: string, label: string, candidates: string[]) {
   for (const fileName of candidates) {
     const relative = `phase0/templates/${template}/tests/${fileName}`
-    if (await exists(path.join(harnessRoot, relative))) return { label, path: relative, exists: true }
+    const filePath = path.join(harnessRoot, relative)
+    if (await exists(filePath)) {
+      return {
+        label,
+        path: relative,
+        absolute_path: filePath,
+        exists: true,
+        preview: await readPreview(filePath),
+      }
+    }
   }
   const fallback = `phase0/templates/${template}/tests/${candidates[0]}`
-  return { label, path: fallback, exists: false }
+  return {
+    label,
+    path: fallback,
+    absolute_path: path.join(harnessRoot, fallback),
+    exists: false,
+    preview: null,
+  }
 }
 
 async function suiteSources(harnessRoot: string, template: string, suite: ApiSuite) {
