@@ -253,7 +253,7 @@ export function TestConsolePanel() {
     <div className="flex h-full flex-col gap-4 px-1 pb-6">
       <div className="flex flex-col gap-4 rounded-lg border border-border bg-card/70 p-5 shadow-sm xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold text-foreground">Tests</h1>
+          <h1 className="text-2xl font-semibold text-foreground">P10 Test Console</h1>
           <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
             <span className="rounded-md border border-border px-2.5 py-1">run: {runId || '-'}</span>
             <span className="rounded-md border border-border px-2.5 py-1">status: {runStatus}</span>
