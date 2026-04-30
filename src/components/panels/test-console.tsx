@@ -189,6 +189,11 @@ export function TestConsolePanel() {
   const totalCount = runTotal || cases.length
   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
   const planCaseTotal = testPlan?.suites.reduce((sum, suite) => sum + suite.case_count, 0) ?? 0
+  const runtimeTarget = `docker exec ${tenant}`
+  const runtimeIssue = cases.find(testCase =>
+    testCase.error?.includes('docker')
+    || testCase.error?.includes('No such container')
+  )?.error || null
 
   const appendLog = useCallback((line: string) => {
     setLogs(current => [...current.slice(-79), line])
@@ -395,6 +400,47 @@ export function TestConsolePanel() {
           {error}
         </div>
       )}
+
+      <section className="rounded-lg border border-border bg-card/70 p-4 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Harness Source of Truth</h2>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {planStatus === 'loading' && 'Loading harness source...'}
+              {planStatus === 'failed' && `Harness source unavailable: ${planError}`}
+              {planStatus === 'ready' && `template=${testPlan?.template} / cases=${planCaseTotal} / tenant=${testPlan?.tenant}`}
+            </p>
+          </div>
+          <span className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs text-primary">
+            P10 reads harness
+          </span>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-4">
+          <div className="min-w-0 rounded-lg border border-border bg-background/45 p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Harness root</div>
+            <div className="mt-1 truncate font-mono text-xs text-foreground" title={testPlan?.harness_root || ''}>{testPlan?.harness_root || '-'}</div>
+          </div>
+          <div className="min-w-0 rounded-lg border border-border bg-background/45 p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Harness runner</div>
+            <div className="mt-1 truncate font-mono text-xs text-foreground" title={testPlan?.runner_path || ''}>{testPlan?.runner_path || '-'}</div>
+          </div>
+          <div className="min-w-0 rounded-lg border border-border bg-background/45 p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Runtime target</div>
+            <div className="mt-1 truncate font-mono text-xs text-foreground" title={runtimeTarget}>{runtimeTarget}</div>
+          </div>
+          <div className="min-w-0 rounded-lg border border-border bg-background/45 p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Report output</div>
+            <div className="mt-1 truncate font-mono text-xs text-foreground" title={outputPath || ''}>{outputPath || 'created after run'}</div>
+          </div>
+        </div>
+
+        {runtimeIssue && (
+          <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-5 text-red-200">
+            Runtime gap: {runtimeIssue}
+          </div>
+        )}
+      </section>
 
       <section className="rounded-lg border border-border bg-card/70 p-4 shadow-sm">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
