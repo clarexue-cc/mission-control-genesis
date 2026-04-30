@@ -115,34 +115,38 @@ describe('HarnessPanel', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows harness operations separately from the P10 test console', async () => {
+  it('shows a concise harness workspace before exposing raw details', async () => {
     render(<HarnessPanel />)
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Harness Operations', level: 1 })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Harness 工作台', level: 1 })).toBeInTheDocument()
     })
-    expect(screen.getByText('Harness owns the test documents and runner readiness. P10 consumes these documents to run tests and feed back what needs to change.')).toBeInTheDocument()
-    expect(screen.getByText('docker exec ceo-assistant-v1')).toBeInTheDocument()
-    expect(screen.getAllByText('Runtime container').length).toBeGreaterThan(0)
+    expect(screen.getByText('当前结论')).toBeInTheDocument()
+    expect(screen.getByText('先修运行环境')).toBeInTheDocument()
+    expect(screen.getByText('题库状态')).toBeInTheDocument()
+    expect(screen.getByText('下一步')).toBeInTheDocument()
+    expect(screen.getByText('修 ceo-assistant-v1 container')).toBeInTheDocument()
+    expect(screen.getByText('四套测试方向')).toBeInTheDocument()
     expect(screen.getAllByText('No such container: ceo-assistant-v1').length).toBeGreaterThan(0)
-    expect(screen.getByText('Runner list-cases')).toBeInTheDocument()
     expect(screen.getByText('46')).toBeInTheDocument()
-    expect(screen.getAllByText('Drift').length).toBeGreaterThan(0)
-    expect(screen.getByText('/Users/clare/Desktop/genesis-harness/phase0/tests/results/latest.md')).toBeInTheDocument()
+    expect(screen.getByText('底层路径')).toBeInTheDocument()
   })
 
-  it('shows document view and edit paths for changing test direction', async () => {
+  it('shows test directions, readable cases, and edit entry points', async () => {
     render(<HarnessPanel />)
 
     await waitFor(() => {
-      expect(screen.getByText('Test Documents')).toBeInTheDocument()
+      expect(screen.getByText('四套测试方向')).toBeInTheDocument()
     })
-    expect(screen.getAllByText('查看路径').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('修改路径').length).toBeGreaterThan(0)
+    expect(screen.getByText('正常能力')).toBeInTheDocument()
+    expect(screen.getByText('角色漂移')).toBeInTheDocument()
+    expect(screen.getAllByText('测什么').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('改哪里').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('如果不好，通常调').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('看题目').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('看修改入口').length).toBeGreaterThan(0)
     expect(screen.getAllByText('/Users/clare/Desktop/genesis-harness/phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('调整方向').length).toBeGreaterThan(0)
     expect(screen.getByText('优化 P9 skills 的触发描述和输出契约。')).toBeInTheDocument()
-    expect(screen.getAllByText('测试题预览').length).toBeGreaterThan(0)
     expect(screen.getByText('GOLDEN-CEO-01')).toBeInTheDocument()
   })
 })
