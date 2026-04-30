@@ -50,6 +50,41 @@ interface CaseRun {
   error: string | null
 }
 
+interface PlanSource {
+  label: string
+  path: string
+  exists: boolean
+}
+
+interface PlanCase {
+  testId: string
+  title: string
+  prompt: string
+}
+
+interface PlanSuite {
+  id: TestSuite
+  label: string
+  expected: number
+  case_count: number
+  checkpoint: string
+  objective: string
+  sources: PlanSource[]
+  criteria: string[]
+  failure_modes: string[]
+  optimization_targets: string[]
+  cases: PlanCase[]
+}
+
+interface TestPlan {
+  tenant: string
+  template: string
+  total: number
+  harness_root: string
+  runner_path: string
+  suites: PlanSuite[]
+}
+
 const tenantOptions = [
   'ceo-assistant-v1',
   'tenant-tg-001',
@@ -91,6 +126,40 @@ function statusClassName(status: CaseStatus) {
   return 'border-primary/30 bg-primary/10 text-primary'
 }
 
+function suiteRunSummary(suite: PlanSuite, cases: CaseRun[]) {
+  const records = cases.filter(testCase => testCase.suite.toLowerCase() === suite.label.toLowerCase())
+  const failed = records.filter(testCase => testCase.status === 'failed').length
+  const passed = records.filter(testCase => testCase.status === 'passed').length
+  if (records.length === 0) return { label: '未运行', className: 'border-border text-muted-foreground' }
+  if (failed > 0) return { label: `链路失败 ${failed}`, className: 'border-red-500/30 bg-red-500/10 text-red-300' }
+  return { label: `已采集 ${passed}/${records.length}`, className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' }
+}
+
+function caseDiagnosis(testCase: CaseRun) {
+  if (!testCase.error) {
+    return {
+      reason: '链路已采集；语义是否通过需要按上方测试文件的期望行为人工判分。',
+      next: '打开 Prompt/Response，对照该 suite 的判定标准记录通过、不过及优化点。',
+    }
+  }
+  if (testCase.error.includes('docker') || testCase.error.includes('No such container')) {
+    return {
+      reason: '运行容器或 tenant 映射异常，runner 没有打到客户 agent。',
+      next: '检查 P6 Deploy / Hermes tenant container / MC_HARNESS_ROOT 与 tenant 映射。',
+    }
+  }
+  if (testCase.error.includes('HTTP')) {
+    return {
+      reason: 'agent 网关返回非 200，属于服务链路或鉴权问题。',
+      next: '去 P11 Logs 看 gateway / hook 日志，再修部署、token 或代理配置。',
+    }
+  }
+  return {
+    reason: 'runner 执行失败，先看 Runner 输出和 report 文件定位失败层。',
+    next: '按错误归属回到 P6 部署、P8 boundary、P9 skills 或 P13 recall 调整。',
+  }
+}
+
 function upsertCase(cases: CaseRun[], next: CaseRun) {
   const index = cases.findIndex(item => item.case_id === next.case_id)
   if (index < 0) return [...cases, next].sort((left, right) => left.index - right.index)
@@ -109,6 +178,9 @@ export function TestConsolePanel() {
   const [traceIds, setTraceIds] = useState<string[]>([])
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [testPlan, setTestPlan] = useState<TestPlan | null>(null)
+  const [planStatus, setPlanStatus] = useState<'loading' | 'ready' | 'failed'>('loading')
+  const [planError, setPlanError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   const passCount = useMemo(() => cases.filter(testCase => testCase.status === 'passed').length, [cases])
@@ -116,6 +188,7 @@ export function TestConsolePanel() {
   const completedCount = passCount + failCount
   const totalCount = runTotal || cases.length
   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+  const planCaseTotal = testPlan?.suites.reduce((sum, suite) => sum + suite.case_count, 0) ?? 0
 
   const appendLog = useCallback((line: string) => {
     setLogs(current => [...current.slice(-79), line])
@@ -247,6 +320,28 @@ export function TestConsolePanel() {
   }, [applyEvent, tenant])
 
   useEffect(() => {
+    const controller = new AbortController()
+    setPlanStatus('loading')
+    setPlanError(null)
+
+    fetch(`/api/harness/test-plan?tenant=${encodeURIComponent(tenant)}`, { signal: controller.signal })
+      .then(async response => {
+        const body = await response.json().catch(() => null)
+        if (!response.ok) throw new Error(body?.error || `Request failed with ${response.status}`)
+        setTestPlan(body as TestPlan)
+        setPlanStatus('ready')
+      })
+      .catch((planLoadError: any) => {
+        if (planLoadError?.name === 'AbortError') return
+        setTestPlan(null)
+        setPlanStatus('failed')
+        setPlanError(planLoadError?.message || 'Failed to load test plan')
+      })
+
+    return () => controller.abort()
+  }, [tenant])
+
+  useEffect(() => {
     return () => abortRef.current?.abort()
   }, [])
 
@@ -300,6 +395,95 @@ export function TestConsolePanel() {
           {error}
         </div>
       )}
+
+      <section className="rounded-lg border border-border bg-card/70 p-4 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">测试维度与出处</h2>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {planStatus === 'loading' && '正在从 harness 读取当前 tenant 的测试计划。'}
+              {planStatus === 'failed' && `测试计划读取失败：${planError}`}
+              {planStatus === 'ready' && `tenant=${testPlan?.tenant} / template=${testPlan?.template} / cases=${planCaseTotal}`}
+            </p>
+          </div>
+          <span className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground">
+            自动结果=链路采集；语义通过=按出处人工判分
+          </span>
+        </div>
+
+        <div className="grid gap-3 xl:grid-cols-4">
+          {(testPlan?.suites || []).map(suite => {
+            const summary = suiteRunSummary(suite, cases)
+            return (
+              <article key={suite.id} className="min-w-0 rounded-lg border border-border bg-background/45 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-foreground">{suite.label}</h3>
+                      <span className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground">{suite.case_count}/{suite.expected}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{suite.checkpoint}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-md border px-2 py-1 text-[11px] ${summary.className}`}>{summary.label}</span>
+                </div>
+
+                <p className="mt-3 text-xs leading-5 text-foreground">{suite.objective}</p>
+
+                <div className="mt-3 space-y-2">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">出处</div>
+                    <div className="mt-1 space-y-1">
+                      {suite.sources.map(source => (
+                        <div key={`${suite.id}-${source.path}`} className="min-w-0 rounded border border-border/70 px-2 py-1">
+                          <div className="text-[11px] text-muted-foreground">{source.label} {source.exists ? 'ok' : 'missing'}</div>
+                          <div className="truncate font-mono text-[11px] text-foreground" title={source.path}>{source.path}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">判定</div>
+                    <ul className="mt-1 space-y-1 text-xs leading-5 text-muted-foreground">
+                      {suite.criteria.map(item => <li key={item}>{item}</li>)}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">不过通常因为什么</div>
+                    <ul className="mt-1 space-y-1 text-xs leading-5 text-muted-foreground">
+                      {suite.failure_modes.map(item => <li key={item}>{item}</li>)}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">下一步优化</div>
+                    <ul className="mt-1 space-y-1 text-xs leading-5 text-muted-foreground">
+                      {suite.optimization_targets.map(item => <li key={item}>{item}</li>)}
+                    </ul>
+                  </div>
+                </div>
+
+                {suite.cases.length > 0 && (
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-xs font-medium text-primary">查看测试题</summary>
+                    <div className="mt-2 space-y-2">
+                      {suite.cases.slice(0, 4).map(testCase => (
+                        <div key={testCase.testId} className="rounded border border-border/70 bg-card/60 p-2">
+                          <div className="font-mono text-[11px] text-foreground">{testCase.testId}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">{testCase.title}</div>
+                          <div className="mt-1 line-clamp-3 text-xs leading-5 text-foreground">{testCase.prompt}</div>
+                        </div>
+                      ))}
+                      {suite.cases.length > 4 && <div className="text-[11px] text-muted-foreground">还有 {suite.cases.length - 4} 条，运行后在 Cases 展开看完整 prompt/response。</div>}
+                    </div>
+                  </details>
+                )}
+              </article>
+            )
+          })}
+        </div>
+      </section>
 
       <section className="rounded-lg border border-border bg-card/70 p-4 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -398,6 +582,11 @@ export function TestConsolePanel() {
                                   {testCase.response || testCase.error || 'Waiting for response...'}
                                 </pre>
                               </div>
+                            </div>
+                            <div className="mt-3 rounded-lg border border-border bg-background/80 p-3 text-xs leading-5">
+                              <div className="font-semibold uppercase tracking-wide text-muted-foreground">结果分析 / 下一步</div>
+                              <div className="mt-2 text-foreground">原因：{caseDiagnosis(testCase).reason}</div>
+                              <div className="mt-1 text-muted-foreground">下一步：{caseDiagnosis(testCase).next}</div>
                             </div>
                           </td>
                         </tr>
