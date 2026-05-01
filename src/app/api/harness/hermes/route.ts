@@ -4,6 +4,7 @@ import path from 'node:path'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import { runCommand } from '@/lib/command'
+import { getHermesTasks } from '@/lib/hermes-tasks'
 import { isCustomerRole, readRoleFromCookieString } from '@/lib/rbac'
 
 export const dynamic = 'force-dynamic'
@@ -20,6 +21,15 @@ interface HermesTargetStatus {
   last_check_at: string | null
   last_alert: string | null
   stale: boolean
+}
+
+interface HermesCronEvidenceJob {
+  id: string
+  schedule: string
+  enabled: boolean
+  lastRunAt: string | null
+  runCount: number
+  evidence: string
 }
 
 const VAULT_ROOT = process.env.MC_OBSIDIAN_VAULT_ROOT || process.env.OBSIDIAN_VAULT_ROOT || '/Users/clare/Desktop/obsidian/openclaw'
@@ -76,6 +86,45 @@ function displayTenant(agentDir: string): string {
   return agentDir.replace(/^Agent-/, '').replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()
 }
 
+function cronJobEvidenceText(job: { id: string; prompt: string; schedule: string }) {
+  return `${job.id} ${job.prompt} ${job.schedule}`.toLowerCase()
+}
+
+function getCronEvidence() {
+  const cronJobs = getHermesTasks(true).cronJobs
+  const jobs: HermesCronEvidenceJob[] = cronJobs.map(job => {
+    const evidence = cronJobEvidenceText(job)
+    return {
+      id: job.id,
+      schedule: job.schedule,
+      enabled: job.enabled,
+      lastRunAt: job.lastRunAt,
+      runCount: job.runCount,
+      evidence,
+    }
+  })
+  const enabledJobs = jobs.filter(job => job.enabled)
+  const openclawMonitoring = enabledJobs.some(job => job.evidence.includes('openclaw'))
+  const heartbeatMonitoring = enabledJobs.some(job => job.evidence.includes('heartbeat') || job.evidence.includes('working-context'))
+  const lastRunAt = enabledJobs
+    .map(job => job.lastRunAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1) || null
+
+  return {
+    total_jobs: jobs.length,
+    enabled_jobs: enabledJobs.length,
+    openclaw_monitoring: openclawMonitoring,
+    heartbeat_monitoring: heartbeatMonitoring,
+    last_run_at: lastRunAt,
+    evidence: jobs.length > 0
+      ? `${enabledJobs.length}/${jobs.length} Hermes cron jobs enabled`
+      : 'No Hermes cron jobs found under ~/.hermes/cron/jobs.json',
+    jobs,
+  }
+}
+
 async function listAgentDirs(): Promise<string[]> {
   const entries = await readdir(VAULT_ROOT, { withFileTypes: true }).catch(() => [])
   return entries
@@ -123,6 +172,7 @@ async function getHermesState() {
     vault_root: VAULT_ROOT,
     log_path: LOG_FILE,
     log_tail: logTail,
+    cron: getCronEvidence(),
     targets,
     scripts: {
       daemon: scriptPath('hermes-daemon.sh'),

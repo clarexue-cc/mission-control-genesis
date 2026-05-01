@@ -64,8 +64,8 @@ const CUSTOMER_SETUP_STEPS = [
   { label: 'P7 SOUL/AGENTS', href: '/onboarding/customer/soul' },
   { label: 'P8 Boundary', href: '/boundary' },
   { label: 'P9 Skills 配置', href: '/onboarding/customer/skills', active: true },
-  { label: 'P18 UAT', href: '/tasks' },
-  { label: 'P19 Delivery', href: '/delivery' },
+  { label: 'P15 UAT', href: '/tasks' },
+  { label: 'P16 Delivery', href: '/delivery' },
 ]
 
 const statusCopy: Record<SkillLifecycleStatus, { label: string; className: string }> = {
@@ -78,7 +78,7 @@ const statusCopy: Record<SkillLifecycleStatus, { label: string; className: strin
     className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
   },
   UAT: {
-    label: 'UAT 验证中（P18 反馈中）',
+    label: 'UAT 验证中（P15 反馈中）',
     className: 'border-primary/30 bg-primary/10 text-primary',
   },
 }

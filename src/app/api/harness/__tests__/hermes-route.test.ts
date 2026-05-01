@@ -8,12 +8,20 @@ const authMock = vi.hoisted(() => ({
   requireRole: vi.fn(),
 }))
 
+const hermesTasksMock = vi.hoisted(() => ({
+  getHermesTasks: vi.fn(),
+}))
+
 vi.mock('@/lib/auth', () => ({
   requireRole: authMock.requireRole,
 }))
 
 vi.mock('@/lib/command', () => ({
   runCommand: vi.fn(),
+}))
+
+vi.mock('@/lib/hermes-tasks', () => ({
+  getHermesTasks: hermesTasksMock.getHermesTasks,
 }))
 
 describe('GET /api/harness/hermes', () => {
@@ -62,6 +70,8 @@ describe('GET /api/harness/hermes', () => {
       HERMES_LOG_FILE: path.join(vaultRoot, 'Agent-Shared/hermes-log.md'),
     }
     authMock.requireRole.mockReset()
+    hermesTasksMock.getHermesTasks.mockReset()
+    hermesTasksMock.getHermesTasks.mockReturnValue({ cronJobs: [] })
   })
 
   afterEach(async () => {
@@ -82,6 +92,51 @@ describe('GET /api/harness/hermes', () => {
     expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'operator')
     expect(body.daemon_running).toBe(false)
     expect(body.targets[0].health).toBe('fresh')
+    expect(body.cron).toMatchObject({
+      total_jobs: 0,
+      enabled_jobs: 0,
+      openclaw_monitoring: false,
+      heartbeat_monitoring: false,
+    })
+    expect(body.cron.evidence).toContain('No Hermes cron jobs found')
+  })
+
+  it('reports Hermes cron evidence when OpenClaw heartbeat monitoring jobs exist', async () => {
+    authMock.requireRole.mockReturnValue({ user: user('admin') })
+    hermesTasksMock.getHermesTasks.mockReturnValue({
+      cronJobs: [
+        {
+          id: 'openclaw-heartbeat',
+          prompt: 'Check OpenClaw tenant heartbeat and working-context freshness',
+          schedule: '*/15 * * * *',
+          enabled: true,
+          lastRunAt: '2026-05-01T10:00:00Z',
+          lastOutput: 'ok',
+          createdAt: '2026-05-01T09:00:00Z',
+          runCount: 3,
+        },
+      ],
+    })
+    const GET = await loadGet()
+
+    const response = await GET(request())
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(hermesTasksMock.getHermesTasks).toHaveBeenCalledWith(true)
+    expect(body.cron).toMatchObject({
+      total_jobs: 1,
+      enabled_jobs: 1,
+      openclaw_monitoring: true,
+      heartbeat_monitoring: true,
+      last_run_at: '2026-05-01T10:00:00Z',
+    })
+    expect(body.cron.jobs[0]).toMatchObject({
+      id: 'openclaw-heartbeat',
+      schedule: '*/15 * * * *',
+      enabled: true,
+      runCount: 3,
+    })
   })
 
   it('allows operator users to read Hermes state', async () => {

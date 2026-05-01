@@ -272,7 +272,7 @@ ${forbidden ? `\n补充禁止：${markdownEscape(forbidden)}\n` : ''}
 ## UAT 对齐
 
 ${(uatRules.length ? uatRules : [
-    'P1-P19 dry run 关键产物均可追踪。',
+    'P1-P16 dry run 关键产物均可追踪。',
     '生成与部署状态必须清晰可见。',
     '候选 Skills 与客户材料保持一致。',
   ]).map((rule, index) => `${index + 1}. ${cleanDisplayValue(rule)}`).join('\n')}

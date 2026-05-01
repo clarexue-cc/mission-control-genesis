@@ -24,6 +24,22 @@ type HermesState = {
   vault_root: string
   log_path: string
   log_tail: string
+  cron: {
+    total_jobs: number
+    enabled_jobs: number
+    openclaw_monitoring: boolean
+    heartbeat_monitoring: boolean
+    last_run_at: string | null
+    evidence: string
+    jobs: Array<{
+      id: string
+      schedule: string
+      enabled: boolean
+      lastRunAt: string | null
+      runCount: number
+      evidence: string
+    }>
+  }
   targets: HermesTarget[]
   scripts: {
     daemon: string
@@ -61,6 +77,7 @@ export function HermesControlPanel() {
   const [error, setError] = useState<string | null>(null)
 
   const staleCount = useMemo(() => state?.targets.filter(target => target.stale).length || 0, [state])
+  const hasCronMonitoring = Boolean(state?.cron.openclaw_monitoring && state.cron.heartbeat_monitoring)
 
   const loadState = useCallback(async () => {
     setError(null)
@@ -113,7 +130,7 @@ export function HermesControlPanel() {
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Hermes</p>
           <h1 className="text-2xl font-semibold text-foreground">Hermes Control</h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Guard daemon status, tenant heartbeat freshness, forced inspections, and Hermes alert log.
+            Hermes cron evidence, MC guard daemon status, tenant heartbeat freshness, forced inspections, and alert log.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -138,7 +155,14 @@ export function HermesControlPanel() {
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid gap-4 lg:grid-cols-6">
+        <section className={`${panelClassName} p-4 lg:col-span-2`}>
+          <p className="text-xs text-muted-foreground">Hermes cron evidence</p>
+          <p className={`mt-2 text-xl font-semibold ${hasCronMonitoring ? 'text-green-300' : 'text-red-300'}`}>
+            {hasCronMonitoring ? 'monitoring' : 'not proven'}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{state?.cron.evidence || 'No cron evidence loaded'}</p>
+        </section>
         <section className={`${panelClassName} p-4`}>
           <p className="text-xs text-muted-foreground">Daemon status</p>
           <p className={`mt-2 text-xl font-semibold ${state?.daemon_running ? 'text-green-300' : 'text-red-300'}`}>
@@ -157,11 +181,17 @@ export function HermesControlPanel() {
           <p className="mt-1 text-xs text-muted-foreground">stale or missing heartbeat</p>
         </section>
         <section className={`${panelClassName} p-4`}>
-          <p className="text-xs text-muted-foreground">Stale threshold</p>
-          <p className="mt-2 text-xl font-semibold text-foreground">{formatAge(state?.stale_seconds || 0)}</p>
-          <p className="mt-1 truncate text-xs text-muted-foreground">{state?.vault_root}</p>
+          <p className="text-xs text-muted-foreground">Last cron run</p>
+          <p className="mt-2 text-xl font-semibold text-foreground">{formatDate(state?.cron.last_run_at || null)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">stale threshold {formatAge(state?.stale_seconds || 0)}</p>
         </section>
       </div>
+
+      {!hasCronMonitoring && (
+        <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm leading-6 text-amber-100">
+          当前没有 Hermes cron 定时任务证据，不能证明 Hermes 正在定时监控 OpenClaw。请先在 Hermes cron 中配置包含 OpenClaw heartbeat / working-context 检查的任务，或启动 MC guard daemon 作为临时巡检。
+        </section>
+      )}
 
       <div className="grid min-h-[48vh] flex-1 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <section className={`${panelClassName} overflow-hidden`}>
