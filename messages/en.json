@@ -1012,7 +1012,7 @@
   },
   "costTracker": {
     "title": "Cost Tracker",
-    "subtitle": "Token usage, costs, and spend analysis across agents, models, and sessions",
+    "subtitle": "API calls, LLM spend, and budget controls across agents, tasks, models, and sessions",
     "loadingCostData": "Loading cost data",
     "noUsageData": "No usage data yet",
     "noUsageDataDesc": "Usage data appears as agents run sessions and consume tokens. Start a session or dock an agent to begin tracking costs.",

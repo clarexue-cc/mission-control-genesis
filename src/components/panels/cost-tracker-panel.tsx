@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { useMissionControl } from '@/store'
 import { createClientLogger } from '@/lib/client-logger'
+import type { CostBudgetRule, CostBudgetSummary } from '@/lib/cost-budget-controls'
 import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, BarChart, Bar,
@@ -70,6 +71,12 @@ interface SessionCostEntry {
   totalCost: number; requestCount: number; firstSeen: string; lastSeen: string
 }
 
+interface BudgetRulesResponse {
+  rules: CostBudgetRule[]
+  summary: CostBudgetSummary
+  error?: string
+}
+
 // ── Helpers ──────────────────────────────────────────
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff6b6b']
@@ -84,8 +91,16 @@ const formatCost = (cost: number) => '$' + cost.toFixed(4)
 
 const getModelDisplayName = (name: string) => name.split('/').pop() || name
 
-type View = 'overview' | 'agents' | 'sessions' | 'tasks'
+type View = 'overview' | 'agents' | 'sessions' | 'tasks' | 'controls'
 type Timeframe = 'hour' | 'day' | 'week' | 'month'
+
+const VIEW_LABELS: Record<View, string> = {
+  overview: 'Overview',
+  agents: 'Agents',
+  sessions: 'Sessions',
+  tasks: 'Tasks',
+  controls: '预算',
+}
 
 // ── Main Component ──────────────────────────────────
 
@@ -107,6 +122,10 @@ export function CostTrackerPanel() {
   const [sessionCosts, setSessionCosts] = useState<SessionCostEntry[]>([])
   const [sessionSort, setSessionSort] = useState<'cost' | 'tokens' | 'requests' | 'recent'>('cost')
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null)
+  const [budgetRules, setBudgetRules] = useState<CostBudgetRule[]>([])
+  const [budgetSummary, setBudgetSummary] = useState<CostBudgetSummary | null>(null)
+  const [budgetLoading, setBudgetLoading] = useState(false)
+  const [budgetError, setBudgetError] = useState<string | null>(null)
 
   const refreshTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -161,12 +180,29 @@ export function CostTrackerPanel() {
     }
   }, [timeframe, usageStats])
 
+  const loadBudgetRules = useCallback(async () => {
+    setBudgetLoading(true)
+    setBudgetError(null)
+    try {
+      const res = await fetch('/api/tokens/budgets', { cache: 'no-store' })
+      const data = await res.json() as BudgetRulesResponse
+      if (!res.ok) throw new Error(data.error || 'Failed to load budget controls')
+      setBudgetRules(Array.isArray(data.rules) ? data.rules : [])
+      setBudgetSummary(data.summary || null)
+    } catch (err) {
+      setBudgetError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBudgetLoading(false)
+    }
+  }, [])
+
   useEffect(() => { loadData() }, [loadData])
   useEffect(() => {
     refreshTimer.current = setInterval(loadData, 30_000)
     return () => { if (refreshTimer.current) clearInterval(refreshTimer.current) }
   }, [loadData])
   useEffect(() => { if (view === 'sessions') loadSessionCosts() }, [view, loadSessionCosts])
+  useEffect(() => { loadBudgetRules() }, [loadBudgetRules])
 
   const exportData = async (format: 'json' | 'csv') => {
     setIsExporting(true)
@@ -212,7 +248,7 @@ export function CostTrackerPanel() {
           <div className="flex items-center gap-3">
             {/* View tabs */}
             <div className="flex rounded-lg border border-border overflow-hidden">
-              {(['overview', 'agents', 'sessions', 'tasks'] as const).map(v => (
+              {(['overview', 'agents', 'sessions', 'tasks', 'controls'] as const).map(v => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
@@ -220,7 +256,7 @@ export function CostTrackerPanel() {
                     view === v ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {v.charAt(0).toUpperCase() + v.slice(1)}
+                  {VIEW_LABELS[v]}
                 </button>
               ))}
             </div>
@@ -236,7 +272,7 @@ export function CostTrackerPanel() {
         </div>
       </div>
 
-      {isLoading && !usageStats ? (
+      {isLoading && !usageStats && view !== 'controls' ? (
         <Loader variant="panel" label={t('loadingCostData')} />
       ) : view === 'overview' ? (
         <OverviewView
@@ -256,8 +292,22 @@ export function CostTrackerPanel() {
           sessionCosts={sessionCosts} sessions={sessions}
           sessionSort={sessionSort} setSessionSort={setSessionSort}
         />
-      ) : (
+      ) : view === 'tasks' ? (
         <TasksView taskData={taskData} onRefresh={loadData} />
+      ) : (
+        <BudgetControlsView
+          rules={budgetRules}
+          summary={budgetSummary}
+          loading={budgetLoading}
+          error={budgetError}
+          agents={agentList.map(agent => agent.agent)}
+          tasks={taskData?.tasks || []}
+          onRefresh={loadBudgetRules}
+          onSaved={(data) => {
+            setBudgetRules(Array.isArray(data.rules) ? data.rules : [])
+            setBudgetSummary(data.summary || null)
+          }}
+        />
       )}
     </div>
   )
@@ -794,6 +844,322 @@ function TasksView({ taskData, onRefresh }: { taskData: TaskCostsResponse | null
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  )
+}
+
+type BudgetDraft = {
+  scope: CostBudgetRule['scope']
+  target: string
+  category: CostBudgetRule['category']
+  timeframe: CostBudgetRule['timeframe']
+  limitUsd: string
+  maxRequests: string
+  maxTokens: string
+  action: CostBudgetRule['action']
+}
+
+const DEFAULT_BUDGET_DRAFT: BudgetDraft = {
+  scope: 'agent',
+  target: '',
+  category: 'total',
+  timeframe: 'day',
+  limitUsd: '',
+  maxRequests: '',
+  maxTokens: '',
+  action: 'require_approval',
+}
+
+function formatBudgetCaps(rule: CostBudgetRule) {
+  return [
+    rule.limitUsd ? `${formatCost(rule.limitUsd)} / ${rule.timeframe}` : null,
+    rule.maxRequests ? `${rule.maxRequests.toLocaleString()} 次请求` : null,
+    rule.maxTokens ? `${formatNumber(rule.maxTokens)} tokens` : null,
+  ].filter(Boolean).join(' / ')
+}
+
+function actionLabel(action: CostBudgetRule['action']) {
+  if (action === 'require_approval') return '需要审批'
+  if (action === 'pause') return '暂停执行'
+  return '仅提醒'
+}
+
+function BudgetControlsView({
+  rules, summary, loading, error, agents, tasks, onRefresh, onSaved,
+}: {
+  rules: CostBudgetRule[]
+  summary: CostBudgetSummary | null
+  loading: boolean
+  error: string | null
+  agents: string[]
+  tasks: TaskCostEntry[]
+  onRefresh: () => void
+  onSaved: (data: BudgetRulesResponse) => void
+}) {
+  const [draft, setDraft] = useState<BudgetDraft>(DEFAULT_BUDGET_DRAFT)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  function updateDraft<K extends keyof BudgetDraft>(key: K, value: BudgetDraft[K]) {
+    setDraft(prev => ({ ...prev, [key]: value }))
+  }
+
+  async function postBudget(body: Record<string, unknown>) {
+    const res = await fetch('/api/tokens/budgets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json() as BudgetRulesResponse
+    if (!res.ok) throw new Error(data.error || 'Failed to save budget control')
+    onSaved(data)
+  }
+
+  async function saveDraft(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await postBudget({ rule: draft })
+      setDraft(prev => ({ ...DEFAULT_BUDGET_DRAFT, scope: prev.scope, category: prev.category, timeframe: prev.timeframe }))
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleRule(rule: CostBudgetRule) {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await postBudget({ rule: { ...rule, enabled: !rule.enabled } })
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteRule(rule: CostBudgetRule) {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await postBudget({ action: 'delete', id: rule.id })
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const targetListId = draft.scope === 'agent' ? 'cost-budget-agent-targets' : 'cost-budget-task-targets'
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="bg-card border border-border rounded-lg p-5">
+          <div className="text-3xl font-bold text-foreground">{summary?.enabledRules ?? 0}</div>
+          <div className="text-sm text-muted-foreground">已启用上限</div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-5">
+          <div className="text-3xl font-bold text-foreground">{summary?.byScope.agent ?? 0}</div>
+          <div className="text-sm text-muted-foreground">Agent 上限</div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-5">
+          <div className="text-3xl font-bold text-foreground">{summary?.byScope.task ?? 0}</div>
+          <div className="text-sm text-muted-foreground">任务上限</div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-5">
+          <div className="text-3xl font-bold text-foreground">{summary?.highestLimitUsd ? formatCost(summary.highestLimitUsd) : '-'}</div>
+          <div className="text-sm text-muted-foreground">最高美元上限</div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-5">
+          <div className="text-3xl font-bold text-foreground">{summary?.blockingRules ?? 0}</div>
+          <div className="text-sm text-muted-foreground">审批 / 暂停</div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <section className="bg-card border border-border rounded-lg p-6">
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold">预算控制</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              给单个 agent 或单个任务设置 API 调用、大模型调用或合计消耗上限。
+            </p>
+          </div>
+
+          {(error || saveError) && (
+            <div className="mb-4 rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+              {error || saveError}
+            </div>
+          )}
+
+          <form onSubmit={saveDraft} className="grid gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid min-w-0 gap-1 text-xs font-medium text-muted-foreground">
+                维度
+                <select
+                  value={draft.scope}
+                  onChange={(event) => updateDraft('scope', event.target.value as BudgetDraft['scope'])}
+                  className="h-9 w-full min-w-0 rounded border border-border bg-background px-3 text-sm text-foreground"
+                >
+                  <option value="agent">Agent</option>
+                  <option value="task">任务</option>
+                </select>
+              </label>
+              <label className="grid min-w-0 gap-1 text-xs font-medium text-muted-foreground">
+                对象
+                <input
+                  value={draft.target}
+                  onChange={(event) => updateDraft('target', event.target.value)}
+                  list={targetListId}
+                  placeholder={draft.scope === 'agent' ? 'agent name' : 'task id'}
+                  className="h-9 w-full min-w-0 rounded border border-border bg-background px-3 text-sm text-foreground"
+                />
+              </label>
+            </div>
+
+            <datalist id="cost-budget-agent-targets">
+              {agents.map(agent => <option key={agent} value={agent} />)}
+            </datalist>
+            <datalist id="cost-budget-task-targets">
+              {tasks.map(task => <option key={task.taskId} value={String(task.taskId)} label={task.title} />)}
+            </datalist>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="grid min-w-0 gap-1 text-xs font-medium text-muted-foreground">
+                成本类型
+                <select
+                  value={draft.category}
+                  onChange={(event) => updateDraft('category', event.target.value as BudgetDraft['category'])}
+                  className="h-9 w-full min-w-0 rounded border border-border bg-background px-3 text-sm text-foreground"
+                >
+                  <option value="total">API + LLM</option>
+                  <option value="api">API 调用</option>
+                  <option value="llm">大模型调用</option>
+                </select>
+              </label>
+              <label className="grid min-w-0 gap-1 text-xs font-medium text-muted-foreground">
+                周期
+                <select
+                  value={draft.timeframe}
+                  onChange={(event) => updateDraft('timeframe', event.target.value as BudgetDraft['timeframe'])}
+                  className="h-9 w-full min-w-0 rounded border border-border bg-background px-3 text-sm text-foreground"
+                >
+                  <option value="day">天</option>
+                  <option value="week">周</option>
+                  <option value="month">月</option>
+                  <option value="run">单次任务</option>
+                </select>
+              </label>
+              <label className="grid min-w-0 gap-1 text-xs font-medium text-muted-foreground">
+                超限动作
+                <select
+                  value={draft.action}
+                  onChange={(event) => updateDraft('action', event.target.value as BudgetDraft['action'])}
+                  className="h-9 w-full min-w-0 rounded border border-border bg-background px-3 text-sm text-foreground"
+                >
+                  <option value="warn">仅提醒</option>
+                  <option value="require_approval">需要审批</option>
+                  <option value="pause">暂停执行</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="grid min-w-0 gap-1 text-xs font-medium text-muted-foreground">
+                美元上限
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={draft.limitUsd}
+                  onChange={(event) => updateDraft('limitUsd', event.target.value)}
+                  placeholder="10.00"
+                  className="h-9 w-full min-w-0 rounded border border-border bg-background px-3 text-sm text-foreground"
+                />
+              </label>
+              <label className="grid min-w-0 gap-1 text-xs font-medium text-muted-foreground">
+                请求数上限
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={draft.maxRequests}
+                  onChange={(event) => updateDraft('maxRequests', event.target.value)}
+                  placeholder="500"
+                  className="h-9 w-full min-w-0 rounded border border-border bg-background px-3 text-sm text-foreground"
+                />
+              </label>
+              <label className="grid min-w-0 gap-1 text-xs font-medium text-muted-foreground">
+                Token 上限
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={draft.maxTokens}
+                  onChange={(event) => updateDraft('maxTokens', event.target.value)}
+                  placeholder="200000"
+                  className="h-9 w-full min-w-0 rounded border border-border bg-background px-3 text-sm text-foreground"
+                />
+              </label>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Button type="submit" size="sm" disabled={saving}>{saving ? '保存中...' : '保存上限'}</Button>
+              <Button type="button" variant="outline" size="sm" onClick={onRefresh} disabled={loading || saving}>
+                {loading ? '刷新中...' : '刷新'}
+              </Button>
+            </div>
+          </form>
+        </section>
+
+        <section className="bg-card border border-border rounded-lg p-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">已配置上限</h2>
+              <p className="mt-1 text-sm text-muted-foreground">这里是运行配置控制，不是测试专用的成本报表。</p>
+            </div>
+            <span className="rounded bg-secondary px-2 py-1 text-xs text-muted-foreground">{rules.length} 条</span>
+          </div>
+
+          {rules.length === 0 ? (
+            <div className="rounded border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+              暂无预算上限配置。
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[520px] overflow-y-auto">
+              {rules.map(rule => (
+                <div key={rule.id} className="rounded-lg border border-border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded px-2 py-0.5 text-xs ${rule.enabled ? 'bg-green-500/10 text-green-500' : 'bg-secondary text-muted-foreground'}`}>
+                          {rule.enabled ? '已启用' : '已停用'}
+                        </span>
+                        <span className="rounded bg-secondary px-2 py-0.5 text-xs text-muted-foreground">{rule.scope}</span>
+                        <span className="rounded bg-secondary px-2 py-0.5 text-xs text-muted-foreground">{rule.category}</span>
+                      </div>
+                      <div className="mt-2 truncate text-base font-medium text-foreground">{rule.target}</div>
+                      <div className="mt-1 text-sm text-muted-foreground">{formatBudgetCaps(rule) || 'No caps'}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">超限后：{actionLabel(rule.action)}</div>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => toggleRule(rule)} disabled={saving}>
+                        {rule.enabled ? '停用' : '启用'}
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => deleteRule(rule)} disabled={saving}>
+                        移除
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   )

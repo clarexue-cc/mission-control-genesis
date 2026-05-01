@@ -101,7 +101,6 @@ const navGroups: NavGroup[] = [
     label: 'OBSERVE',
     items: [
       { id: 'vault', label: 'Vault', icon: <VaultIcon />, priority: false },
-      { id: 'tests', label: 'Tests', icon: <TestsIcon />, priority: false },
       { id: 'logs', label: 'Logs', icon: <LogsIcon />, priority: false, essential: true },
       { id: 'memory', label: 'Memory', icon: <MemoryIcon />, priority: false },
       { id: 'alerts', label: 'Alerts', icon: <AlertIcon />, priority: false },

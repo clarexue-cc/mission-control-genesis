@@ -32,12 +32,37 @@ interface HermesCronEvidenceJob {
   evidence: string
 }
 
+interface HermesConfigSummary {
+  config_path: string
+  config_exists: boolean
+  soul_path: string
+  soul_exists: boolean
+  agents_path: string
+  agents_exists: boolean
+  cron_jobs_path: string
+  cron_jobs_exists: boolean
+  provider: string | null
+  model: string | null
+  base_url: string | null
+  toolsets: string[]
+  max_turns: number | null
+  gateway_timeout: number | null
+  terminal_backend: string | null
+  terminal_cwd: string | null
+  browser_private_urls: boolean | null
+}
+
 const VAULT_ROOT = process.env.MC_OBSIDIAN_VAULT_ROOT || process.env.OBSIDIAN_VAULT_ROOT || '/Users/clare/Desktop/obsidian/openclaw'
 const STALE_SECONDS = Number.parseInt(process.env.HERMES_STALE_SECONDS || `${6 * 60 * 60}`, 10)
 const RUNTIME_DIR = process.env.HERMES_RUNTIME_DIR || path.join(process.env.TMPDIR || '/tmp', 'mission-control-hermes')
 const PID_FILE = process.env.HERMES_DAEMON_PID_FILE || path.join(RUNTIME_DIR, 'hermes-daemon.pid')
 const LOG_FILE = process.env.HERMES_LOG_FILE || path.join(VAULT_ROOT, 'Agent-Shared', 'hermes-log.md')
 const ALERTS_FILE = process.env.HERMES_ALERTS_FILE || path.join(VAULT_ROOT, 'Agent-Shared', 'hermes-alerts.jsonl')
+const HERMES_HOME = process.env.HERMES_HOME || path.join(process.env.HOME || '', '.hermes')
+const HERMES_CONFIG_FILE = process.env.HERMES_CONFIG_FILE || path.join(HERMES_HOME, 'config.yaml')
+const HERMES_SOUL_FILE = process.env.HERMES_SOUL_FILE || path.join(HERMES_HOME, 'SOUL.md')
+const HERMES_AGENTS_FILE = process.env.HERMES_AGENTS_FILE || path.join(HERMES_HOME, 'AGENTS.md')
+const HERMES_CRON_JOBS_FILE = process.env.HERMES_CRON_JOBS_FILE || path.join(HERMES_HOME, 'cron', 'jobs.json')
 
 function scriptPath(name: string): string {
   return path.join(process.cwd(), 'phase0', 'scripts', name)
@@ -88,6 +113,91 @@ function displayTenant(agentDir: string): string {
 
 function cronJobEvidenceText(job: { id: string; prompt: string; schedule: string }) {
   return `${job.id} ${job.prompt} ${job.schedule}`.toLowerCase()
+}
+
+function cleanYamlValue(value: string): string {
+  const withoutComment = value.replace(/\s+#.*$/, '').trim()
+  if (
+    (withoutComment.startsWith('"') && withoutComment.endsWith('"')) ||
+    (withoutComment.startsWith("'") && withoutComment.endsWith("'"))
+  ) {
+    return withoutComment.slice(1, -1)
+  }
+  return withoutComment
+}
+
+function extractYamlScalar(raw: string, section: string, key: string): string | null {
+  let inSection = false
+  for (const rawLine of raw.split('\n')) {
+    const topLevel = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(rawLine)
+    if (topLevel && !rawLine.startsWith(' ')) {
+      inSection = topLevel[1] === section
+      continue
+    }
+    if (!inSection) continue
+    const match = new RegExp(`^\\s+${key}:\\s*(.*)$`).exec(rawLine)
+    if (match) return cleanYamlValue(match[1])
+  }
+  return null
+}
+
+function extractYamlList(raw: string, section: string): string[] {
+  let inSection = false
+  const values: string[] = []
+  for (const rawLine of raw.split('\n')) {
+    const topLevel = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(rawLine)
+    if (topLevel && !rawLine.startsWith(' ')) {
+      inSection = topLevel[1] === section
+      continue
+    }
+    if (!inSection) continue
+    const match = /^\s+-\s+(.*)$/.exec(rawLine)
+    if (match) values.push(cleanYamlValue(match[1]))
+  }
+  return values
+}
+
+function parseConfigNumber(value: string | null): number | null {
+  if (!value) return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function parseConfigBoolean(value: string | null): boolean | null {
+  if (value === 'true') return true
+  if (value === 'false') return false
+  return null
+}
+
+function readHermesConfig(): string | null {
+  try {
+    return readFileSync(HERMES_CONFIG_FILE, 'utf8')
+  } catch {
+    return null
+  }
+}
+
+function getHermesConfigSummary(): HermesConfigSummary {
+  const raw = readHermesConfig()
+  return {
+    config_path: HERMES_CONFIG_FILE,
+    config_exists: Boolean(raw),
+    soul_path: HERMES_SOUL_FILE,
+    soul_exists: existsSync(HERMES_SOUL_FILE),
+    agents_path: HERMES_AGENTS_FILE,
+    agents_exists: existsSync(HERMES_AGENTS_FILE),
+    cron_jobs_path: HERMES_CRON_JOBS_FILE,
+    cron_jobs_exists: existsSync(HERMES_CRON_JOBS_FILE),
+    provider: raw ? extractYamlScalar(raw, 'model', 'provider') : null,
+    model: raw ? extractYamlScalar(raw, 'model', 'default') : null,
+    base_url: raw ? extractYamlScalar(raw, 'model', 'base_url') : null,
+    toolsets: raw ? extractYamlList(raw, 'toolsets') : [],
+    max_turns: raw ? parseConfigNumber(extractYamlScalar(raw, 'agent', 'max_turns')) : null,
+    gateway_timeout: raw ? parseConfigNumber(extractYamlScalar(raw, 'agent', 'gateway_timeout')) : null,
+    terminal_backend: raw ? extractYamlScalar(raw, 'terminal', 'backend') : null,
+    terminal_cwd: raw ? extractYamlScalar(raw, 'terminal', 'cwd') : null,
+    browser_private_urls: raw ? parseConfigBoolean(extractYamlScalar(raw, 'browser', 'allow_private_urls')) : null,
+  }
 }
 
 function getCronEvidence() {
@@ -172,6 +282,7 @@ async function getHermesState() {
     vault_root: VAULT_ROOT,
     log_path: LOG_FILE,
     log_tail: logTail,
+    config: getHermesConfigSummary(),
     cron: getCronEvidence(),
     targets,
     scripts: {

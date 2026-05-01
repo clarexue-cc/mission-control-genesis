@@ -1252,7 +1252,7 @@
   },
   "costTracker": {
     "title": "成本跟踪",
-    "subtitle": "跨代理、模型和会话的令牌用量、成本及支出分析",
+    "subtitle": "跨代理、任务、模型和会话跟踪 API 调用、大模型支出及预算上限",
     "loadingCostData": "加载成本数据中",
     "noUsageData": "暂无使用数据",
     "noUsageDataDesc": "代理运行会话并消耗令牌后将显示使用数据。启动会话或对接代理以开始跟踪成本。",
