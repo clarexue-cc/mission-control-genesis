@@ -383,29 +383,29 @@ function CollapsibleBlock({
   )
 }
 
-function SignalChips({
+function signalTone(tone: 'good' | 'bad' | 'edit' | 'neutral') {
+  if (tone === 'good') return 'bg-emerald-500'
+  if (tone === 'bad') return 'bg-red-500'
+  if (tone === 'edit') return 'bg-amber-500'
+  return 'bg-muted-foreground'
+}
+
+function SignalList({
   items,
   tone = 'neutral',
 }: {
   items: string[]
   tone?: 'good' | 'bad' | 'edit' | 'neutral'
 }) {
-  const toneClass = tone === 'good'
-    ? 'border-emerald-500/25 bg-emerald-500/[0.08] text-emerald-300'
-    : tone === 'bad'
-      ? 'border-red-500/25 bg-red-500/[0.08] text-red-300'
-      : tone === 'edit'
-        ? 'border-primary/25 bg-primary/[0.08] text-primary'
-        : 'border-border bg-background/70 text-foreground'
-
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <ul className="space-y-1.5">
       {items.map((item, index) => (
-        <span key={`${item}-${index}`} className={`max-w-full break-words rounded-md border px-2 py-1 text-xs leading-4 ${toneClass}`}>
-          {item}
-        </span>
+        <li key={`${item}-${index}`} className="flex gap-2 text-xs leading-5 text-foreground">
+          <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${signalTone(tone)}`} />
+          <span className="min-w-0 break-words">{item}</span>
+        </li>
       ))}
-    </div>
+    </ul>
   )
 }
 
@@ -421,10 +421,33 @@ function DirectBlock({
   tone?: 'good' | 'bad' | 'edit' | 'neutral'
 }) {
   return (
-    <div className="rounded-md border border-border bg-card/55 p-3">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
-      {value && <p className="mt-2 text-sm font-medium leading-6 text-foreground">{value}</p>}
-      {items && <div className="mt-2"><SignalChips items={items} tone={tone} /></div>}
+    <div className="rounded-md border border-border bg-card/65 p-4">
+      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <span className={`h-1.5 w-1.5 rounded-full ${signalTone(tone)}`} />
+        {label}
+      </div>
+      {value && <p className="mt-3 text-sm font-medium leading-6 text-foreground">{value}</p>}
+      {items && <div className="mt-3"><SignalList items={items} tone={tone} /></div>}
+    </div>
+  )
+}
+
+function CaseCell({
+  label,
+  tone = 'neutral',
+  children,
+}: {
+  label: string
+  tone?: 'good' | 'bad' | 'edit' | 'neutral'
+  children: ReactNode
+}) {
+  return (
+    <div className="min-h-[168px] border-border bg-card/45 p-4 lg:border-l first:lg:border-l-0">
+      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <span className={`h-1.5 w-1.5 rounded-full ${signalTone(tone)}`} />
+        {label}
+      </div>
+      <div className="mt-3">{children}</div>
     </div>
   )
 }
@@ -509,31 +532,27 @@ function CasesPanel({ suite }: { suite: HarnessPlanSuite }) {
           const edit = caseFixItems(testCase, suite)
 
           return (
-            <div key={testCase.testId} className="rounded-md border border-border bg-background/65 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+            <div key={testCase.testId} className="overflow-hidden rounded-md border border-border bg-background/65">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card/55 px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded border border-border bg-card/70 px-1.5 py-0.5 font-mono text-[11px] text-foreground">{testCase.testId}</span>
                   <span className="text-sm font-semibold text-foreground">{testCase.title}</span>
                 </div>
                 <span className="text-[11px] text-muted-foreground">{suitePlainName[suite.id] || suite.label}</span>
               </div>
-              <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.05fr)_minmax(0,0.95fr)_minmax(0,1fr)]">
-                <div className="rounded-md border border-border bg-card/50 p-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">题</div>
-                  <p className="mt-1 text-sm leading-6 text-foreground">{testCase.prompt}</p>
-                </div>
-                <div className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.05] p-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">要</div>
-                  <div className="mt-2"><SignalChips items={expected} tone="good" /></div>
-                </div>
-                <div className="rounded-md border border-red-500/20 bg-red-500/[0.05] p-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-red-300">错</div>
-                  <div className="mt-2"><SignalChips items={bad} tone="bad" /></div>
-                </div>
-                <div className="rounded-md border border-primary/20 bg-primary/[0.05] p-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">改</div>
-                  <div className="mt-2"><SignalChips items={edit} tone="edit" /></div>
-                </div>
+              <div className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.05fr)_minmax(0,0.95fr)_minmax(0,1fr)]">
+                <CaseCell label="题目">
+                  <p className="text-sm leading-6 text-foreground">{testCase.prompt}</p>
+                </CaseCell>
+                <CaseCell label="期望" tone="good">
+                  <SignalList items={expected} tone="good" />
+                </CaseCell>
+                <CaseCell label="失败" tone="bad">
+                  <SignalList items={bad} tone="bad" />
+                </CaseCell>
+                <CaseCell label="修改" tone="edit">
+                  <SignalList items={edit} tone="edit" />
+                </CaseCell>
               </div>
             </div>
           )
@@ -608,7 +627,7 @@ function SuiteDetailPanel({
             <div>
               <h4 className="text-base font-semibold text-foreground">测试题</h4>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                每题四格：题 / 要 / 错 / 改。
+                每题四格：题目 / 期望 / 失败 / 修改。
               </p>
             </div>
             <span className="rounded-md border border-border bg-background/70 px-2 py-1 font-mono text-xs text-muted-foreground">{suite.case_count} 条</span>
