@@ -362,6 +362,20 @@ export function TestConsolePanel() {
             <span className="rounded-md border border-border px-2.5 py-1">status: {runStatus}</span>
             <span className="rounded-md border border-border px-2.5 py-1">traces: {traceIds.length}</span>
           </div>
+          <div className="mt-3 flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center">
+            <p className="leading-5">
+              <span className="font-semibold text-foreground">P10 run 依赖什么：</span>
+              Harness plan、runtime target、P7-P9 产物和当前 tenant。Logs / Vault 只是失败后的证据入口。
+            </p>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigateToPanel('logs', { tenantScoped: true })}>
+                查 Logs 证据
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigateToPanel('vault', { tenantScoped: true })}>
+                查 Vault 源文件
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="grid w-full gap-3 sm:grid-cols-[minmax(180px,260px)_1fr] xl:w-auto xl:min-w-[680px]">
@@ -396,25 +410,6 @@ export function TestConsolePanel() {
           </div>
         </div>
       </div>
-
-      <section className="rounded-lg border border-border bg-card/70 p-4 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">P10 run 依赖什么</h2>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              能不能跑取决于 Harness plan、runtime target、P7-P9 产物和当前 tenant；Logs / Vault 只是失败后的证据入口，不是下一阶段。
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigateToPanel('logs', { tenantScoped: true })}>
-              查 Logs 证据
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigateToPanel('vault', { tenantScoped: true })}>
-              查 Vault 源文件
-            </Button>
-          </div>
-        </div>
-      </section>
 
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">

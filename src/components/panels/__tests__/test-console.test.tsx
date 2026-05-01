@@ -99,8 +99,8 @@ describe('TestConsolePanel', () => {
   it('explains that Logs and Vault are evidence links, not P10 run dependencies', async () => {
     render(<TestConsolePanel />)
 
-    expect(await screen.findByText('P10 run 依赖什么')).toBeInTheDocument()
-    expect(screen.getByText(/Logs \/ Vault 只是失败后的证据入口，不是下一阶段/)).toBeInTheDocument()
+    expect(await screen.findByText(/P10 run 依赖什么/)).toBeInTheDocument()
+    expect(screen.getByText(/Logs \/ Vault 只是失败后的证据入口/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '查 Logs 证据' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '查 Vault 源文件' })).toBeInTheDocument()
   })
