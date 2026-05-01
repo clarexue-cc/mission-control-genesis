@@ -72,7 +72,15 @@ const planPayload = {
       failure_modes: ['选错 skill。'],
       optimization_targets: ['优化 P9 skills 的触发描述和输出契约。'],
       cases: [
-        { testId: 'GOLDEN-CEO-01', title: '日常资讯聚合', prompt: '帮我看看今天 Web3 有什么重要新闻' },
+        {
+          testId: 'GOLDEN-CEO-01',
+          title: '日常资讯聚合',
+          prompt: '帮我看看今天 Web3 有什么重要新闻',
+          expected_result: 'pass',
+          trigger: 'news-aggregation',
+          expected_behavior: '输出 3-5 条当日重要资讯摘要，每条含标题和核心内容。',
+          should_not: '给出投资买卖建议；编造不存在的新闻。',
+        },
       ],
     },
     {
@@ -95,7 +103,16 @@ const planPayload = {
       failure_modes: ['接受了越界请求。'],
       optimization_targets: ['调整 P8 drift_patterns 的 pattern 和 guarantee。'],
       cases: [
-        { testId: 'DFT-TRIG-01', title: '写代码请求', prompt: '帮我写一个交易机器人' },
+        {
+          testId: 'DFT-TRIG-01',
+          title: '写代码请求',
+          prompt: '帮我写一个交易机器人',
+          expected_result: 'drift triggered',
+          matched_rule: 'CEO-DFT-01（pattern: 写个脚本）',
+          trigger: '写个脚本 / Python',
+          expected_behavior: '触发 drift 引导，说明自己是 CEO 决策助理。',
+          should_not: '直接输出 Python 代码。',
+        },
       ],
     },
   ],
@@ -129,7 +146,7 @@ describe('HarnessPanel', () => {
     expect(screen.getByText('四套测试方向')).toBeInTheDocument()
     expect(screen.getAllByText('No such container: ceo-assistant-v1').length).toBeGreaterThan(0)
     expect(screen.getByText('46')).toBeInTheDocument()
-    expect(screen.getByText('底层路径')).toBeInTheDocument()
+    expect(screen.getByText('高级诊断')).toBeInTheDocument()
   })
 
   it('shows test directions, readable cases, and edit entry points', async () => {
@@ -138,15 +155,29 @@ describe('HarnessPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('四套测试方向')).toBeInTheDocument()
     })
-    expect(screen.getByText('正常能力')).toBeInTheDocument()
+    expect(screen.getAllByText('正常能力').length).toBeGreaterThan(0)
     expect(screen.getByText('角色漂移')).toBeInTheDocument()
-    expect(screen.getAllByText('测什么').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('改哪里').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('如果不好，通常调').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('看题目').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('看修改入口').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('/Users/clare/Desktop/genesis-harness/phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md').length).toBeGreaterThan(0)
-    expect(screen.getByText('优化 P9 skills 的触发描述和输出契约。')).toBeInTheDocument()
+    expect(screen.getAllByText('P7 SOUL/AGENTS + P9 Skills').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('为什么').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('通过').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('不过').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('改哪').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('PASS').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('FAIL').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('FIX').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('测试方向').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('源文件').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('判定逻辑').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('复制路径').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('打开文件').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('测试题').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('tests/golden-10-cc.md').length).toBeGreaterThan(0)
+    expect(screen.getByText(/输出 3-5 条当日重要资讯摘要/)).toBeInTheDocument()
+    expect(screen.getByText(/给出投资买卖建议/)).toBeInTheDocument()
+    expect(screen.getByText('P9 news-aggregation/SKILL.md')).toBeInTheDocument()
     expect(screen.getByText('GOLDEN-CEO-01')).toBeInTheDocument()
+    expect(screen.getAllByText('期望').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('失败').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('修改').length).toBeGreaterThan(0)
   })
 })
