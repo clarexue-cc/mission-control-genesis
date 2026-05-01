@@ -124,6 +124,29 @@ const suiteAccent: Record<string, { ring: string; tint: string; dot: string; lab
   },
 }
 
+const suiteOrigin: Record<string, { phase: string; source: string; editFocus: string }> = {
+  golden: {
+    phase: 'P7 SOUL/AGENTS + P9 Skills',
+    source: '角色设定、运行指令、skills 输出契约和 Golden 题库一起决定正常能力测试。',
+    editFocus: '能力跑偏时先看 P9 skills，再看 P7 SOUL / AGENTS routing。',
+  },
+  adversarial: {
+    phase: 'P8 Boundary',
+    source: 'boundary-rules.json 和 Adversarial 题库一起决定越权、泄密、注入类测试。',
+    editFocus: '拦不住时改 P8 boundary pattern / action / response_template。',
+  },
+  'cross-session': {
+    phase: 'P13 Recall',
+    source: 'SOUL memory_policy、AGENTS 运行指令和 Cross-session 题库一起决定召回测试。',
+    editFocus: '记不住或召错时改 P13 memory 写入、检索、覆盖策略。',
+  },
+  drift: {
+    phase: 'P8 Drift',
+    source: 'drift_patterns、SOUL/AGENTS 职责边界和 Drift 题库一起决定角色漂移测试。',
+    editFocus: '跑偏或误伤时改 P8 drift pattern，并补 SOUL / AGENTS 职责描述。',
+  },
+}
+
 function toneClassName(tone: Tone) {
   if (tone === 'success') return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
   if (tone === 'warning') return 'border-amber-500/40 bg-amber-500/12 text-amber-200'
@@ -173,6 +196,23 @@ function suiteSummary(suite: HarnessPlanSuite) {
 
 function firstSourceByLabel(suite: HarnessPlanSuite, label: string) {
   return suite.sources.find(source => source.label === label)
+}
+
+function compactPath(source?: HarnessPlanSource) {
+  if (!source) return '-'
+  const parts = source.path.split('/').filter(Boolean)
+  return parts.slice(-2).join('/')
+}
+
+function sourceSummary(sources: HarnessPlanSource[]) {
+  return sources
+    .map(source => `${source.label}: ${compactPath(source)}`)
+    .join(' · ')
+}
+
+function sourcePreview(source: HarnessPlanSource) {
+  if (source.preview?.trim()) return source.preview
+  return source.exists ? '这个文件存在，但当前没有可预览内容。' : '这个文件当前缺失。'
 }
 
 function MetricCard({
@@ -240,6 +280,16 @@ export function HarnessPanel() {
   const [error, setError] = useState<string | null>(null)
   const [planError, setPlanError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [copiedPath, setCopiedPath] = useState<string | null>(null)
+
+  const copySourcePath = useCallback(async (absolutePath: string) => {
+    try {
+      await navigator.clipboard.writeText(absolutePath)
+      setCopiedPath(absolutePath)
+    } catch {
+      setCopiedPath(null)
+    }
+  }, [])
 
   const fetchHarness = useCallback(async () => {
     setRefreshing(true)
@@ -374,7 +424,7 @@ export function HarnessPanel() {
                 Loading test plan...
               </div>
             ) : (
-              <div className="mt-4 grid gap-3 xl:grid-cols-4">
+              <div className="mt-4 grid items-start gap-3 xl:grid-cols-4">
                 {plan.suites.map(suite => {
                   const suiteHealth = health.suites.find(item => item.id === suite.id)
                   const testSource = firstSourceByLabel(suite, '测试题') || suite.sources[0]
@@ -382,6 +432,7 @@ export function HarnessPanel() {
                   const editPath = testSource ? sourceAbsolutePath(testSource, plan.harness_root) : '-'
                   const displayName = suitePlainName[suite.id] || suite.label
                   const accent = suiteAccent[suite.id] || suiteAccent.golden
+                  const origin = suiteOrigin[suite.id] || { phase: suite.checkpoint, source: suite.objective, editFocus: suite.optimization_targets[0] || '按失败原因回到对应配置修改。' }
                   const suiteMeta = statusMeta(suiteHealth?.status || 'fail')
 
                   return (
@@ -397,6 +448,9 @@ export function HarnessPanel() {
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             <span className={`rounded-full border px-2 py-0.5 text-xs ${accent.tint}`}>{accent.label}</span>
+                            <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                              {origin.phase}
+                            </span>
                             <span className="rounded-full border border-border bg-card/70 px-2 py-0.5 font-mono text-xs text-muted-foreground">
                               {suite.case_count}/{suite.expected}
                             </span>
@@ -409,39 +463,118 @@ export function HarnessPanel() {
 
                       <div className="mt-4 grid gap-3">
                         <div className="rounded-md border border-border bg-card/55 p-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">对应来源</div>
+                          <p className="mt-1 text-sm leading-6 text-foreground">{origin.source}</p>
+                        </div>
+                        <div className="rounded-md border border-border bg-card/55 p-3">
                           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">测什么</div>
                           <p className="mt-1 text-sm leading-6 text-foreground">{suiteSummary(suite)}</p>
                         </div>
                         <div className="rounded-md border border-border bg-card/55 p-3">
                           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">改哪里</div>
-                          <p className="mt-1 text-sm leading-6 text-foreground">
-                            {testSource?.exists ? '测试题 markdown' : '测试题文件缺失'}
-                          </p>
+                          <p className="mt-1 text-sm leading-6 text-foreground">{origin.editFocus}</p>
                           <p className="text-xs leading-5 text-muted-foreground">
-                            {supportSources.length > 0 ? `另有 ${supportSources.length} 个支撑文档` : '没有额外支撑文档'}
+                            {sourceSummary(suite.sources)}
                           </p>
                         </div>
                       </div>
 
-                      <div className="mt-4">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">如果不好，通常调</div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {suite.optimization_targets.slice(0, 3).map(target => (
-                            <span key={target} className="rounded-md border border-border bg-card/65 px-2 py-1 text-xs leading-5 text-muted-foreground">
-                              {target}
-                            </span>
-                          ))}
+                      <div className="mt-4 grid gap-2">
+                        <div className="rounded-md border border-emerald-500/25 bg-emerald-500/[0.06] p-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">好的定义</div>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">{suite.criteria[0] || '达到本套测试文件的预期行为。'}</p>
+                        </div>
+                        <div className="rounded-md border border-red-500/25 bg-red-500/[0.06] p-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-red-300">不好的定义</div>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">{suite.failure_modes[0] || '偏离测试文件的边界或输出要求。'}</p>
                         </div>
                       </div>
 
                       <div className="mt-auto space-y-2 pt-4">
+                        <CollapsibleBlock title="看源文件">
+                          <div className="space-y-3">
+                            {suite.sources.map(source => {
+                              const absolutePath = sourceAbsolutePath(source, plan.harness_root)
+                              return (
+                                <div key={`${suite.id}-source-${source.path}`} className="rounded-md border border-border bg-card/55 p-3">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div>
+                                      <div className="text-xs font-semibold text-foreground">{source.label}</div>
+                                      <div className="mt-1 break-all font-mono text-[11px] text-muted-foreground">{absolutePath}</div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className={`rounded-full border px-2 py-0.5 text-[11px] ${source.exists ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : 'border-red-500/25 bg-red-500/10 text-red-300'}`}>
+                                        {source.exists ? '可查看' : '缺失'}
+                                      </span>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="xs"
+                                        className="h-6 px-2 text-[11px]"
+                                        onClick={() => void copySourcePath(absolutePath)}
+                                      >
+                                        {copiedPath === absolutePath ? '已复制' : '复制路径'}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <pre className="mt-3 max-h-44 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-background/70 p-3 font-mono text-[11px] leading-5 text-muted-foreground">
+                                    {sourcePreview(source)}
+                                  </pre>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </CollapsibleBlock>
+
+                        <CollapsibleBlock title="看判定标准">
+                          <div className="grid gap-3">
+                            <div>
+                              <div className="text-xs font-semibold text-emerald-300">好的定义</div>
+                              <ul className="mt-2 space-y-1 text-xs leading-5 text-muted-foreground">
+                                {suite.criteria.map(item => <li key={item}>{item}</li>)}
+                              </ul>
+                            </div>
+                            <div>
+                              <div className="text-xs font-semibold text-red-300">不好的定义</div>
+                              <ul className="mt-2 space-y-1 text-xs leading-5 text-muted-foreground">
+                                {suite.failure_modes.map(item => <li key={item}>{item}</li>)}
+                              </ul>
+                            </div>
+                            <div>
+                              <div className="text-xs font-semibold text-primary">对应修改</div>
+                              <ul className="mt-2 space-y-1 text-xs leading-5 text-muted-foreground">
+                                {suite.optimization_targets.map(item => <li key={item}>{item}</li>)}
+                              </ul>
+                            </div>
+                          </div>
+                        </CollapsibleBlock>
+
                         <CollapsibleBlock title="看题目">
                           <div className="grid gap-2">
                             {suite.cases.slice(0, 4).map(testCase => (
-                              <div key={testCase.testId} className="rounded-md border border-border bg-background/65 p-2">
-                                <div className="font-mono text-[11px] text-foreground">{testCase.testId}</div>
-                                <div className="mt-1 text-xs text-muted-foreground">{testCase.title}</div>
-                                <div className="mt-1 line-clamp-2 text-xs leading-5 text-foreground">{testCase.prompt}</div>
+                              <div key={testCase.testId} className="rounded-md border border-border bg-background/65 p-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-mono text-[11px] text-foreground">{testCase.testId}</span>
+                                  <span className="text-xs text-muted-foreground">{testCase.title}</span>
+                                </div>
+                                <div className="mt-3 grid gap-2">
+                                  <div>
+                                    <div className="text-[11px] font-semibold text-muted-foreground">测试</div>
+                                    <p className="mt-1 text-xs leading-5 text-foreground">{testCase.prompt}</p>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] font-semibold text-emerald-300">期望</div>
+                                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{suite.criteria[0] || '符合测试题预期。'}</p>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] font-semibold text-red-300">不合格</div>
+                                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{suite.failure_modes[0] || '出现边界偏离或输出不符合要求。'}</p>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] font-semibold text-primary">对应修改</div>
+                                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{suite.optimization_targets[0] || '回到对应源文件调整。'}</p>
+                                  </div>
+                                </div>
                               </div>
                             ))}
                             {suite.cases.length > 4 && (
