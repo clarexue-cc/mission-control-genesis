@@ -25,6 +25,14 @@ interface RunnerListPayload {
   cases: RunnerCase[]
 }
 
+interface CaseDocumentDetails {
+  expected_result?: string | null
+  matched_rule?: string | null
+  trigger?: string | null
+  expected_behavior?: string | null
+  should_not?: string | null
+}
+
 const SUITE_ORDER: Array<{ id: ApiSuite; runner: RunnerSuite }> = [
   { id: 'golden', runner: 'Golden' },
   { id: 'adversarial', runner: 'Adversarial' },
@@ -195,6 +203,75 @@ async function readPreview(filePath: string): Promise<string | null> {
   }
 }
 
+async function readText(filePath: string): Promise<string | null> {
+  try {
+    return await readFile(filePath, 'utf8')
+  } catch {
+    return null
+  }
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function cleanMarkdownValue(value: string) {
+  return value
+    .split(/\n+/)
+    .map(line => line.trim().replace(/^[-*]\s+/, '').replace(/^>\s*/, ''))
+    .filter(Boolean)
+    .join(' ')
+    .replace(/`/g, '')
+    .replace(/\*\*/g, '')
+    .replace(/^"(.+)"$/, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function extractMarkdownField(block: string, labels: string[]) {
+  for (const label of labels) {
+    const pattern = new RegExp(
+      `\\*\\*${escapeRegExp(label)}\\*\\*\\s*[：:]\\s*([\\s\\S]*?)(?=\\n\\*\\*[^\\n]+\\*\\*\\s*[：:]|\\n\\|\\s*评分维度|\\n---|\\n#{2,4}\\s|$)`,
+      'u',
+    )
+    const match = block.match(pattern)
+    if (match?.[1]) return cleanMarkdownValue(match[1])
+  }
+  return null
+}
+
+function parseCaseDocumentDetails(markdown: string): Map<string, CaseDocumentDetails> {
+  const details = new Map<string, CaseDocumentDetails>()
+  const headings = Array.from(markdown.matchAll(/^#{2,4}\s+([A-Z][A-Z0-9-]*-\d+)[：:\s]/gmu))
+
+  headings.forEach((heading, index) => {
+    const testId = heading[1]
+    const start = heading.index ?? 0
+    const end = headings[index + 1]?.index ?? markdown.length
+    const block = markdown.slice(start, end)
+    details.set(testId, {
+      expected_result: extractMarkdownField(block, ['预期结果']),
+      matched_rule: extractMarkdownField(block, ['预期命中规则 ID', '涉及规则']),
+      trigger: extractMarkdownField(block, ['触发 Skill', '触发关键词']),
+      expected_behavior: extractMarkdownField(block, ['期望行为']),
+      should_not: extractMarkdownField(block, ['不应该']),
+    })
+  })
+
+  return details
+}
+
+async function suiteCaseDetails(harnessRoot: string, template: string, suite: ApiSuite) {
+  for (const fileName of TEST_FILE_CANDIDATES[suite]) {
+    const filePath = path.join(harnessRoot, `phase0/templates/${template}/tests/${fileName}`)
+    if (await exists(filePath)) {
+      const markdown = await readText(filePath)
+      return markdown ? parseCaseDocumentDetails(markdown) : new Map<string, CaseDocumentDetails>()
+    }
+  }
+  return new Map<string, CaseDocumentDetails>()
+}
+
 async function source(harnessRoot: string, template: string, label: string, relative: string) {
   const filePath = path.join(harnessRoot, relative)
   const readable = await exists(filePath)
@@ -285,6 +362,7 @@ export async function GET(request: NextRequest) {
     const suites = await Promise.all(SUITE_ORDER.map(async ({ id, runner: runnerSuite }) => {
       const meta = SUITE_COPY[id]
       const cases = runner.cases.filter(testCase => testCase.suite === runnerSuite)
+      const caseDetails = await suiteCaseDetails(harnessRoot, runner.template, id)
       return {
         id,
         label: meta.label,
@@ -300,6 +378,7 @@ export async function GET(request: NextRequest) {
           testId: testCase.testId,
           title: testCase.title,
           prompt: testCase.prompt,
+          ...caseDetails.get(testCase.testId),
         })),
       }
     }))
