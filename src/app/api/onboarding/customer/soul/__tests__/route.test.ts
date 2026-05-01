@@ -77,7 +77,7 @@ describe('POST /api/onboarding/customer/soul', () => {
 
 ## UAT 对齐
 
-1. 覆盖 P1-P22。
+1. 覆盖 P1-P16。
 `,
       agents_md: `# AGENTS
 
@@ -132,7 +132,7 @@ describe('POST /api/onboarding/customer/soul', () => {
 
 ## UAT 标准
 
-1. 覆盖 P1-P22。
+1. 覆盖 P1-P16。
 2. 状态清晰。
 3. 内容准确。
 

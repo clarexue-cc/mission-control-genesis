@@ -24,6 +24,41 @@ type HermesState = {
   vault_root: string
   log_path: string
   log_tail: string
+  config: {
+    config_path: string
+    config_exists: boolean
+    soul_path: string
+    soul_exists: boolean
+    agents_path: string
+    agents_exists: boolean
+    cron_jobs_path: string
+    cron_jobs_exists: boolean
+    provider: string | null
+    model: string | null
+    base_url: string | null
+    toolsets: string[]
+    max_turns: number | null
+    gateway_timeout: number | null
+    terminal_backend: string | null
+    terminal_cwd: string | null
+    browser_private_urls: boolean | null
+  }
+  cron: {
+    total_jobs: number
+    enabled_jobs: number
+    openclaw_monitoring: boolean
+    heartbeat_monitoring: boolean
+    last_run_at: string | null
+    evidence: string
+    jobs: Array<{
+      id: string
+      schedule: string
+      enabled: boolean
+      lastRunAt: string | null
+      runCount: number
+      evidence: string
+    }>
+  }
   targets: HermesTarget[]
   scripts: {
     daemon: string
@@ -54,6 +89,29 @@ function healthClassName(health: HermesTarget['health']) {
   return 'bg-red-500/15 text-red-300'
 }
 
+function ConfigMetric({ label, value }: { label: string; value: string | number | null | undefined }) {
+  return (
+    <div className="rounded border border-border/70 bg-secondary/20 p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 truncate text-sm font-medium text-foreground">{value ?? '-'}</p>
+    </div>
+  )
+}
+
+function ConfigPathRow({ label, path, exists }: { label: string; path: string | undefined; exists: boolean | undefined }) {
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-3 rounded border border-border/60 px-3 py-2 text-xs">
+      <div className="min-w-0">
+        <div className="font-medium text-foreground">{label}</div>
+        <div className="truncate text-muted-foreground" title={path}>{path || '-'}</div>
+      </div>
+      <span className={`shrink-0 rounded px-2 py-0.5 ${exists ? 'bg-green-500/15 text-green-300' : 'bg-red-500/15 text-red-300'}`}>
+        {exists ? 'found' : 'missing'}
+      </span>
+    </div>
+  )
+}
+
 export function HermesControlPanel() {
   const [state, setState] = useState<HermesState | null>(null)
   const [loading, setLoading] = useState(true)
@@ -61,6 +119,7 @@ export function HermesControlPanel() {
   const [error, setError] = useState<string | null>(null)
 
   const staleCount = useMemo(() => state?.targets.filter(target => target.stale).length || 0, [state])
+  const hasCronMonitoring = Boolean(state?.cron.openclaw_monitoring && state.cron.heartbeat_monitoring)
 
   const loadState = useCallback(async () => {
     setError(null)
@@ -113,7 +172,7 @@ export function HermesControlPanel() {
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Hermes</p>
           <h1 className="text-2xl font-semibold text-foreground">Hermes Control</h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Guard daemon status, tenant heartbeat freshness, forced inspections, and Hermes alert log.
+            Hermes cron evidence, MC guard daemon status, tenant heartbeat freshness, forced inspections, and alert log.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -138,7 +197,14 @@ export function HermesControlPanel() {
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid gap-4 lg:grid-cols-6">
+        <section className={`${panelClassName} p-4 lg:col-span-2`}>
+          <p className="text-xs text-muted-foreground">Hermes cron evidence</p>
+          <p className={`mt-2 text-xl font-semibold ${hasCronMonitoring ? 'text-green-300' : 'text-red-300'}`}>
+            {hasCronMonitoring ? 'monitoring' : 'not proven'}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{state?.cron.evidence || 'No cron evidence loaded'}</p>
+        </section>
         <section className={`${panelClassName} p-4`}>
           <p className="text-xs text-muted-foreground">Daemon status</p>
           <p className={`mt-2 text-xl font-semibold ${state?.daemon_running ? 'text-green-300' : 'text-red-300'}`}>
@@ -157,11 +223,47 @@ export function HermesControlPanel() {
           <p className="mt-1 text-xs text-muted-foreground">stale or missing heartbeat</p>
         </section>
         <section className={`${panelClassName} p-4`}>
-          <p className="text-xs text-muted-foreground">Stale threshold</p>
-          <p className="mt-2 text-xl font-semibold text-foreground">{formatAge(state?.stale_seconds || 0)}</p>
-          <p className="mt-1 truncate text-xs text-muted-foreground">{state?.vault_root}</p>
+          <p className="text-xs text-muted-foreground">Last cron run</p>
+          <p className="mt-2 text-xl font-semibold text-foreground">{formatDate(state?.cron.last_run_at || null)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">stale threshold {formatAge(state?.stale_seconds || 0)}</p>
         </section>
       </div>
+
+      {!hasCronMonitoring && (
+        <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm leading-6 text-amber-700 dark:text-amber-100">
+          当前没有 Hermes cron 定时任务证据，不能证明 Hermes 正在定时监控 OpenClaw。请先在 Hermes cron 中配置包含 OpenClaw heartbeat / working-context 检查的任务，或启动 MC guard daemon 作为临时巡检。
+        </section>
+      )}
+
+      <section className={`${panelClassName} p-4`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Hermes Config</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Safe summary of config.yaml, SOUL, AGENTS, and Hermes cron job registration.
+            </p>
+          </div>
+          <span className={`rounded px-2 py-1 text-xs ${state?.config.config_exists ? 'bg-green-500/15 text-green-300' : 'bg-red-500/15 text-red-300'}`}>
+            {state?.config.config_exists ? 'config loaded' : 'config missing'}
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <ConfigMetric label="Provider" value={state?.config.provider} />
+          <ConfigMetric label="Model" value={state?.config.model} />
+          <ConfigMetric label="Gateway timeout" value={state?.config.gateway_timeout ? `${state.config.gateway_timeout}s` : null} />
+          <ConfigMetric label="Toolsets" value={state?.config.toolsets?.join(', ') || null} />
+          <ConfigMetric label="Base URL" value={state?.config.base_url} />
+          <ConfigMetric label="Terminal backend" value={state?.config.terminal_backend} />
+          <ConfigMetric label="Terminal cwd" value={state?.config.terminal_cwd} />
+          <ConfigMetric label="Private URLs" value={state?.config.browser_private_urls === null ? null : String(state?.config.browser_private_urls)} />
+        </div>
+        <div className="mt-4 grid gap-2 md:grid-cols-2">
+          <ConfigPathRow label="config.yaml" path={state?.config.config_path} exists={state?.config.config_exists} />
+          <ConfigPathRow label="SOUL.md" path={state?.config.soul_path} exists={state?.config.soul_exists} />
+          <ConfigPathRow label="AGENTS.md" path={state?.config.agents_path} exists={state?.config.agents_exists} />
+          <ConfigPathRow label="Hermes cron jobs" path={state?.config.cron_jobs_path} exists={state?.config.cron_jobs_exists} />
+        </div>
+      </section>
 
       <div className="grid min-h-[48vh] flex-1 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <section className={`${panelClassName} overflow-hidden`}>

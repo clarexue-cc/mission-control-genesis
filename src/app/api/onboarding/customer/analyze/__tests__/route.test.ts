@@ -79,7 +79,7 @@ describe('/api/onboarding/customer/analyze', () => {
     delivery_mode: 'Hybrid',
     delivery_mode_reason: '需要流程编排和工具调用并存。',
     boundary_draft: ['禁泄密', '禁越权', '禁外发', '禁假数据'],
-    uat_criteria: ['覆盖 P1-P22', '响应状态清晰', '摘要准确'],
+    uat_criteria: ['覆盖 P1-P16', '响应状态清晰', '摘要准确'],
     soul_draft: {
       name: '客户分析助手',
       role: '分析 intake 并产出交付草案。',
@@ -186,7 +186,7 @@ describe('/api/onboarding/customer/analyze', () => {
     expect(body.content).toContain('## Boundary 草稿')
     expect(body.content).toContain('## P8 Boundary Draft JSON')
     expect(body.content).toContain('## P9 Skills Blueprint JSON')
-    expect(body.content).toContain('## P21 UAT Draft JSON')
+    expect(body.content).toContain('## P15 UAT Draft JSON')
     await expect(stat(path.join(harnessRoot, 'phase0/tenants/media-intel-v1/vault/intake-analysis.md'))).resolves.toBeTruthy()
   })
 
@@ -348,7 +348,7 @@ describe('/api/onboarding/customer/analyze', () => {
     expect(saved).toContain('## 机器可读蓝图 JSON')
     expect(saved).toContain('## P8 Boundary Draft JSON')
     expect(saved).toContain('## P9 Skills Blueprint JSON')
-    expect(saved).toContain('## P21 UAT Draft JSON')
+    expect(saved).toContain('## P15 UAT Draft JSON')
   })
 
   it('rejects non-admin P4 blueprint edits', async () => {

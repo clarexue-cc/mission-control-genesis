@@ -377,7 +377,7 @@ function buildMockDraft(tenantId: string, intakeRaw: string): CustomerAnalysisDr
       '禁止生成或声称已验证不存在来源的假数据、假截图、假客户结论。',
     ],
     uat_criteria: [
-      '覆盖率：P1-P22 dry run 中与该 tenant 相关的关键步骤均可追踪到 vault 产物。',
+      '覆盖率：P1-P16 dry run 中与该 tenant 相关的关键步骤均可追踪到 vault 产物。',
       '响应时间：常规分析请求在可接受窗口内返回，并展示明确 running/success/failed 状态。',
       '准确率：候选 Skills、Boundary 草稿、模式判断与 intake-raw.md 中的客户材料保持一致。',
     ],
@@ -454,7 +454,7 @@ ${draft.boundary_draft.map((rule, index) => `${index + 1}. ${cleanDisplayValue(r
 
 ## UAT 标准
 
-> 后续 P21 会把这组草稿推进 Customer UAT 任务和验收标准。
+> 后续 P15 会把这组草稿推进 Customer UAT 任务和验收标准。
 
 ${draft.uat_criteria.map((criteria, index) => `${index + 1}. ${cleanDisplayValue(criteria)}`).join('\n')}
 
@@ -485,7 +485,7 @@ ${JSON.stringify(boundaryRulesDraft, null, 2)}
 ${JSON.stringify(skillsBlueprint, null, 2)}
 \`\`\`
 
-## P21 UAT Draft JSON
+## P15 UAT Draft JSON
 
 \`\`\`json
 ${JSON.stringify(uatDraft, null, 2)}

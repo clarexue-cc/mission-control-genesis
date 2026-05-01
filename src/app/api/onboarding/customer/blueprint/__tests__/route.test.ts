@@ -127,7 +127,7 @@ ${JSON.stringify(p4Draft, null, 2)}
     await rm(harnessRoot, { recursive: true, force: true })
   })
 
-  it('returns P8, P9, and P21 machine-readable P4 drafts for admins', async () => {
+  it('returns P8, P9, and P15 machine-readable P4 drafts for admins', async () => {
     await writeP4Blueprint()
     const { GET } = await loadRoute()
 

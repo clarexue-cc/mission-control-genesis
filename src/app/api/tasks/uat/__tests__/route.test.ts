@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -90,6 +91,69 @@ describe('/api/tasks/uat', () => {
     return { response, body, task: body.task }
   }
 
+  async function writeP4Blueprint(tenantId = 'tenant-a') {
+    const intakeRaw = `# Intake Raw
+
+客户：${tenantId}
+
+- 需要每日 Web3 风险 morning brief。
+- 高风险判断必须 Clare 复核。
+`
+    const intakeRawHash = createHash('sha256').update(intakeRaw).digest('hex')
+    const vaultDir = path.join(harnessRoot, 'phase0', 'tenants', tenantId, 'vault')
+    await mkdir(vaultDir, { recursive: true })
+    await writeFile(path.join(vaultDir, 'intake-raw.md'), intakeRaw, 'utf8')
+    await writeFile(path.join(vaultDir, 'intake-analysis.md'), `# Intake Analysis
+
+> Source: OB-S2 AI analysis
+> Mode: llm-anthropic
+> Provider: anthropic
+> Generated At: 2026-05-01T00:00:00.000Z
+> Intake Raw Hash: ${intakeRawHash}
+> Note: Test P4 blueprint.
+
+## 机器可读蓝图 JSON
+
+\`\`\`json
+{
+  "workflow_steps": [
+    {
+      "order": 1,
+      "name": "每日风险简报",
+      "actor": "Agent",
+      "trigger": "每天早上",
+      "output": "Morning brief",
+      "next": "daily-risk-brief-composer"
+    }
+  ],
+  "skill_candidates": [
+    {
+      "id": "daily-risk-brief-composer",
+      "title": "Daily Risk Brief Composer",
+      "order": 1,
+      "workflow_stage": "每日风险简报",
+      "inputs": ["公开渠道信号", "客户关注项目"],
+      "outputs": ["Morning brief", "高风险提醒"],
+      "handoff": "交给 Clare 复核",
+      "human_confirmation": "高风险判断必须 Clare 复核",
+      "reason": "把客户关注项目整理成可验收的每日风险简报。"
+    }
+  ],
+  "delivery_mode": "Hybrid",
+  "delivery_mode_reason": "定时流程和人工确认并存。",
+  "boundary_draft": ["禁止泄露客户材料", "禁止越权访问", "禁止未经确认外发", "禁止编造来源"],
+  "uat_criteria": ["Morning brief 含来源链接", "高风险判断进入人工确认", "客户能提交验收反馈"],
+  "soul_draft": {
+    "name": "Media Intel Assistant",
+    "role": "生成 Web3 风险简报。",
+    "tone": "清晰审慎",
+    "forbidden": ["泄密", "越权"]
+  }
+}
+\`\`\`
+`, 'utf8')
+  }
+
   it('lets admin create a UAT task and writes uat-tasks.jsonl', async () => {
     const { response, body, task } = await createTask('tenant-a')
 
@@ -132,6 +196,32 @@ describe('/api/tasks/uat', () => {
     expect(body.tasks[0]).toMatchObject({ tenant_id: 'tenant-a', title: 'Tenant A task' })
     expect(JSON.stringify(body.tasks)).not.toContain('Tenant B task')
     expect(authMock.requireRole).toHaveBeenLastCalledWith(expect.any(NextRequest), 'viewer')
+  })
+
+  it('materializes P4 UAT draft tasks when customer loads their task list', async () => {
+    await writeP4Blueprint('tenant-a')
+    authMock.requireRole.mockReturnValue({ user: customerUser })
+    const { uat } = await loadRoutes()
+
+    const firstResponse = await uat.GET(request('http://localhost/api/tasks/uat?role=customer&tenant_id=tenant-a'))
+    const firstBody = await firstResponse.json()
+
+    expect(firstResponse.status).toBe(200)
+    expect(firstBody.tasks).toHaveLength(3)
+    expect(firstBody.tasks.map((task: { title: string }) => task.title).sort()).toEqual([
+      'Morning brief 含来源链接',
+      '客户能提交验收反馈',
+      '高风险判断进入人工确认',
+    ].sort())
+    expect(firstBody.tasks.every((task: { created_by: string }) => task.created_by === 'p4-blueprint')).toBe(true)
+
+    const secondResponse = await uat.GET(request('http://localhost/api/tasks/uat?role=customer&tenant_id=tenant-a'))
+    const secondBody = await secondResponse.json()
+    const persisted = await readFile(path.join(harnessRoot, 'phase0', 'tenants', 'tenant-a', 'uat-tasks.jsonl'), 'utf8')
+
+    expect(secondResponse.status).toBe(200)
+    expect(secondBody.tasks).toHaveLength(3)
+    expect(persisted.trim().split('\n')).toHaveLength(3)
   })
 
   it('lets customer submit feedback', async () => {
