@@ -254,23 +254,169 @@ function StatusPill({ status }: { status: HealthStatus | CheckStatus }) {
 
 function CollapsibleBlock({
   title,
+  summary,
   children,
   defaultOpen = false,
+  bodyClassName = 'px-3 py-3',
 }: {
   title: string
+  summary?: string
   children: ReactNode
   defaultOpen?: boolean
+  bodyClassName?: string
 }) {
   return (
     <details className="group rounded-md border border-border bg-background/55" open={defaultOpen}>
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-secondary/40">
-        <span>{title}</span>
+        <span className="min-w-0">
+          <span>{title}</span>
+          {summary && <span className="ml-2 text-xs font-normal text-muted-foreground">{summary}</span>}
+        </span>
         <span className="text-xs text-muted-foreground transition group-open:rotate-90">›</span>
       </summary>
-      <div className="border-t border-border px-3 py-3">
+      <div className={`border-t border-border ${bodyClassName}`}>
         {children}
       </div>
     </details>
+  )
+}
+
+function MiniDefinition({
+  label,
+  tone,
+  children,
+}: {
+  label: string
+  tone: 'good' | 'bad' | 'edit' | 'neutral'
+  children: ReactNode
+}) {
+  const toneClass = tone === 'good'
+    ? 'border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-300'
+    : tone === 'bad'
+      ? 'border-red-500/25 bg-red-500/[0.06] text-red-300'
+      : tone === 'edit'
+        ? 'border-primary/25 bg-primary/[0.06] text-primary'
+        : 'border-border bg-card/55 text-muted-foreground'
+
+  return (
+    <div className={`rounded-md border p-3 ${toneClass}`}>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.14em]">{label}</div>
+      <div className="mt-1 text-xs leading-5 text-muted-foreground">{children}</div>
+    </div>
+  )
+}
+
+function SourceFilesPanel({
+  sources,
+  harnessRoot,
+  copiedPath,
+  onCopyPath,
+}: {
+  sources: HarnessPlanSource[]
+  harnessRoot: string
+  copiedPath: string | null
+  onCopyPath: (absolutePath: string) => void
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="rounded-md border border-primary/20 bg-primary/[0.06] p-3">
+        <div className="text-xs font-semibold text-primary">查看路径</div>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          先看测试题，再看角色、运行指令和 skill 文件；要改方向时复制路径去本地文件里改。
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        {sources.map(source => {
+          const absolutePath = sourceAbsolutePath(source, harnessRoot)
+          return (
+            <div key={source.path} className="rounded-md border border-border bg-card/55 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-foreground">{source.label}</div>
+                  <div className="mt-1 font-mono text-[11px] text-muted-foreground">{compactPath(source)}</div>
+                </div>
+                <span className={`rounded-full border px-2 py-0.5 text-[11px] ${source.exists ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : 'border-red-500/25 bg-red-500/10 text-red-300'}`}>
+                  {source.exists ? '可查看' : '缺失'}
+                </span>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => onCopyPath(absolutePath)}
+                >
+                  {copiedPath === absolutePath ? '已复制' : '复制路径'}
+                </Button>
+              </div>
+              <pre className="mt-3 max-h-28 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-background/70 p-3 font-mono text-[11px] leading-5 text-muted-foreground">
+                {sourcePreview(source)}
+              </pre>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function JudgementPanel({ suite }: { suite: HarnessPlanSuite }) {
+  return (
+    <div className="space-y-3">
+      <MiniDefinition label="好的定义" tone="good">
+        <ul className="space-y-1">
+          {suite.criteria.map(item => <li key={item}>{item}</li>)}
+        </ul>
+      </MiniDefinition>
+      <MiniDefinition label="不好的定义" tone="bad">
+        <ul className="space-y-1">
+          {suite.failure_modes.map(item => <li key={item}>{item}</li>)}
+        </ul>
+      </MiniDefinition>
+      <MiniDefinition label="对应修改" tone="edit">
+        <ul className="space-y-1">
+          {suite.optimization_targets.map(item => <li key={item}>{item}</li>)}
+        </ul>
+      </MiniDefinition>
+    </div>
+  )
+}
+
+function CasesPanel({ suite }: { suite: HarnessPlanSuite }) {
+  const expected = suite.criteria[0] || '符合测试题预期。'
+  const bad = suite.failure_modes[0] || '出现边界偏离或输出不符合要求。'
+  const edit = suite.optimization_targets[0] || '回到对应源文件调整。'
+
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-2">
+        <MiniDefinition label="期望答案/行为" tone="good">{expected}</MiniDefinition>
+        <MiniDefinition label="不合格表现" tone="bad">{bad}</MiniDefinition>
+        <MiniDefinition label="失败后改哪" tone="edit">{edit}</MiniDefinition>
+      </div>
+
+      <div className="space-y-2">
+        {suite.cases.slice(0, 6).map(testCase => (
+          <div key={testCase.testId} className="rounded-md border border-border bg-background/65 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded border border-border bg-card/70 px-1.5 py-0.5 font-mono text-[11px] text-foreground">{testCase.testId}</span>
+              <span className="text-xs font-medium text-foreground">{testCase.title}</span>
+            </div>
+            <div className="mt-3 rounded-md border border-border bg-card/50 p-2">
+              <div className="text-[11px] font-semibold text-muted-foreground">测试</div>
+              <p className="mt-1 text-xs leading-5 text-foreground">{testCase.prompt}</p>
+            </div>
+          </div>
+        ))}
+        {suite.cases.length > 6 && (
+          <div className="rounded-md border border-border bg-card/50 px-3 py-2 text-[11px] text-muted-foreground">
+            还有 {suite.cases.length - 6} 条，完整内容在测试题源文件里。
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -491,101 +637,33 @@ export function HarnessPanel() {
                       </div>
 
                       <div className="mt-auto space-y-2 pt-4">
-                        <CollapsibleBlock title="看源文件">
-                          <div className="space-y-3">
-                            {suite.sources.map(source => {
-                              const absolutePath = sourceAbsolutePath(source, plan.harness_root)
-                              return (
-                                <div key={`${suite.id}-source-${source.path}`} className="rounded-md border border-border bg-card/55 p-3">
-                                  <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <div>
-                                      <div className="text-xs font-semibold text-foreground">{source.label}</div>
-                                      <div className="mt-1 break-all font-mono text-[11px] text-muted-foreground">{absolutePath}</div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className={`rounded-full border px-2 py-0.5 text-[11px] ${source.exists ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : 'border-red-500/25 bg-red-500/10 text-red-300'}`}>
-                                        {source.exists ? '可查看' : '缺失'}
-                                      </span>
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="xs"
-                                        className="h-6 px-2 text-[11px]"
-                                        onClick={() => void copySourcePath(absolutePath)}
-                                      >
-                                        {copiedPath === absolutePath ? '已复制' : '复制路径'}
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  <pre className="mt-3 max-h-44 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-background/70 p-3 font-mono text-[11px] leading-5 text-muted-foreground">
-                                    {sourcePreview(source)}
-                                  </pre>
-                                </div>
-                              )
-                            })}
-                          </div>
+                        <CollapsibleBlock
+                          title="看源文件"
+                          summary={`${suite.sources.length} 个`}
+                          bodyClassName="max-h-[440px] overflow-y-auto px-3 py-3"
+                        >
+                          <SourceFilesPanel
+                            sources={suite.sources}
+                            harnessRoot={plan.harness_root}
+                            copiedPath={copiedPath}
+                            onCopyPath={copySourcePath}
+                          />
                         </CollapsibleBlock>
 
-                        <CollapsibleBlock title="看判定标准">
-                          <div className="grid gap-3">
-                            <div>
-                              <div className="text-xs font-semibold text-emerald-300">好的定义</div>
-                              <ul className="mt-2 space-y-1 text-xs leading-5 text-muted-foreground">
-                                {suite.criteria.map(item => <li key={item}>{item}</li>)}
-                              </ul>
-                            </div>
-                            <div>
-                              <div className="text-xs font-semibold text-red-300">不好的定义</div>
-                              <ul className="mt-2 space-y-1 text-xs leading-5 text-muted-foreground">
-                                {suite.failure_modes.map(item => <li key={item}>{item}</li>)}
-                              </ul>
-                            </div>
-                            <div>
-                              <div className="text-xs font-semibold text-primary">对应修改</div>
-                              <ul className="mt-2 space-y-1 text-xs leading-5 text-muted-foreground">
-                                {suite.optimization_targets.map(item => <li key={item}>{item}</li>)}
-                              </ul>
-                            </div>
-                          </div>
+                        <CollapsibleBlock
+                          title="看判断标准"
+                          summary="好/坏/改"
+                          bodyClassName="max-h-[360px] overflow-y-auto px-3 py-3"
+                        >
+                          <JudgementPanel suite={suite} />
                         </CollapsibleBlock>
 
-                        <CollapsibleBlock title="看题目">
-                          <div className="grid gap-2">
-                            {suite.cases.slice(0, 4).map(testCase => (
-                              <div key={testCase.testId} className="rounded-md border border-border bg-background/65 p-3">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="font-mono text-[11px] text-foreground">{testCase.testId}</span>
-                                  <span className="text-xs text-muted-foreground">{testCase.title}</span>
-                                </div>
-                                <div className="mt-3 grid gap-2">
-                                  <div>
-                                    <div className="text-[11px] font-semibold text-muted-foreground">测试</div>
-                                    <p className="mt-1 text-xs leading-5 text-foreground">{testCase.prompt}</p>
-                                  </div>
-                                  <div>
-                                    <div className="text-[11px] font-semibold text-emerald-300">期望</div>
-                                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{suite.criteria[0] || '符合测试题预期。'}</p>
-                                  </div>
-                                  <div>
-                                    <div className="text-[11px] font-semibold text-red-300">不合格</div>
-                                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{suite.failure_modes[0] || '出现边界偏离或输出不符合要求。'}</p>
-                                  </div>
-                                  <div>
-                                    <div className="text-[11px] font-semibold text-primary">对应修改</div>
-                                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{suite.optimization_targets[0] || '回到对应源文件调整。'}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                            {suite.cases.length > 4 && (
-                              <div className="text-[11px] text-muted-foreground">还有 {suite.cases.length - 4} 条。</div>
-                            )}
-                          </div>
-                          {testSource?.preview && (
-                            <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-card/70 p-3 font-mono text-[11px] leading-5 text-muted-foreground">
-                              {testSource.preview}
-                            </pre>
-                          )}
+                        <CollapsibleBlock
+                          title="看题目"
+                          summary={`${suite.case_count} 条`}
+                          bodyClassName="max-h-[520px] overflow-y-auto px-3 py-3"
+                        >
+                          <CasesPanel suite={suite} />
                         </CollapsibleBlock>
 
                         <CollapsibleBlock title="看修改入口">
@@ -612,56 +690,68 @@ export function HarnessPanel() {
             )}
           </section>
 
-          <section className="grid gap-3 lg:grid-cols-[minmax(0,0.64fr)_minmax(0,0.36fr)]">
-            <div className={`${panelClassName} overflow-hidden`}>
-              <div className="border-b border-border px-4 py-3">
-                <h2 className="text-sm font-semibold text-foreground">运行检查</h2>
-                <p className="mt-1 text-xs text-muted-foreground">这里看 harness 自身有没有准备好。</p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-secondary/50 uppercase tracking-[0.14em] text-muted-foreground">
-                    <tr>
-                      <th className="px-3 py-2">项</th>
-                      <th className="px-3 py-2">状态</th>
-                      <th className="px-3 py-2">结论</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border bg-background/20">
-                    {health.checks.map(check => (
-                      <tr key={check.id} className="align-top">
-                        <td className="px-3 py-2 font-medium text-foreground">{check.label}</td>
-                        <td className="px-3 py-2">
-                          <StatusPill status={check.status} />
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="break-words text-muted-foreground">{check.detail}</div>
-                          {check.action && <div className="mt-1 text-foreground">{check.action}</div>}
-                        </td>
+          <CollapsibleBlock
+            title="高级诊断"
+            summary="运行检查 / 底层路径"
+            bodyClassName="p-0"
+          >
+            <div className="grid gap-3 p-3 lg:grid-cols-[minmax(0,0.64fr)_minmax(0,0.36fr)]">
+              <div className="overflow-hidden rounded-md border border-border bg-card/45">
+                <div className="border-b border-border px-4 py-3">
+                  <h2 className="text-sm font-semibold text-foreground">运行检查</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    给开发排查 harness 自身是否 ready；Clare 看测试策略时不用先看这里。
+                  </p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-secondary/50 uppercase tracking-[0.14em] text-muted-foreground">
+                      <tr>
+                        <th className="px-3 py-2">项</th>
+                        <th className="px-3 py-2">状态</th>
+                        <th className="px-3 py-2">结论</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-border bg-background/20">
+                      {health.checks.map(check => (
+                        <tr key={check.id} className="align-top">
+                          <td className="px-3 py-2 font-medium text-foreground">{check.label}</td>
+                          <td className="px-3 py-2">
+                            <StatusPill status={check.status} />
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="break-words text-muted-foreground">{check.detail}</div>
+                            {check.action && <div className="mt-1 text-foreground">{check.action}</div>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-border bg-card/45 p-4">
+                <h2 className="text-sm font-semibold text-foreground">底层路径</h2>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  给开发定位本地 harness root、runner 和 latest report，平时不用读。
+                </p>
+                <div className="mt-4 space-y-3 text-xs">
+                  <div>
+                    <div className="font-semibold uppercase tracking-[0.14em] text-muted-foreground">Harness root</div>
+                    <div className="mt-1 break-all rounded-md border border-border bg-background/70 px-2 py-1.5 font-mono text-foreground">{health.harness_root || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="font-semibold uppercase tracking-[0.14em] text-muted-foreground">Runner</div>
+                    <div className="mt-1 break-all rounded-md border border-border bg-background/70 px-2 py-1.5 font-mono text-foreground">{health.runner_path || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="font-semibold uppercase tracking-[0.14em] text-muted-foreground">Latest report</div>
+                    <div className="mt-1 break-all rounded-md border border-border bg-background/70 px-2 py-1.5 font-mono text-foreground">{health.latest_report?.path || '-'}</div>
+                  </div>
+                </div>
               </div>
             </div>
-
-            <CollapsibleBlock title="底层路径">
-              <div className="space-y-3 text-xs">
-                <div>
-                  <div className="font-semibold uppercase tracking-[0.14em] text-muted-foreground">Harness root</div>
-                  <div className="mt-1 break-all rounded-md border border-border bg-card/65 px-2 py-1.5 font-mono text-foreground">{health.harness_root || '-'}</div>
-                </div>
-                <div>
-                  <div className="font-semibold uppercase tracking-[0.14em] text-muted-foreground">Runner</div>
-                  <div className="mt-1 break-all rounded-md border border-border bg-card/65 px-2 py-1.5 font-mono text-foreground">{health.runner_path || '-'}</div>
-                </div>
-                <div>
-                  <div className="font-semibold uppercase tracking-[0.14em] text-muted-foreground">Latest report</div>
-                  <div className="mt-1 break-all rounded-md border border-border bg-card/65 px-2 py-1.5 font-mono text-foreground">{health.latest_report?.path || '-'}</div>
-                </div>
-              </div>
-            </CollapsibleBlock>
-          </section>
+          </CollapsibleBlock>
         </>
       )}
     </div>
