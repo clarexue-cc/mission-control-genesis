@@ -1,8 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const navigateToPanelMock = vi.hoisted(() => vi.fn())
+
 vi.mock('@/lib/mc-stable-mode', () => ({
+  resolveCustomerTenantId: () => 'ceo-assistant-v1',
   resolveDefaultCustomerTenantId: () => 'ceo-assistant-v1',
+  resolveInitialSidebarExpanded: () => true,
+}))
+
+vi.mock('@/lib/navigation', () => ({
+  useNavigateToPanel: () => navigateToPanelMock,
 }))
 
 import { TestConsolePanel } from '@/components/panels/test-console'
@@ -42,6 +50,7 @@ describe('TestConsolePanel', () => {
   })
 
   afterEach(() => {
+    navigateToPanelMock.mockReset()
     vi.unstubAllGlobals()
   })
 
@@ -85,5 +94,14 @@ describe('TestConsolePanel', () => {
     expect(screen.getByText('/Users/clare/Desktop/genesis-harness/tools/tg-test-runner.ts')).toBeInTheDocument()
     expect(screen.getByText('Runtime target')).toBeInTheDocument()
     expect(screen.getByText('docker exec ceo-assistant-v1')).toBeInTheDocument()
+  })
+
+  it('explains that Logs and Vault are evidence links, not P10 run dependencies', async () => {
+    render(<TestConsolePanel />)
+
+    expect(await screen.findByText('P10 run 依赖什么')).toBeInTheDocument()
+    expect(screen.getByText(/Logs \/ Vault 只是失败后的证据入口，不是下一阶段/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '查 Logs 证据' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '查 Vault 源文件' })).toBeInTheDocument()
   })
 })

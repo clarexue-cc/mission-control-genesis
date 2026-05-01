@@ -259,7 +259,7 @@ export function CustomerDeployClient({ username }: { username: string }) {
                 <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 font-medium text-primary">P6 Vault 框架</span>
                 <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P7 SOUL/AGENTS</span>
                 <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P9 Skills</span>
-                <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P13 记忆验证</span>
+                <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">Recall 记忆验证</span>
               </div>
             </div>
             <Button asChild variant="outline" size="sm">

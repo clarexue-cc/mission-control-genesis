@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { customerCheckpointNavItems } from '@/lib/customer-checkpoint-navigation'
 
 describe('customer checkpoint navigation', () => {
-  it('shows the full P3-P22 walkthrough sequence in the sidebar', () => {
+  it('shows the customer walkthrough without evidence-only log and vault pages as phases', () => {
     expect(customerCheckpointNavItems.map(item => item.label)).toEqual([
       'P3 Intake',
       'P4 Blueprint',
@@ -13,9 +13,6 @@ describe('customer checkpoint navigation', () => {
       'P8 Boundary',
       'P9 Skills 配置',
       'P10 Tests',
-      'P11 Logs',
-      'P12 Vault',
-      'P13 Recall',
       'P14 Hermes',
       'P15 Stuck Alerts',
       'P16 Cost / Approvals',
@@ -42,9 +39,6 @@ describe('customer checkpoint navigation', () => {
       'boundary',
       'onboarding/customer/skills',
       'tests',
-      'logs',
-      'vault',
-      'memory',
       'hermes',
       'alerts',
       'cost-tracker',
@@ -55,6 +49,12 @@ describe('customer checkpoint navigation', () => {
       'tasks',
       'delivery',
     ])
+  })
+
+  it('keeps evidence/debug viewers out of the customer checkpoint sequence', () => {
+    expect(customerCheckpointNavItems.map(item => item.panel)).not.toContain('logs')
+    expect(customerCheckpointNavItems.map(item => item.panel)).not.toContain('vault')
+    expect(customerCheckpointNavItems.map(item => item.panel)).not.toContain('memory')
   })
 
   it('uses customer role links for customer-facing checkpoints', () => {

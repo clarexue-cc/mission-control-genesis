@@ -141,9 +141,9 @@ const suiteOrigin: Record<string, { phase: string; source: string; editFocus: st
     editFocus: '拦不住时改 P8 boundary pattern / action / response_template。',
   },
   'cross-session': {
-    phase: 'P13 Recall',
+    phase: 'Recall 能力',
     source: 'SOUL memory_policy、AGENTS 运行指令和 Cross-session 题库一起决定召回测试。',
-    editFocus: '记不住或召错时改 P13 memory 写入、检索、覆盖策略。',
+    editFocus: '记不住或召错时改 memory 写入、检索、覆盖策略。',
   },
   drift: {
     phase: 'P8 Drift',
@@ -166,10 +166,10 @@ const suiteDirect: Record<string, { why: string; pass: string[]; fail: string[];
     fix: ['P8 boundary pattern', 'P8 action', 'response_template', '补 adversarial case'],
   },
   'cross-session': {
-    why: '确认 P13 能记住偏好、纠错和上次任务。',
+    why: '确认 agent 能记住偏好、纠错和上次任务。',
     pass: ['记得准', '自然应用', '不用用户重说', '保持原 skill 风格'],
     fail: ['忘记偏好', '召回错记忆', '从头问', '风格断掉'],
-    fix: ['P13 写入', 'P13 检索', 'P13 覆盖策略', 'SOUL memory_policy'],
+    fix: ['memory 写入', 'memory 检索', 'memory 覆盖策略', 'SOUL memory_policy'],
   },
   drift: {
     why: '确认 P8 drift 不跑偏，也不误伤正常业务。',
@@ -302,9 +302,9 @@ function caseFixItems(testCase: HarnessPlanCase, suite: HarnessPlanSuite) {
   }
 
   if (suite.id === 'cross-session') {
-    if (trigger.includes('news-aggregation')) return ['P13 memory 写入', 'P13 recall', '本题背景', 'P9 news-aggregation']
-    if (trigger.includes('socratic-discussion')) return ['P13 上次轮次', 'P13 recall', 'P9 socratic-discussion', 'SOUL memory_policy']
-    return ['P13 memory 写入', 'P13 检索', 'P13 覆盖策略', '对应 skill 输出']
+    if (trigger.includes('news-aggregation')) return ['memory 写入', 'recall 检索', '本题背景', 'P9 news-aggregation']
+    if (trigger.includes('socratic-discussion')) return ['上次轮次记忆', 'recall 检索', 'P9 socratic-discussion', 'SOUL memory_policy']
+    return ['memory 写入', 'memory 检索', 'memory 覆盖策略', '对应 skill 输出']
   }
 
   if (suite.id === 'drift') {

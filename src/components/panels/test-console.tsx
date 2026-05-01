@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
+import { useNavigateToPanel } from '@/lib/navigation'
 
 type TestSuite = 'golden' | 'adversarial' | 'cross-session' | 'drift'
 type RunStatus = 'idle' | 'running' | 'completed' | 'failed'
@@ -151,12 +152,12 @@ function caseDiagnosis(testCase: CaseRun) {
   if (testCase.error.includes('HTTP')) {
     return {
       reason: 'agent 网关返回非 200，属于服务链路或鉴权问题。',
-      next: '去 P11 Logs 看 gateway / hook 日志，再修部署、token 或代理配置。',
+      next: '去 Logs 证据页看 gateway / hook 日志，再修部署、token 或代理配置。',
     }
   }
   return {
     reason: 'runner 执行失败，先看 Runner 输出和 report 文件定位失败层。',
-    next: '按错误归属回到 P6 部署、P8 boundary、P9 skills 或 P13 recall 调整。',
+    next: '按错误归属回到 P6 部署、P8 boundary、P9 skills 或 memory recall 策略调整。',
   }
 }
 
@@ -167,6 +168,7 @@ function upsertCase(cases: CaseRun[], next: CaseRun) {
 }
 
 export function TestConsolePanel() {
+  const navigateToPanel = useNavigateToPanel()
   const [tenant, setTenant] = useState(resolveDefaultCustomerTenantId())
   const [runStatus, setRunStatus] = useState<RunStatus>('idle')
   const [runningSuite, setRunningSuite] = useState<TestSuite | null>(null)
@@ -394,6 +396,25 @@ export function TestConsolePanel() {
           </div>
         </div>
       </div>
+
+      <section className="rounded-lg border border-border bg-card/70 p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">P10 run 依赖什么</h2>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              能不能跑取决于 Harness plan、runtime target、P7-P9 产物和当前 tenant；Logs / Vault 只是失败后的证据入口，不是下一阶段。
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigateToPanel('logs', { tenantScoped: true })}>
+              查 Logs 证据
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigateToPanel('vault', { tenantScoped: true })}>
+              查 Vault 源文件
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
