@@ -422,10 +422,7 @@ function DirectBlock({
 }) {
   return (
     <div className="rounded-md border border-border bg-card/65 p-4">
-      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        <span className={`h-1.5 w-1.5 rounded-full ${signalTone(tone)}`} />
-        {label}
-      </div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
       {value && <p className="mt-3 text-sm font-medium leading-6 text-foreground">{value}</p>}
       {items && <div className="mt-3"><SignalList items={items} tone={tone} /></div>}
     </div>
@@ -443,10 +440,7 @@ function CaseCell({
 }) {
   return (
     <div className="min-h-[168px] border-border bg-card/45 p-4 lg:border-l first:lg:border-l-0">
-      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        <span className={`h-1.5 w-1.5 rounded-full ${signalTone(tone)}`} />
-        {label}
-      </div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
       <div className="mt-3">{children}</div>
     </div>
   )
