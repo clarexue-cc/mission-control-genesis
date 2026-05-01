@@ -59,12 +59,12 @@ const planPayload = {
       label: 'Cross-session',
       expected: 3,
       case_count: 3,
-      checkpoint: 'P13 Recall + SOUL memory_policy',
+      checkpoint: 'Recall 监控 + SOUL memory_policy',
       objective: '验证跨 session 记忆。',
       sources: [{ label: '测试题', path: 'phase0/templates/ceo-assistant-v1/tests/cross-session-3-cc.md', exists: true, preview: '# Cross' }],
       criteria: ['记得准。'],
       failure_modes: ['召回错记忆。'],
-      optimization_targets: ['修 P13 recall。'],
+      optimization_targets: ['修 Recall。'],
       cases: [{ testId: 'CROSS-CEO-01', title: '偏好召回', prompt: '继续上次的偏好。' }],
     },
     {
@@ -171,5 +171,16 @@ describe('TestConsolePanel', () => {
     })
     expect(screen.getByRole('combobox', { name: 'Tenant' })).toHaveValue('media-intel-v1')
     expect(screen.getByRole('option', { name: 'media-intel-v1' })).toBeInTheDocument()
+  })
+
+  it('links P10 to the monitoring surfaces that replaced the old P11-P13 checkpoints', async () => {
+    window.history.pushState({}, '', '/tests?tenant=media-intel-v1')
+
+    render(<TestConsolePanel />)
+
+    expect(await screen.findByText('相关监控入口')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /查看 Logs/ })).toHaveAttribute('href', '/logs?tenant=media-intel-v1')
+    expect(screen.getByRole('link', { name: /查看 Vault/ })).toHaveAttribute('href', '/vault?tenant=media-intel-v1')
+    expect(screen.getByRole('link', { name: /查看 Recall/ })).toHaveAttribute('href', '/memory?tenant=media-intel-v1')
   })
 })

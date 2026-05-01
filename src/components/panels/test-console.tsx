@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { resolveCustomerTenantId, resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
 type TestSuite = 'golden' | 'adversarial' | 'cross-session' | 'drift'
+type MonitorPanel = 'logs' | 'vault' | 'memory'
 type RunStatus = 'idle' | 'running' | 'completed' | 'failed'
 type CaseStatus = 'running' | 'passed' | 'failed'
 
@@ -110,6 +111,12 @@ const suiteButtons: Array<{ id: TestSuite; label: string; expected: string }> = 
   { id: 'drift', label: 'Drift', expected: '8' },
 ]
 
+const monitorLinks: Array<{ panel: MonitorPanel; label: string; detail: string }> = [
+  { panel: 'logs', label: 'Logs', detail: '运行链路、gateway、hook、runner 日志。' },
+  { panel: 'vault', label: 'Vault', detail: 'tenant 文件、SOUL、AGENTS、skills 出处。' },
+  { panel: 'memory', label: 'Recall', detail: '跨会话记忆、召回证据和修正痕迹。' },
+]
+
 const langfuseBaseUrl = process.env.NEXT_PUBLIC_LANGFUSE_URL || 'http://192.168.1.116:3001'
 const langfuseProjectId = process.env.NEXT_PUBLIC_LANGFUSE_PROJECT_ID || ''
 const langfuseTraceTemplate = process.env.NEXT_PUBLIC_LANGFUSE_TRACE_URL_TEMPLATE || ''
@@ -164,10 +171,10 @@ const suiteDirect: Record<string, { why: string; pass: string[]; fail: string[];
     fix: ['P8 boundary pattern', 'P8 action', 'response_template', '补 adversarial case'],
   },
   'cross-session': {
-    why: '确认 P13 能记住偏好、纠错和上次任务。',
+    why: '确认 Recall 能记住偏好、纠错和上次任务。',
     pass: ['记得准', '自然应用', '不用用户重说', '保持原 skill 风格'],
     fail: ['忘记偏好', '召回错记忆', '从头问', '风格断掉'],
-    fix: ['P13 写入', 'P13 检索', 'P13 覆盖策略', 'SOUL memory_policy'],
+    fix: ['Recall 写入', 'Recall 检索', 'Recall 覆盖策略', 'SOUL memory_policy'],
   },
   drift: {
     why: '确认 P8 drift 不跑偏，也不误伤正常业务。',
@@ -188,6 +195,13 @@ function traceHref(traceId: string) {
   if (langfuseTraceTemplate) return langfuseTraceTemplate.replace('{trace_id}', encoded)
   if (langfuseProjectId) return `${langfuseBaseUrl.replace(/\/$/, '')}/project/${encodeURIComponent(langfuseProjectId)}/traces/${encoded}`
   return `${langfuseBaseUrl.replace(/\/$/, '')}/trace/${encoded}`
+}
+
+function monitorHref(panel: MonitorPanel, tenant: string) {
+  const params = new URLSearchParams()
+  if (tenant) params.set('tenant', tenant)
+  const query = params.toString()
+  return `/${panel}${query ? `?${query}` : ''}`
 }
 
 function statusClassName(status: CaseStatus) {
@@ -221,12 +235,12 @@ function caseDiagnosis(testCase: CaseRun) {
   if (testCase.error.includes('HTTP')) {
     return {
       reason: 'agent 网关返回非 200，属于服务链路或鉴权问题。',
-      next: '去 P11 Logs 看 gateway / hook 日志，再修部署、token 或代理配置。',
+      next: '去 Logs 监控看 gateway / hook 日志，再修部署、token 或代理配置。',
     }
   }
   return {
     reason: 'runner 执行失败，先看 Runner 输出和 report 文件定位失败层。',
-    next: '按错误归属回到 P6 部署、P8 boundary、P9 skills 或 P13 recall 调整。',
+    next: '按错误归属回到 P6 部署、P8 boundary、P9 skills 或 Recall 调整。',
   }
 }
 
@@ -307,7 +321,7 @@ function caseFixItems(testCase: PlanCase, suite: PlanSuite) {
   }
 
   if (suite.id === 'adversarial') return ['P8 boundary-rules.json', rule || '对应 rule', 'pattern', 'action / response_template']
-  if (suite.id === 'cross-session') return ['P13 memory 写入', 'P13 检索', 'P13 覆盖策略', '对应 skill 输出']
+  if (suite.id === 'cross-session') return ['Recall memory 写入', 'Recall 检索', 'Recall 覆盖策略', '对应 skill 输出']
   if (suite.id === 'drift') {
     if (isPassCase) return ['P8 drift_patterns', rule || '对应 drift rule', '收窄 pattern', '加入 allow/guarantee']
     return ['P8 drift_patterns', rule || '对应 drift rule', '补强 pattern', 'SOUL/AGENTS 职责边界']
@@ -803,6 +817,36 @@ export function TestConsolePanel() {
             Runtime gap: {runtimeIssue}
           </div>
         )}
+      </section>
+
+      <section className="rounded-lg border border-border bg-card/70 p-4 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">相关监控入口</h2>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Logs / Vault / Recall 已移到左侧监控目录；P10 在这里保留当前 tenant 的直达入口。
+            </p>
+          </div>
+          <span className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground">
+            tenant={tenant}
+          </span>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          {monitorLinks.map(link => (
+            <a
+              key={link.panel}
+              href={monitorHref(link.panel, tenant)}
+              className="group rounded-lg border border-border bg-background/45 p-3 transition hover:border-primary/45 hover:bg-primary/10"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-foreground">查看 {link.label}</span>
+                <span className="text-xs text-primary opacity-80 transition group-hover:translate-x-0.5">Open</span>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">{link.detail}</p>
+            </a>
+          ))}
+        </div>
       </section>
 
       <section className="rounded-lg border border-border bg-card/70 p-4 shadow-sm">

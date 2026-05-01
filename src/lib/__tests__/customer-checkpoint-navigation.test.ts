@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { customerCheckpointNavItems } from '@/lib/customer-checkpoint-navigation'
 
 describe('customer checkpoint navigation', () => {
-  it('shows the full P3-P22 walkthrough sequence in the sidebar', () => {
+  it('shows only customer delivery checkpoints in the sidebar sequence', () => {
     expect(customerCheckpointNavItems.map(item => item.label)).toEqual([
       'P3 Intake',
       'P4 Blueprint',
@@ -13,19 +13,24 @@ describe('customer checkpoint navigation', () => {
       'P8 Boundary',
       'P9 Skills 配置',
       'P10 Tests',
-      'P11 Logs',
-      'P12 Vault',
-      'P13 Recall',
-      'P14 Hermes',
-      'P15 Stuck Alerts',
-      'P16 Cost / Approvals',
-      'P17 Alerts Feed',
-      'P18 RTS Checklist',
-      'P19 Customer View',
-      'P20 Channels',
-      'P21 UAT',
-      'P22 Delivery',
+      'P11 Hermes',
+      'P12 Stuck Alerts',
+      'P13 Cost / Approvals',
+      'P14 Alerts Feed',
+      'P15 RTS Checklist',
+      'P16 Customer View',
+      'P17 Channels',
+      'P18 UAT',
+      'P19 Delivery',
     ])
+  })
+
+  it('keeps monitoring support surfaces out of the customer P sequence', () => {
+    const labels = customerCheckpointNavItems.map(item => item.label)
+
+    expect(labels).not.toContain('P11 Logs')
+    expect(labels).not.toContain('P12 Vault')
+    expect(labels).not.toContain('P13 Recall')
   })
 
   it('keeps tenant context on every admin checkpoint that needs it', () => {
@@ -42,9 +47,6 @@ describe('customer checkpoint navigation', () => {
       'boundary',
       'onboarding/customer/skills',
       'tests',
-      'logs',
-      'vault',
-      'memory',
       'hermes',
       'alerts',
       'cost-tracker',
@@ -63,10 +65,10 @@ describe('customer checkpoint navigation', () => {
         .filter(item => item.role === 'customer')
         .map(item => ({ label: item.label, panel: item.panel }))
     ).toEqual([
-      { label: 'P19 Customer View', panel: 'overview' },
-      { label: 'P20 Channels', panel: 'channels' },
-      { label: 'P21 UAT', panel: 'tasks' },
-      { label: 'P22 Delivery', panel: 'delivery' },
+      { label: 'P16 Customer View', panel: 'overview' },
+      { label: 'P17 Channels', panel: 'channels' },
+      { label: 'P18 UAT', panel: 'tasks' },
+      { label: 'P19 Delivery', panel: 'delivery' },
     ])
   })
 })

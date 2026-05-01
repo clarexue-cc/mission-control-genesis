@@ -280,7 +280,7 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
         }
         : current)
       setProgress('success')
-      setDraftMessage('已保存到 intake-analysis.md，P8 / P9 / P21 会读取更新后的蓝图。')
+      setDraftMessage('已保存到 intake-analysis.md，P8 / P9 / P18 会读取更新后的蓝图。')
     } catch (err: any) {
       setDraftError(err?.message || '保存蓝图失败')
     } finally {
@@ -336,10 +336,10 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
           </p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
             <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 font-medium text-primary">P4 蓝图草稿</span>
-            <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P5 SOUL/AGENTS 输入</span>
+            <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P7 SOUL/AGENTS 输入</span>
             <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P8 Boundary</span>
             <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P9 Skills</span>
-            <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P21 UAT</span>
+            <span className="rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">P18 UAT</span>
           </div>
         </header>
 
@@ -485,7 +485,7 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-semibold">蓝图文字编辑</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">直接改下面的普通文字；保存后写回 intake-analysis.md，并同步 P8 / P9 / P21。</p>
+                    <p className="mt-1 text-xs text-muted-foreground">直接改下面的普通文字；保存后写回 intake-analysis.md，并同步 P8 / P9 / P18。</p>
                   </div>
                   <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">不用改 JSON</span>
                 </div>
@@ -826,7 +826,7 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                 <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-sm font-semibold">UAT 草稿</h3>
-                    <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">P21 自动加载</span>
+                    <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">P18 自动加载</span>
                   </div>
                   {uatCriteria.length > 0 ? (
                     <ol className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
@@ -840,7 +840,7 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                       ))}
                     </ol>
                   ) : (
-                    <p className="mt-3 text-sm text-muted-foreground">分析完成后显示后续 P21 的验收任务草稿。</p>
+                    <p className="mt-3 text-sm text-muted-foreground">分析完成后显示后续 P18 的验收任务草稿。</p>
                   )}
                 </div>
               </div>

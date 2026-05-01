@@ -182,7 +182,7 @@ describe('harness ready-to-ship runtime fallback', () => {
     expect(result.summary).toBe('Health returned status=degraded')
   })
 
-  it('exports P22 PDF with CJK font declaration and ToUnicode mapping', async () => {
+  it('exports P19 PDF with CJK font declaration and ToUnicode mapping', async () => {
     const report = await getReadyToShipReport({ tenant: TENANT })
     const pdf = createReadyToShipPdf({
       ...report,
