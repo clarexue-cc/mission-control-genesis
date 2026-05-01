@@ -473,7 +473,7 @@ export function TestConsolePanel() {
           </span>
         </div>
 
-        <div className="grid gap-3 xl:grid-cols-4">
+        <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-4">
           {(testPlan?.suites || []).map(suite => {
             const summary = suiteRunSummary(suite, cases)
             return (
@@ -565,7 +565,7 @@ export function TestConsolePanel() {
         </div>
       </section>
 
-      <div className="grid min-h-[58vh] gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.55fr)]">
+      <div className="grid min-h-[58vh] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.55fr)]">
         <section className="rounded-lg border border-border bg-card/70 p-3 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-foreground">Cases</h2>
