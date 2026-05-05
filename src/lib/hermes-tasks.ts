@@ -9,12 +9,13 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { config } from './config'
 import { logger } from './logger'
 
 export interface HermesCronJob {
   id: string
+  name: string
   prompt: string
   schedule: string
   enabled: boolean
@@ -29,6 +30,12 @@ export interface HermesTaskScanResult {
 }
 
 function getHermesCronDir(): string {
+  if (process.env.HERMES_CRON_JOBS_FILE) {
+    return dirname(process.env.HERMES_CRON_JOBS_FILE)
+  }
+  if (process.env.HERMES_HOME) {
+    return join(process.env.HERMES_HOME, 'cron')
+  }
   return join(config.homeDir, '.hermes', 'cron')
 }
 
@@ -77,16 +84,19 @@ function scanCronJobs(): HermesCronJob[] {
 
   try {
     const raw = readFileSync(jobsFile, 'utf-8')
-    const jobs = JSON.parse(raw)
+    const parsed = JSON.parse(raw)
+    const jobs = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.jobs) ? parsed.jobs : []
 
     if (!Array.isArray(jobs)) return []
 
     return jobs.map((job: any) => {
       const id = job.id || job.name || 'unknown'
+      const name = job.name || id
       const { lastRunAt, lastOutput, runCount } = peekLatestOutput(cronDir, id)
 
       return {
         id,
+        name,
         prompt: job.prompt || job.command || job.description || '',
         schedule: job.schedule || job.cron || job.interval || '',
         enabled: job.enabled !== false,

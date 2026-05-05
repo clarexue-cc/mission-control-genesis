@@ -6,18 +6,28 @@ import { Loader } from '@/components/ui/loader'
 
 type HermesTarget = {
   tenant: string
+  tenant_id: string | null
   agent_dir: string
   health: 'fresh' | 'stale' | 'missing'
+  severity: 'healthy' | 'warning' | 'critical' | 'missing'
+  reason: string
   context_path: string
   context_exists: boolean
   heartbeat_age_seconds: number | null
   last_heartbeat_at: string | null
   last_check_at: string | null
   last_alert: string | null
+  container: {
+    tenant: string
+    status: 'running' | 'stopped' | 'missing' | 'network-error' | 'unknown'
+    severity: 'healthy' | 'warning' | 'critical'
+    detail: string
+  } | null
   stale: boolean
 }
 
 type HermesState = {
+  tenant_filter: string | null
   daemon_running: boolean
   pid: number | null
   stale_seconds: number
@@ -33,6 +43,8 @@ type HermesState = {
     agents_exists: boolean
     cron_jobs_path: string
     cron_jobs_exists: boolean
+    cron_allowlist_path: string
+    cron_allowlist_exists: boolean
     provider: string | null
     model: string | null
     base_url: string | null
@@ -43,6 +55,22 @@ type HermesState = {
     terminal_cwd: string | null
     browser_private_urls: boolean | null
   }
+  allowlist: {
+    path: string
+    exists: boolean
+    job_ids: string[]
+  }
+  inspection: {
+    last_run_at: string | null
+  }
+  repair_history: Array<{
+    timestamp: string
+    action_type: 'restart_container' | 'cleanup_stale' | 'send_alert'
+    target_agent: string
+    result: 'success' | 'failure'
+    detail: string
+    source: 'inspection-log' | 'alerts-jsonl'
+  }>
   cron: {
     total_jobs: number
     enabled_jobs: number
@@ -57,6 +85,20 @@ type HermesState = {
       lastRunAt: string | null
       runCount: number
       evidence: string
+    }>
+  }
+  setup: {
+    ready: boolean
+    status: 'ready' | 'needs-attention' | 'blocked'
+    ready_steps: number
+    warning_steps: number
+    blocking_steps: number
+    total_steps: number
+    steps: Array<{
+      id: 'config-yaml' | 'soul-md' | 'agents-md' | 'cron-jobs' | 'cron-allowlist'
+      label: string
+      status: 'ready' | 'warning' | 'missing'
+      detail: string
     }>
   }
   targets: HermesTarget[]
@@ -83,10 +125,24 @@ function formatDate(value: string | null) {
   return date.toLocaleString()
 }
 
-function healthClassName(health: HermesTarget['health']) {
-  if (health === 'fresh') return 'bg-green-500/15 text-green-300'
-  if (health === 'stale') return 'bg-amber-500/15 text-amber-300'
-  return 'bg-red-500/15 text-red-300'
+function severityClassName(severity: HermesTarget['severity']) {
+  if (severity === 'healthy') return 'bg-green-500/15 text-green-300'
+  if (severity === 'warning') return 'bg-amber-500/15 text-amber-300'
+  if (severity === 'critical') return 'bg-red-500/15 text-red-300'
+  return 'bg-muted text-muted-foreground'
+}
+
+function severityTextClassName(severity: HermesTarget['severity']) {
+  if (severity === 'healthy') return 'text-green-300'
+  if (severity === 'warning') return 'text-amber-300'
+  if (severity === 'critical') return 'text-red-300'
+  return 'text-muted-foreground'
+}
+
+function actionLabel(action: HermesState['repair_history'][number]['action_type']) {
+  if (action === 'restart_container') return 'restart container'
+  if (action === 'cleanup_stale') return 'cleanup stale'
+  return 'send alert'
 }
 
 function ConfigMetric({ label, value }: { label: string; value: string | number | null | undefined }) {
@@ -112,6 +168,16 @@ function ConfigPathRow({ label, path, exists }: { label: string; path: string | 
   )
 }
 
+function hermesApiUrl() {
+  if (typeof window === 'undefined') return '/api/harness/hermes'
+  const params = new URLSearchParams(window.location.search)
+  const tenant = params.get('tenant') || params.get('tenant_id')
+  if (!tenant) return '/api/harness/hermes'
+  const nextParams = new URLSearchParams()
+  nextParams.set('tenant', tenant)
+  return `/api/harness/hermes?${nextParams.toString()}`
+}
+
 export function HermesControlPanel() {
   const [state, setState] = useState<HermesState | null>(null)
   const [loading, setLoading] = useState(true)
@@ -124,7 +190,7 @@ export function HermesControlPanel() {
   const loadState = useCallback(async () => {
     setError(null)
     try {
-      const response = await fetch('/api/harness/hermes', { cache: 'no-store' })
+      const response = await fetch(hermesApiUrl(), { cache: 'no-store' })
       const body = await response.json() as HermesState
       if (!response.ok) throw new Error(body.error || 'Failed to load Hermes state')
       setState(body)
@@ -170,10 +236,13 @@ export function HermesControlPanel() {
       <div className={`${panelClassName} flex flex-col gap-4 p-5 xl:flex-row xl:items-start xl:justify-between`}>
         <div className="space-y-1">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Hermes</p>
-          <h1 className="text-2xl font-semibold text-foreground">Hermes Control</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Hermes Monitoring</h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Hermes cron evidence, MC guard daemon status, tenant heartbeat freshness, forced inspections, and alert log.
+            Hermes cron evidence, MC guard daemon status, tenant heartbeat freshness, forced inspections, and repair evidence.
           </p>
+          {state?.tenant_filter && (
+            <p className="text-xs text-muted-foreground">Tenant scope: {state.tenant_filter}</p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => runAction('start')} disabled={Boolean(action) || state?.daemon_running}>
@@ -215,7 +284,7 @@ export function HermesControlPanel() {
         <section className={`${panelClassName} p-4`}>
           <p className="text-xs text-muted-foreground">Targets</p>
           <p className="mt-2 text-xl font-semibold text-foreground">{state?.targets.length || 0}</p>
-          <p className="mt-1 text-xs text-muted-foreground">vault agents</p>
+          <p className="mt-1 text-xs text-muted-foreground">{state?.tenant_filter ? 'tenant agents' : 'vault agents'}</p>
         </section>
         <section className={`${panelClassName} p-4`}>
           <p className="text-xs text-muted-foreground">Alerts</p>
@@ -223,8 +292,8 @@ export function HermesControlPanel() {
           <p className="mt-1 text-xs text-muted-foreground">stale or missing heartbeat</p>
         </section>
         <section className={`${panelClassName} p-4`}>
-          <p className="text-xs text-muted-foreground">Last cron run</p>
-          <p className="mt-2 text-xl font-semibold text-foreground">{formatDate(state?.cron.last_run_at || null)}</p>
+          <p className="text-xs text-muted-foreground">Last inspection run</p>
+          <p className="mt-2 text-xl font-semibold text-foreground">{formatDate(state?.inspection.last_run_at || state?.cron.last_run_at || null)}</p>
           <p className="mt-1 text-xs text-muted-foreground">stale threshold {formatAge(state?.stale_seconds || 0)}</p>
         </section>
       </div>
@@ -262,6 +331,7 @@ export function HermesControlPanel() {
           <ConfigPathRow label="SOUL.md" path={state?.config.soul_path} exists={state?.config.soul_exists} />
           <ConfigPathRow label="AGENTS.md" path={state?.config.agents_path} exists={state?.config.agents_exists} />
           <ConfigPathRow label="Hermes cron jobs" path={state?.config.cron_jobs_path} exists={state?.config.cron_jobs_exists} />
+          <ConfigPathRow label="Hermes cron allowlist" path={state?.config.cron_allowlist_path} exists={state?.config.cron_allowlist_exists} />
         </div>
       </section>
 
@@ -269,49 +339,81 @@ export function HermesControlPanel() {
         <section className={`${panelClassName} overflow-hidden`}>
           <div className="border-b border-border p-4">
             <h2 className="text-sm font-semibold text-foreground">Guarded Tenants</h2>
-            <p className="mt-1 text-xs text-muted-foreground">heartbeat health, last check, last alert, and heartbeat age</p>
+            <p className="mt-1 text-xs text-muted-foreground">heartbeat reason, severity, last check, last alert, and runtime detail</p>
           </div>
-          <div className="overflow-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="border-b border-border bg-secondary/20 text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3">Tenant</th>
-                  <th className="px-4 py-3">Health</th>
-                  <th className="px-4 py-3">Heartbeat</th>
-                  <th className="px-4 py-3">Last check</th>
-                  <th className="px-4 py-3">Last alert</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(state?.targets || []).map(target => (
-                  <tr key={target.agent_dir} className="border-b border-border/50">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-foreground">{target.tenant}</div>
-                      <div className="text-xs text-muted-foreground">{target.agent_dir}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`rounded px-2 py-1 text-xs ${healthClassName(target.health)}`}>
-                        {target.health}
+          <div className="grid gap-3 p-4">
+            {(state?.targets || []).map(target => (
+              <article key={target.agent_dir} className="rounded border border-border/60 bg-background/40 p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-semibold text-foreground">{target.tenant}</h3>
+                      <span className={`rounded px-2 py-0.5 text-xs ${severityClassName(target.severity)}`}>
+                        {target.severity}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className={target.health === 'fresh' ? 'text-green-300' : target.health === 'stale' ? 'text-amber-300' : 'text-red-300'}>
-                        {formatAge(target.heartbeat_age_seconds)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">{formatDate(target.last_heartbeat_at)}</div>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{target.last_check_at || 'never'}</td>
-                    <td className="max-w-[260px] truncate px-4 py-3 text-muted-foreground" title={target.last_alert || ''}>
-                      {target.last_alert || 'none'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {target.agent_dir}{target.tenant_id ? ` · ${target.tenant_id}` : ''}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-left md:text-right">
+                    <div className={severityTextClassName(target.severity)}>{formatAge(target.heartbeat_age_seconds)}</div>
+                    <div className="text-xs text-muted-foreground">{formatDate(target.last_heartbeat_at)}</div>
+                  </div>
+                </div>
+                <div className={`mt-3 text-sm leading-6 ${severityTextClassName(target.severity)}`}>
+                  {target.reason}
+                </div>
+                <div className="mt-3 grid gap-2 text-xs text-muted-foreground md:grid-cols-3">
+                  <div>
+                    <span className="block text-muted-foreground/70">Last check</span>
+                    <span>{target.last_check_at || 'never'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-muted-foreground/70">Runtime</span>
+                    <span>{target.container?.status || 'not checked'}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="block text-muted-foreground/70">Last alert</span>
+                    <span className="block truncate" title={target.last_alert || ''}>{target.last_alert || 'none'}</span>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
         </section>
 
         <section className={`${panelClassName} flex min-h-0 flex-col overflow-hidden`}>
+          <div className="border-b border-border p-4">
+            <h2 className="text-sm font-semibold text-foreground">Repair History</h2>
+            <p className="mt-1 text-xs text-muted-foreground">restart container, cleanup stale, and alert actions from Hermes evidence</p>
+          </div>
+          <div className="max-h-64 overflow-auto border-b border-border">
+            {(state?.repair_history || []).length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground">No repair actions recorded yet.</div>
+            ) : (
+              <table className="w-full min-w-[520px] text-left text-xs">
+                <thead className="border-b border-border bg-secondary/20 uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-2">Time</th>
+                    <th className="px-4 py-2">Action</th>
+                    <th className="px-4 py-2">Target</th>
+                    <th className="px-4 py-2">Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(state?.repair_history || []).map(item => (
+                    <tr key={`${item.timestamp}-${item.action_type}-${item.target_agent}-${item.source}`} className="border-b border-border/50">
+                      <td className="px-4 py-2 text-muted-foreground">{formatDate(item.timestamp)}</td>
+                      <td className="px-4 py-2 text-foreground" title={item.detail}>{actionLabel(item.action_type)}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{item.target_agent}</td>
+                      <td className={`px-4 py-2 ${item.result === 'success' ? 'text-green-300' : 'text-red-300'}`}>{item.result}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
           <div className="border-b border-border p-4">
             <h2 className="text-sm font-semibold text-foreground">Inspection Log</h2>
             <p className="mt-1 truncate text-xs text-muted-foreground">{state?.log_path}</p>

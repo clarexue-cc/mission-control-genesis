@@ -44,6 +44,7 @@ import { NodesPanel } from '@/components/panels/nodes-panel'
 import { ExecApprovalPanel } from '@/components/panels/exec-approval-panel'
 import { SystemMonitorPanel } from '@/components/panels/system-monitor-panel'
 import { HermesControlPanel } from '@/components/panels/hermes-control-panel'
+import { HermesSetupPanel } from '@/components/panels/hermes-setup-panel'
 import { ChatPagePanel } from '@/components/panels/chat-page-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { STORAGE_GATEWAY_URL } from '@/lib/device-identity'
@@ -64,7 +65,7 @@ import { useServerEvents } from '@/lib/use-server-events'
 import { completeNavigationTiming } from '@/lib/navigation-metrics'
 import { panelHref, useNavigateToPanel } from '@/lib/navigation'
 import { clearOnboardingDismissedThisSession, clearOnboardingReplayFromStart, getOnboardingSessionDecision, markOnboardingReplayFromStart, readOnboardingDismissedThisSession } from '@/lib/onboarding-session'
-import { resolveEffectiveInterfaceMode } from '@/lib/mc-stable-mode'
+import { resolveCustomerTenantId, resolveEffectiveInterfaceMode } from '@/lib/mc-stable-mode'
 import { Button } from '@/components/ui/button'
 import { useMissionControl } from '@/store'
 import { canAccessPanel, isCustomerRole, readEffectiveRoleFromBrowser, type EffectiveRole } from '@/lib/rbac'
@@ -127,13 +128,17 @@ export default function Home() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const nextRole = readEffectiveRoleFromBrowser(window.location.search)
+    const params = new URLSearchParams(window.location.search)
+    const customerParams = new URLSearchParams()
+    customerParams.set('tenant', resolveCustomerTenantId(params))
+    customerParams.set('role', 'customer')
     setEffectiveRole(nextRole)
     if (isCustomerRole(nextRole) && !canAccessPanel(nextRole, normalizedPanel)) {
-      router.replace('/?role=customer')
+      router.replace(`/?${customerParams.toString()}`)
       return
     }
-    if (isCustomerRole(nextRole) && panelFromUrl === 'tasks' && !new URLSearchParams(window.location.search).has('role')) {
-      router.replace('/tasks?role=customer')
+    if (isCustomerRole(nextRole) && panelFromUrl === 'tasks' && !params.has('role')) {
+      router.replace(`/tasks?${customerParams.toString()}`)
     }
   }, [normalizedPanel, panelFromUrl, router])
 
@@ -637,6 +642,8 @@ function ContentRouter({ tab, effectiveRole }: { tab: string; effectiveRole: Eff
       return <HarnessPanel />
     case 'hermes':
       return <HermesControlPanel />
+    case 'hermes-setup':
+      return <HermesSetupPanel />
     case 'skills':
       return <SkillsPanel />
     case 'channels':
