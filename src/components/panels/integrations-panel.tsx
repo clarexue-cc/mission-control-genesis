@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { HarnessProviderManager } from '@/components/panels/harness-provider-manager'
 
 interface EnvVarInfo {
   redacted: string
@@ -311,6 +312,8 @@ export function IntegrationsPanel() {
           {feedback.text}
         </div>
       )}
+
+      <HarnessProviderManager />
 
       {/* Category tabs */}
       <div className="flex gap-1 border-b border-border pb-px overflow-x-auto">
