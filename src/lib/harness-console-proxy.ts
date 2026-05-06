@@ -28,6 +28,45 @@ export function normalizeProviderName(value: unknown): string {
   return name
 }
 
+export function normalizeConsoleMonth(value: unknown): string {
+  const month = typeof value === 'string' ? value.trim() : ''
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    throw new Error('month must be YYYY-MM format')
+  }
+  return month
+}
+
+export function sanitizeBudgetPayload(body: Record<string, unknown>): Record<string, unknown> {
+  const ALLOWED_KEYS = ['monthly_budget_usd', 'alert_at_percent', 'action_on_exceed'] as const
+  const ALLOWED_ACTIONS = ['pause', 'warn-only', 'block-new-only'] as const
+  const sanitized: Record<string, unknown> = {}
+  for (const key of ALLOWED_KEYS) {
+    if (body[key] !== undefined) sanitized[key] = body[key]
+  }
+  if (typeof sanitized.monthly_budget_usd === 'number') {
+    sanitized.monthly_budget_usd = Math.max(0, Math.min(10000, sanitized.monthly_budget_usd))
+  }
+  if (typeof sanitized.alert_at_percent === 'number') {
+    sanitized.alert_at_percent = Math.max(1, Math.min(100, Math.round(sanitized.alert_at_percent)))
+  }
+  if (typeof sanitized.action_on_exceed === 'string' && !(ALLOWED_ACTIONS as readonly string[]).includes(sanitized.action_on_exceed)) {
+    sanitized.action_on_exceed = 'pause'
+  }
+  return sanitized
+}
+
+export function sanitizeProviderPayload(body: Record<string, unknown>): Record<string, unknown> {
+  const baseUrl = typeof body.baseUrl === 'string' ? body.baseUrl.trim() : ''
+  if (baseUrl && !/^https?:\/\/.+/i.test(baseUrl)) {
+    throw new Error('baseUrl must be a valid HTTP(S) URL')
+  }
+  const apiKey = typeof body.apiKey === 'string' ? body.apiKey : ''
+  if (apiKey.length > 512) {
+    throw new Error('apiKey exceeds maximum length')
+  }
+  return { ...body, baseUrl, apiKey }
+}
+
 export async function routeParams<T extends Record<string, string>>(
   params: T | Promise<T>,
 ): Promise<T> {

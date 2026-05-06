@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import {
   normalizeConsoleTenantId,
+  normalizeConsoleMonth,
   proxyHarnessConsoleJson,
   routeParams,
 } from '@/lib/harness-console-proxy'
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest, context: BillingRouteContext) {
     const tenantId = normalizeConsoleTenantId(rawTenantId)
     const search = new URLSearchParams()
     const month = request.nextUrl.searchParams.get('month')
-    if (month) search.set('month', month)
+    if (month) search.set('month', normalizeConsoleMonth(month))
     return await proxyHarnessConsoleJson({
       method: 'GET',
       path: `/billing/${encodeURIComponent(tenantId)}`,

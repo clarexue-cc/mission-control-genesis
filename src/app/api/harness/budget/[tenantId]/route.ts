@@ -5,6 +5,7 @@ import {
   proxyHarnessConsoleJson,
   readJsonObject,
   routeParams,
+  sanitizeBudgetPayload,
 } from '@/lib/harness-console-proxy'
 
 export const dynamic = 'force-dynamic'
@@ -37,7 +38,8 @@ export async function POST(request: NextRequest, context: BudgetRouteContext) {
   try {
     const { tenantId: rawTenantId } = await routeParams(context.params)
     const tenantId = normalizeConsoleTenantId(rawTenantId)
-    const body = await readJsonObject(request)
+    const raw = await readJsonObject(request)
+    const body = sanitizeBudgetPayload(raw)
     return await proxyHarnessConsoleJson({
       method: 'POST',
       path: `/budget/${encodeURIComponent(tenantId)}`,

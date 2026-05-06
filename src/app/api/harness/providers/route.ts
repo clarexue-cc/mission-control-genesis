@@ -5,6 +5,7 @@ import {
   normalizeProviderName,
   proxyHarnessConsoleJson,
   readJsonObject,
+  sanitizeProviderPayload,
 } from '@/lib/harness-console-proxy'
 
 export const dynamic = 'force-dynamic'
@@ -32,9 +33,10 @@ export async function POST(request: NextRequest) {
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   try {
-    const body = await readJsonObject(request)
-    normalizeConsoleTenantId(body.tenantId)
-    normalizeProviderName(body.name)
+    const raw = await readJsonObject(request)
+    normalizeConsoleTenantId(raw.tenantId)
+    normalizeProviderName(raw.name)
+    const body = sanitizeProviderPayload(raw)
     return await proxyHarnessConsoleJson({
       method: 'POST',
       path: '/providers',
