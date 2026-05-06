@@ -133,7 +133,7 @@ export function AgentBudgetConfig({ tenantId, agentName, snapshot, onSaved, comp
       setLoading(true)
       setError(null)
       try {
-        const response = await fetch(`/api/budget?tenantId=${encodeURIComponent(tenantId)}`, { cache: 'no-store' })
+        const response = await fetch(`/api/budget?tenantId=${encodeURIComponent(tenantId!)}`, { cache: 'no-store' })
         const payload = await response.json()
         if (!response.ok) throw new Error(payload.error || 'Failed to load agent budget')
         if (!cancelled) setLocalSnapshot(payload as TenantBudgetSnapshot)
@@ -301,7 +301,7 @@ export function AgentBudgetConfig({ tenantId, agentName, snapshot, onSaved, comp
 
       <div className="flex items-center justify-between gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
         <span>{effectiveSnapshot?.month || '--'} 月 · {formatCount(agentBudget?.requestCount || 0)} 次调用</span>
-        <Button onClick={saveConfig} size={compact ? 'sm' : 'default'} disabled={saving || !effectiveSnapshot}>
+        <Button onClick={saveConfig} size={compact ? 'sm' : 'md'} disabled={saving || !effectiveSnapshot}>
           {saving ? 'Saving...' : '保存'}
         </Button>
       </div>

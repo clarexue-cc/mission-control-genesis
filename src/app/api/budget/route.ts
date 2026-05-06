@@ -408,7 +408,7 @@ function buildSnapshot(input: {
         },
         alert: stored.monthlyBudgetUsd > 0
           ? buildAlertStatus(percentUsed, stored.thresholds)
-          : { status: 'unconfigured', label: '未设置', threshold: null },
+          : { status: 'unconfigured' as AlertStatus, label: '未设置', threshold: null },
       }
     })
     .sort((left, right) => right.usedUsd - left.usedUsd || left.agent.localeCompare(right.agent))
