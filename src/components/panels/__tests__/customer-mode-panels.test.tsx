@@ -59,7 +59,7 @@ function jsonResponse(body: unknown, ok = true) {
 }
 
 function setCustomerMode() {
-  window.history.pushState({}, '', '/?role=customer')
+  window.history.pushState({}, '', '/?role=customer&tenant=ceo-assistant-v1')
   document.cookie = 'mc-view-role=customer; path=/'
 }
 
@@ -237,5 +237,36 @@ describe('customer-mode panels', () => {
     })
     expect(screen.queryByRole('button', { name: 'Add Agent' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Sync Config' })).not.toBeInTheDocument()
+  })
+
+  it('renders Langfuse metrics on customer agent cards when stats exist', async () => {
+    useMissionControl.setState({ agents: [customerAgent] })
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url === '/api/agents') {
+        return Promise.resolve(jsonResponse({ agents: [customerAgent] }))
+      }
+      if (url === '/api/langfuse/agent-stats?tenantId=ceo-assistant-v1') {
+        return Promise.resolve(jsonResponse({
+          agents: [
+            {
+              agent: 'Chief-of-Staff',
+              successRate: 0.98,
+              avgLatencyMs: 1432,
+              calls7d: 28,
+            },
+          ],
+        }))
+      }
+      return Promise.resolve(jsonResponse({}))
+    }))
+
+    render(<AgentSquadPanelPhase3 />)
+
+    expect(await screen.findByText('Success rate')).toBeInTheDocument()
+    expect(screen.getByText('98%')).toBeInTheDocument()
+    expect(screen.getByText('Avg latency')).toBeInTheDocument()
+    expect(screen.getByText('1.4s')).toBeInTheDocument()
+    expect(screen.getByText('7d calls')).toBeInTheDocument()
+    expect(screen.getByText('28')).toBeInTheDocument()
   })
 })

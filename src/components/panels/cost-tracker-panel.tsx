@@ -8,6 +8,7 @@ import { useMissionControl } from '@/store'
 import { createClientLogger } from '@/lib/client-logger'
 import type { CostBudgetRule, CostBudgetSummary } from '@/lib/cost-budget-controls'
 import { TenantBillingComparison } from '@/components/panels/tenant-billing-comparison'
+import { resolveCustomerTenantId, resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 import { isCustomerRole, readEffectiveRoleFromBrowser } from '@/lib/rbac'
 import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -79,6 +80,44 @@ interface BudgetRulesResponse {
   error?: string
 }
 
+interface LangfuseTraceItem {
+  id: string
+  timestamp: string
+  agent: string
+  skill: string
+  model: string
+  latencyMs: number
+  totalTokens: number
+  costUsd: number
+  status: string
+  input?: string
+  output?: string
+  sessionId?: string
+  publicUrl?: string
+}
+
+interface LangfuseTraceDetail {
+  id: string
+  publicUrl?: string
+  input?: string
+  output?: string
+  metadata?: Record<string, unknown>
+  observations: Array<{
+    id: string
+    name: string
+    type: string
+    model?: string
+    latencyMs: number
+    status: string
+  }>
+}
+
+type TraceDetailState = {
+  loading: boolean
+  data?: LangfuseTraceDetail
+  error?: string
+}
+
 // ── Helpers ──────────────────────────────────────────
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff6b6b']
@@ -93,7 +132,99 @@ const formatCost = (cost: number) => '$' + cost.toFixed(4)
 
 const getModelDisplayName = (name: string) => name.split('/').pop() || name
 
-type View = 'overview' | 'agents' | 'sessions' | 'tasks' | 'controls'
+const asRecord = (value: unknown): Record<string, unknown> => (
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+)
+
+const pickString = (...values: unknown[]) => {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return undefined
+}
+
+const pickNumber = (...values: unknown[]) => {
+  for (const value of values) {
+    const number = Number(value)
+    if (Number.isFinite(number)) return number
+  }
+  return 0
+}
+
+const formatDuration = (durationMs: number) => {
+  if (durationMs >= 1000) return `${(durationMs / 1000).toFixed(2)}s`
+  return `${Math.round(durationMs)}ms`
+}
+
+const formatTraceTime = (timestamp: string) => {
+  const parsed = new Date(timestamp)
+  if (Number.isNaN(parsed.getTime())) return timestamp
+  return parsed.toLocaleString()
+}
+
+function normalizeTraceItem(raw: unknown): LangfuseTraceItem {
+  const record = asRecord(raw)
+  const metadata = asRecord(record.metadata)
+  const usage = asRecord(record.usage)
+  const inputTokens = pickNumber(record.inputTokens, record.input_tokens, usage.inputTokens, usage.input_tokens)
+  const outputTokens = pickNumber(record.outputTokens, record.output_tokens, usage.outputTokens, usage.output_tokens)
+  const totalTokens = pickNumber(
+    record.totalTokens,
+    record.total_tokens,
+    usage.totalTokens,
+    usage.total_tokens,
+    inputTokens + outputTokens,
+  )
+
+  return {
+    id: pickString(record.id, record.traceId) || 'unknown-trace',
+    timestamp: pickString(record.timestamp, record.startedAt, record.startTime, record.createdAt) || new Date().toISOString(),
+    agent: pickString(record.agent, record.agentName, metadata.agent, metadata.agentName) || 'Unknown agent',
+    skill: pickString(record.skill, record.skillName, metadata.skill, metadata.skillName) || 'Unknown skill',
+    model: pickString(record.model, record.modelName, metadata.model, metadata.modelName) || 'Unknown model',
+    latencyMs: pickNumber(record.latencyMs, record.latency_ms, record.durationMs, record.duration_ms),
+    totalTokens,
+    costUsd: pickNumber(record.costUsd, record.cost_usd, record.totalCost, record.total_cost),
+    status: pickString(record.status, record.level, metadata.status) || 'success',
+    input: pickString(record.input, metadata.input),
+    output: pickString(record.output, metadata.output),
+    sessionId: pickString(record.sessionId, record.session_id, metadata.sessionId, metadata.session_id),
+    publicUrl: pickString(record.publicUrl, record.traceUrl, record.langfuseUrl, record.url),
+  }
+}
+
+function normalizeTraceDetail(raw: unknown): LangfuseTraceDetail {
+  const record = asRecord(raw)
+  const metadata = asRecord(record.metadata)
+  const observationList = Array.isArray(record.observations)
+    ? record.observations
+    : Array.isArray(record.spans)
+      ? record.spans
+      : []
+
+  return {
+    id: pickString(record.id, record.traceId) || 'unknown-trace',
+    publicUrl: pickString(record.publicUrl, record.traceUrl, record.langfuseUrl, record.url),
+    input: pickString(record.input, metadata.input),
+    output: pickString(record.output, metadata.output),
+    metadata,
+    observations: observationList.map((entry, index) => {
+      const observation = asRecord(entry)
+      return {
+        id: pickString(observation.id, observation.observationId) || `observation-${index}`,
+        name: pickString(observation.name, observation.label) || `Step ${index + 1}`,
+        type: pickString(observation.type, observation.kind) || 'observation',
+        model: pickString(observation.model, observation.modelName),
+        latencyMs: pickNumber(observation.latencyMs, observation.latency_ms, observation.durationMs, observation.duration_ms),
+        status: pickString(observation.status, observation.level) || 'success',
+      }
+    }),
+  }
+}
+
+type View = 'overview' | 'agents' | 'sessions' | 'tasks' | 'traces' | 'controls'
 type Timeframe = 'hour' | 'day' | 'week' | 'month'
 
 const VIEW_LABELS: Record<View, string> = {
@@ -101,6 +232,7 @@ const VIEW_LABELS: Record<View, string> = {
   agents: 'Agents',
   sessions: 'Sessions',
   tasks: 'Tasks',
+  traces: 'Traces',
   controls: '预算',
 }
 
@@ -110,6 +242,10 @@ export function CostTrackerPanel() {
   const t = useTranslations('costTracker')
   const { sessions } = useMissionControl()
   const [effectiveRole] = useState(() => readEffectiveRoleFromBrowser())
+  const [tenantId] = useState(() => {
+    if (typeof window === 'undefined') return resolveDefaultCustomerTenantId()
+    return resolveCustomerTenantId(new URLSearchParams(window.location.search))
+  })
 
   const [view, setView] = useState<View>('overview')
   const [timeframe, setTimeframe] = useState<Timeframe>('day')
@@ -129,6 +265,11 @@ export function CostTrackerPanel() {
   const [budgetSummary, setBudgetSummary] = useState<CostBudgetSummary | null>(null)
   const [budgetLoading, setBudgetLoading] = useState(false)
   const [budgetError, setBudgetError] = useState<string | null>(null)
+  const [traces, setTraces] = useState<LangfuseTraceItem[]>([])
+  const [tracesLoading, setTracesLoading] = useState(false)
+  const [tracesError, setTracesError] = useState<string | null>(null)
+  const [expandedTraceId, setExpandedTraceId] = useState<string | null>(null)
+  const [traceDetails, setTraceDetails] = useState<Record<string, TraceDetailState>>({})
   const isCustomer = isCustomerRole(effectiveRole)
 
   const refreshTimer = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -200,13 +341,82 @@ export function CostTrackerPanel() {
     }
   }, [])
 
+  const loadTraces = useCallback(async () => {
+    setTracesLoading(true)
+    setTracesError(null)
+    try {
+      const res = await fetch(`/api/langfuse/traces?tenantId=${encodeURIComponent(tenantId)}`, {
+        cache: 'no-store',
+      })
+      const data = await res.json().catch(() => ({})) as { traces?: unknown[]; data?: unknown[]; error?: string }
+      if (!res.ok) throw new Error(data.error || 'Failed to load traces')
+      const traceList = Array.isArray(data.traces)
+        ? data.traces
+        : Array.isArray(data.data)
+          ? data.data
+          : []
+      setTraces(traceList.map(normalizeTraceItem))
+    } catch (err) {
+      setTraces([])
+      setTracesError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setTracesLoading(false)
+    }
+  }, [tenantId])
+
+  const toggleTrace = useCallback(async (traceId: string) => {
+    if (expandedTraceId === traceId) {
+      setExpandedTraceId(null)
+      return
+    }
+
+    setExpandedTraceId(traceId)
+    const existing = traceDetails[traceId]
+    if (existing?.loading || existing?.data) return
+
+    setTraceDetails(prev => ({ ...prev, [traceId]: { loading: true } }))
+    try {
+      const res = await fetch(`/api/langfuse/trace/${encodeURIComponent(traceId)}`, {
+        cache: 'no-store',
+      })
+      const data = await res.json().catch(() => ({})) as { error?: string }
+      if (!res.ok) throw new Error(data.error || 'Failed to load trace detail')
+      setTraceDetails(prev => ({
+        ...prev,
+        [traceId]: {
+          loading: false,
+          data: normalizeTraceDetail(data),
+        },
+      }))
+    } catch (err) {
+      setTraceDetails(prev => ({
+        ...prev,
+        [traceId]: {
+          loading: false,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      }))
+    }
+  }, [expandedTraceId, traceDetails])
+
   useEffect(() => { loadData() }, [loadData])
   useEffect(() => {
-    refreshTimer.current = setInterval(loadData, 30_000)
+    const refreshActiveView = () => {
+      if (view === 'traces') {
+        void loadTraces()
+        return
+      }
+      void loadData()
+    }
+
+    refreshTimer.current = setInterval(refreshActiveView, 30_000)
     return () => { if (refreshTimer.current) clearInterval(refreshTimer.current) }
-  }, [loadData])
+  }, [loadData, loadTraces, view])
   useEffect(() => { if (view === 'sessions') loadSessionCosts() }, [view, loadSessionCosts])
   useEffect(() => { if (!isCustomer) loadBudgetRules() }, [isCustomer, loadBudgetRules])
+  useEffect(() => {
+    if (view === 'traces') loadTraces()
+  }, [view, loadTraces])
   useEffect(() => {
     if (isCustomer && view === 'controls') setView('overview')
   }, [isCustomer, view])
@@ -236,8 +446,8 @@ export function CostTrackerPanel() {
   const agentList = byAgentData?.agents || []
   const maxAgentCost = Math.max(...agentList.map(a => a.total_cost), 0.0001)
   const visibleViews = (isCustomer
-    ? ['overview', 'agents', 'sessions', 'tasks']
-    : ['overview', 'agents', 'sessions', 'tasks', 'controls']) as View[]
+    ? ['overview', 'agents', 'sessions', 'tasks', 'traces']
+    : ['overview', 'agents', 'sessions', 'tasks', 'traces', 'controls']) as View[]
   const activeView = isCustomer && view === 'controls' ? 'overview' : view
 
   const getAgentTasks = (agentName: string): TaskCostEntry[] => {
@@ -272,20 +482,22 @@ export function CostTrackerPanel() {
               ))}
             </div>
             {/* Timeframe */}
-            <div className="flex space-x-1">
-              {(['hour', 'day', 'week', 'month'] as const).map(tf => (
-                <Button key={tf} onClick={() => setTimeframe(tf)} variant={timeframe === tf ? 'default' : 'secondary'} size="sm">
-                  {tf.charAt(0).toUpperCase() + tf.slice(1)}
-                </Button>
-              ))}
-            </div>
+            {activeView !== 'traces' && (
+              <div className="flex space-x-1">
+                {(['hour', 'day', 'week', 'month'] as const).map(tf => (
+                  <Button key={tf} onClick={() => setTimeframe(tf)} variant={timeframe === tf ? 'default' : 'secondary'} size="sm">
+                    {tf.charAt(0).toUpperCase() + tf.slice(1)}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <TenantBillingComparison />
 
-      {isLoading && !usageStats && activeView !== 'controls' ? (
+      {isLoading && !usageStats && activeView !== 'controls' && activeView !== 'traces' ? (
         <Loader variant="panel" label={t('loadingCostData')} />
       ) : activeView === 'overview' ? (
         <OverviewView
@@ -304,6 +516,16 @@ export function CostTrackerPanel() {
         <SessionsView
           sessionCosts={sessionCosts} sessions={sessions}
           sessionSort={sessionSort} setSessionSort={setSessionSort}
+        />
+      ) : activeView === 'traces' ? (
+        <TracesView
+          traces={traces}
+          loading={tracesLoading}
+          error={tracesError}
+          expandedTraceId={expandedTraceId}
+          traceDetails={traceDetails}
+          onRefresh={loadTraces}
+          onToggleTrace={toggleTrace}
         />
       ) : activeView === 'tasks' ? (
         <TasksView taskData={taskData} onRefresh={loadData} />
@@ -787,6 +1009,188 @@ function SessionsView({
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Traces View ──────────────────────────────────
+
+function TracesView({
+  traces,
+  loading,
+  error,
+  expandedTraceId,
+  traceDetails,
+  onRefresh,
+  onToggleTrace,
+}: {
+  traces: LangfuseTraceItem[]
+  loading: boolean
+  error: string | null
+  expandedTraceId: string | null
+  traceDetails: Record<string, TraceDetailState>
+  onRefresh: () => void
+  onToggleTrace: (traceId: string) => void
+}) {
+  if (loading && traces.length === 0) {
+    return <Loader variant="panel" label="Loading traces" />
+  }
+
+  if (error && traces.length === 0) {
+    return (
+      <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+        <div>{error}</div>
+        <Button onClick={onRefresh} variant="outline" size="sm" className="mt-3">Refresh</Button>
+      </div>
+    )
+  }
+
+  if (traces.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground py-12">
+        <div className="text-lg mb-2">No traces yet</div>
+        <div className="text-sm">Langfuse trace data will appear here once the tenant starts generating calls.</div>
+        <Button onClick={onRefresh} variant="outline" size="sm" className="mt-4">Refresh</Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Trace timeline</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Time | Agent | Skill | Model | Duration | Tokens | Cost | Status</p>
+        </div>
+        <Button onClick={onRefresh} variant="outline" size="sm">Refresh</Button>
+      </div>
+
+      <div className="space-y-3">
+        {traces.map(trace => {
+          const isExpanded = expandedTraceId === trace.id
+          const detailState = traceDetails[trace.id]
+          const statusTone = trace.status.toLowerCase() === 'success'
+            ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+            : trace.status.toLowerCase() === 'error'
+              ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
+              : 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+
+          return (
+            <div key={trace.id} className="overflow-hidden rounded-lg border border-border bg-card">
+              <button
+                type="button"
+                onClick={() => onToggleTrace(trace.id)}
+                aria-expanded={isExpanded}
+                className="w-full p-4 text-left transition-colors hover:bg-secondary/30"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="font-medium text-foreground">{trace.agent}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{formatTraceTime(trace.timestamp)}</div>
+                  </div>
+                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${statusTone}`}>
+                    {trace.status}
+                  </span>
+                </div>
+
+                <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-6">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Skill</div>
+                    <div className="text-foreground">{trace.skill}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Model</div>
+                    <div className="text-foreground">{getModelDisplayName(trace.model)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Duration</div>
+                    <div className="text-foreground">{formatDuration(trace.latencyMs)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Tokens</div>
+                    <div className="text-foreground">{formatNumber(trace.totalTokens)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Cost</div>
+                    <div className="text-foreground">{formatCost(trace.costUsd)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground/80">Trace ID</div>
+                    <div className="font-mono text-foreground">{trace.id}</div>
+                  </div>
+                </div>
+              </button>
+
+              {isExpanded && (
+                <div className="border-t border-border bg-secondary/20 p-4">
+                  {detailState?.loading ? (
+                    <div className="text-sm text-muted-foreground">Loading trace details...</div>
+                  ) : detailState?.error ? (
+                    <div className="rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{detailState.error}</div>
+                  ) : detailState?.data ? (
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="text-sm text-muted-foreground">
+                          {trace.sessionId ? `Session ${trace.sessionId}` : 'No session id'}
+                        </div>
+                        {(detailState.data.publicUrl || trace.publicUrl) && (
+                          <a
+                            href={detailState.data.publicUrl || trace.publicUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary"
+                          >
+                            Open in Langfuse
+                          </a>
+                        )}
+                      </div>
+
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        <div>
+                          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground/80">Input</div>
+                          <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-background p-3 text-xs text-foreground whitespace-pre-wrap">
+                            {detailState.data.input || trace.input || 'No input captured'}
+                          </pre>
+                        </div>
+                        <div>
+                          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground/80">Output</div>
+                          <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-background p-3 text-xs text-foreground whitespace-pre-wrap">
+                            {detailState.data.output || trace.output || 'No output captured'}
+                          </pre>
+                        </div>
+                      </div>
+
+                      {detailState.data.observations.length > 0 && (
+                        <div>
+                          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground/80">Observations</div>
+                          <div className="grid gap-2 lg:grid-cols-2">
+                            {detailState.data.observations.map(observation => (
+                              <div key={observation.id} className="rounded-lg border border-border bg-background p-3 text-xs text-foreground">
+                                <div className="font-medium">{observation.name}</div>
+                                <div className="mt-1 text-muted-foreground">{observation.type}{observation.model ? ` · ${getModelDisplayName(observation.model)}` : ''}</div>
+                                <div className="mt-2 text-muted-foreground">{formatDuration(observation.latencyMs)} · {observation.status}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {detailState.data.metadata && Object.keys(detailState.data.metadata).length > 0 && (
+                        <div>
+                          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground/80">Metadata</div>
+                          <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-background p-3 text-xs text-foreground whitespace-pre-wrap">
+                            {JSON.stringify(detailState.data.metadata, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
