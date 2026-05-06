@@ -118,7 +118,7 @@ export async function readJsonObject(request: NextRequest): Promise<JsonObject> 
 }
 
 export async function proxyHarnessConsoleJson(input: {
-  method: 'GET' | 'POST'
+  method: 'GET' | 'POST' | 'DELETE'
   path: string
   search?: URLSearchParams
   body?: JsonObject
