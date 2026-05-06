@@ -917,6 +917,9 @@ export async function POST(request: NextRequest) {
       await runHermesScript(daemonScript, ['check'])
     } else if (action === 'heartbeat') {
       const agentDir = typeof body?.agent_dir === 'string' ? body.agent_dir : 'Agent-Hermes'
+      if (!/^Agent-[A-Za-z0-9_-]+$/.test(agentDir)) {
+        return NextResponse.json({ error: 'Invalid agent_dir format' }, { status: 400 })
+      }
       await runHermesScript(heartbeatScript, [agentDir, 'manual heartbeat from Mission Control'])
     } else {
       return NextResponse.json({ error: 'action must be register-cron, save-cron-job, toggle-cron-job, remove-cron-job, sync-allowlist, start, stop, check, or heartbeat' }, { status: 400 })
