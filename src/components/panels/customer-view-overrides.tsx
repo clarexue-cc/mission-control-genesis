@@ -43,6 +43,12 @@ const panelCopy: Record<CustomerVisiblePanel, CustomerPanelCopy> = {
     empty_state: '暂无需要验收的任务。',
     show_what: ['任务标题', '任务描述', '提交 input', '反馈表', '评分与提交时间'],
   },
+  delivery: {
+    display_name: '交付验收',
+    description: '查看当前交付清单和验收状态',
+    empty_state: '暂无待验收交付项。',
+    show_what: ['交付阶段', '验收结果', '阻塞事项', '下一步动作'],
+  },
 }
 
 type CustomerChannelId = 'lark' | 'telegram' | 'email'

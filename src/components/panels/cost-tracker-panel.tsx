@@ -7,6 +7,7 @@ import { Loader } from '@/components/ui/loader'
 import { useMissionControl } from '@/store'
 import { createClientLogger } from '@/lib/client-logger'
 import type { CostBudgetRule, CostBudgetSummary } from '@/lib/cost-budget-controls'
+import { TenantBillingComparison } from '@/components/panels/tenant-billing-comparison'
 import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, BarChart, Bar,
@@ -271,6 +272,8 @@ export function CostTrackerPanel() {
           </div>
         </div>
       </div>
+
+      <TenantBillingComparison />
 
       {isLoading && !usageStats && view !== 'controls' ? (
         <Loader variant="panel" label={t('loadingCostData')} />
