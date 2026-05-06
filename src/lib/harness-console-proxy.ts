@@ -36,6 +36,15 @@ export function normalizeConsoleMonth(value: unknown): string {
   return month
 }
 
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
 export function sanitizeBudgetPayload(body: Record<string, unknown>): Record<string, unknown> {
   const ALLOWED_KEYS = ['monthly_budget_usd', 'alert_at_percent', 'action_on_exceed'] as const
   const ALLOWED_ACTIONS = ['pause', 'warn-only', 'block-new-only'] as const
@@ -43,16 +52,43 @@ export function sanitizeBudgetPayload(body: Record<string, unknown>): Record<str
   for (const key of ALLOWED_KEYS) {
     if (body[key] !== undefined) sanitized[key] = body[key]
   }
-  if (typeof sanitized.monthly_budget_usd === 'number') {
-    sanitized.monthly_budget_usd = Math.max(0, Math.min(10000, sanitized.monthly_budget_usd))
+  const monthlyBudgetUsd = toFiniteNumber(sanitized.monthly_budget_usd)
+  if (monthlyBudgetUsd !== null) {
+    sanitized.monthly_budget_usd = Math.max(0, Math.min(10000, monthlyBudgetUsd))
+  } else {
+    delete sanitized.monthly_budget_usd
   }
-  if (typeof sanitized.alert_at_percent === 'number') {
-    sanitized.alert_at_percent = Math.max(1, Math.min(100, Math.round(sanitized.alert_at_percent)))
+  const alertAtPercent = toFiniteNumber(sanitized.alert_at_percent)
+  if (alertAtPercent !== null) {
+    sanitized.alert_at_percent = Math.max(1, Math.min(100, Math.round(alertAtPercent)))
+  } else {
+    delete sanitized.alert_at_percent
   }
   if (typeof sanitized.action_on_exceed === 'string' && !(ALLOWED_ACTIONS as readonly string[]).includes(sanitized.action_on_exceed)) {
     sanitized.action_on_exceed = 'pause'
   }
   return sanitized
+}
+
+export function enforceBudgetCeiling(body: Record<string, unknown>, adminCeiling: number): Record<string, unknown> {
+  if (!(adminCeiling > 0) || typeof body.monthly_budget_usd !== 'number') {
+    return body
+  }
+
+  return {
+    ...body,
+    monthly_budget_usd: Math.max(0, Math.min(body.monthly_budget_usd, adminCeiling)),
+  }
+}
+
+export function maskApiKey(key: string | null | undefined): string {
+  const rawKey = typeof key === 'string' ? key.trim() : ''
+  if (!rawKey) return ''
+  if (rawKey.length <= 7) return '****'
+
+  const prefix = rawKey.slice(0, 3)
+  const suffix = rawKey.slice(-4)
+  return `${prefix}...****${suffix}`
 }
 
 export function sanitizeProviderPayload(body: Record<string, unknown>): Record<string, unknown> {
