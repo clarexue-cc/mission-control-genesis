@@ -118,7 +118,7 @@ export async function readJsonObject(request: NextRequest): Promise<JsonObject> 
 }
 
 export async function proxyHarnessConsoleJson(input: {
-  method: 'GET' | 'POST' | 'DELETE'
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE'
   path: string
   search?: URLSearchParams
   body?: JsonObject
@@ -136,9 +136,10 @@ export async function proxyHarnessConsoleJson(input: {
   const payload = contentType.includes('application/json')
     ? await upstream.json().catch(() => null)
     : { error: await upstream.text().catch(() => upstream.statusText) }
+  const status = upstream.status === 204 || upstream.status === 205 ? 200 : upstream.status
 
   return NextResponse.json(payload ?? {}, {
-    status: upstream.status,
+    status,
     headers: {
       'Cache-Control': 'no-store',
     },
