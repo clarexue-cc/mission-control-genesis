@@ -22,6 +22,7 @@ import {
   CreateAgentModal
 } from './agent-detail-tabs'
 import { formatModelName, buildTaskStatParts } from '@/lib/agent-card-helpers'
+import { resolveCustomerTenantId, resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 import { useMissionControl, type Agent } from '@/store'
 import { isCustomerRole, readEffectiveRoleFromBrowser } from '@/lib/rbac'
 
@@ -46,6 +47,76 @@ interface SoulTemplate {
   name: string
   description: string
   size: number
+}
+
+interface LangfuseAgentStatsEntry {
+  agent: string
+  successRate: number
+  avgLatencyMs: number
+  calls7d: number
+}
+
+const asRecord = (value: unknown): Record<string, unknown> => (
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+)
+
+const pickString = (...values: unknown[]) => {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return undefined
+}
+
+const pickNumber = (...values: unknown[]) => {
+  for (const value of values) {
+    const number = Number(value)
+    if (Number.isFinite(number)) return number
+  }
+  return 0
+}
+
+const normalizeSuccessRate = (...values: unknown[]) => {
+  const raw = pickNumber(...values)
+  const percent = raw <= 1 ? raw * 100 : raw
+  return Math.max(0, Math.min(100, percent))
+}
+
+const formatLatency = (latencyMs: number) => (
+  latencyMs >= 1000 ? `${(latencyMs / 1000).toFixed(1)}s` : `${Math.round(latencyMs)}ms`
+)
+
+function normalizeAgentStats(payload: unknown): Record<string, LangfuseAgentStatsEntry> {
+  const record = asRecord(payload)
+  const fromStatsMap = Object.entries(asRecord(record.stats)).map(([agent, value]) => ({
+    agent,
+    ...asRecord(value),
+  }))
+  const entries = Array.isArray(record.agents)
+    ? record.agents
+    : Array.isArray(record.data)
+      ? record.data
+      : fromStatsMap
+
+  return entries.reduce<Record<string, LangfuseAgentStatsEntry>>((acc, entry) => {
+    const item = asRecord(entry)
+    const agent = pickString(item.agent, item.agentName, item.name)
+    if (!agent) return acc
+
+    acc[agent.toLowerCase()] = {
+      agent,
+      successRate: normalizeSuccessRate(item.successRate, item.success_rate, item.successRatio, item.success_ratio),
+      avgLatencyMs: pickNumber(item.avgLatencyMs, item.avg_latency_ms, item.averageLatencyMs, item.average_latency_ms),
+      calls7d: pickNumber(item.calls7d, item.calls_7d, item.requestCount7d, item.request_count_7d, item.totalCalls7d),
+    }
+
+    return acc
+  }, {})
+}
+
+function hasAgentStats(entry: LangfuseAgentStatsEntry | undefined) {
+  return Boolean(entry && (entry.calls7d > 0 || entry.avgLatencyMs > 0 || entry.successRate > 0))
 }
 
 const statusColors: Record<string, string> = {
@@ -98,6 +169,10 @@ export function AgentSquadPanelPhase3() {
   const t = useTranslations('agentSquadPhase3')
   const { agents, setAgents } = useMissionControl()
   const [effectiveRole] = useState(() => readEffectiveRoleFromBrowser())
+  const [tenantId] = useState(() => {
+    if (typeof window === 'undefined') return resolveDefaultCustomerTenantId()
+    return resolveCustomerTenantId(new URLSearchParams(window.location.search))
+  })
   const [loading, setLoading] = useState(agents.length === 0)
   const [error, setError] = useState<string | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
@@ -107,6 +182,8 @@ export function AgentSquadPanelPhase3() {
   const [syncing, setSyncing] = useState(false)
   const [syncToast, setSyncToast] = useState<string | null>(null)
   const [showHidden, setShowHidden] = useState(false)
+  const [agentStatsByName, setAgentStatsByName] = useState<Record<string, LangfuseAgentStatsEntry>>({})
+  const hasHandledShowHiddenChange = useRef(false)
   const isCustomer = isCustomerRole(effectiveRole)
 
   // Sync agents from gateway config or local disk
@@ -169,8 +246,32 @@ export function AgentSquadPanelPhase3() {
     }
   }, [agents.length, isCustomer, setAgents, showHidden])
 
+  const loadAgentStats = useCallback(async () => {
+    if (!tenantId) {
+      setAgentStatsByName({})
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/langfuse/agent-stats?tenantId=${encodeURIComponent(tenantId)}`, {
+        cache: 'no-store',
+      })
+      const data = await response.json().catch(() => ({})) as { error?: string }
+      if (!response.ok) throw new Error(data.error || 'Failed to load agent stats')
+      setAgentStatsByName(normalizeAgentStats(data))
+    } catch (error) {
+      log.error('Failed to load langfuse agent stats:', error)
+      setAgentStatsByName({})
+    }
+  }, [tenantId])
+
+  const refreshPanelData = useCallback(() => {
+    void fetchAgents()
+    void loadAgentStats()
+  }, [fetchAgents, loadAgentStats])
+
   // Smart polling with visibility pause
-  useSmartPoll(fetchAgents, 30000, { enabled: autoRefresh, pauseWhenSseConnected: true })
+  useSmartPoll(refreshPanelData, 30000, { enabled: autoRefresh, pauseWhenSseConnected: true })
 
   // Update agent status
   const updateAgentStatus = async (agentName: string, status: Agent['status'], activity?: string) => {
@@ -230,7 +331,11 @@ export function AgentSquadPanelPhase3() {
 
   // Re-fetch when showHidden changes
   useEffect(() => {
-    fetchAgents()
+    if (!hasHandledShowHiddenChange.current) {
+      hasHandledShowHiddenChange.current = true
+      return
+    }
+    refreshPanelData()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showHidden])
 
@@ -375,7 +480,7 @@ export function AgentSquadPanelPhase3() {
             </>
           )}
           <Button
-            onClick={fetchAgents}
+            onClick={refreshPanelData}
             variant="secondary"
             size="sm"
           >
@@ -426,6 +531,7 @@ export function AgentSquadPanelPhase3() {
             {agents.map(agent => {
               const modelName = formatModelName(agent.config)
               const taskStatsLine = buildTaskStatParts(agent.taskStats)
+              const langfuseStats = agentStatsByName[agent.name.toLowerCase()]
 
               return (
                 <div
@@ -490,6 +596,25 @@ export function AgentSquadPanelPhase3() {
                       <div className="text-[11px] font-medium text-muted-foreground">Recent execution</div>
                       <div className="mt-1 text-xs text-foreground/85">
                         {agent.last_activity || `Last seen ${formatLastSeen(agent.last_seen)}`}
+                      </div>
+                    </div>
+                  )}
+
+                  {hasAgentStats(langfuseStats) && (
+                    <div className="mb-2 rounded-lg border border-border/50 bg-secondary/20 p-2.5">
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <div className="text-[11px] font-medium text-muted-foreground">Success rate</div>
+                          <div className="mt-1 text-sm font-semibold text-foreground">{langfuseStats!.successRate.toFixed(0)}%</div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] font-medium text-muted-foreground">Avg latency</div>
+                          <div className="mt-1 text-sm font-semibold text-foreground">{formatLatency(langfuseStats!.avgLatencyMs)}</div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] font-medium text-muted-foreground">7d calls</div>
+                          <div className="mt-1 text-sm font-semibold text-foreground">{langfuseStats!.calls7d.toLocaleString()}</div>
+                        </div>
                       </div>
                     </div>
                   )}
