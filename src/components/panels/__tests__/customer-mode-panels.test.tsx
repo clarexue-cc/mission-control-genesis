@@ -126,7 +126,7 @@ describe('customer-mode panels', () => {
   })
 
   it('shows customer settings and hides admin-only settings blocks', async () => {
-    const fetchMock = vi.fn((url: string) => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
       if (url === '/api/settings') {
         return Promise.resolve(jsonResponse({ error: 'Admin access required' }, false))
       }
@@ -150,6 +150,26 @@ describe('customer-mode panels', () => {
           ],
         }))
       }
+      if (url === '/api/harness/tenant/ceo-assistant-v1/preferences' && (!init || init.method === undefined)) {
+        return Promise.resolve(jsonResponse({
+          default_model: 'anthropic',
+          notifications: {
+            email: false,
+            budgetAlerts: true,
+            deliveryUpdates: false,
+          },
+        }))
+      }
+      if (url === '/api/harness/tenant/ceo-assistant-v1/preferences' && init?.method === 'PATCH') {
+        return Promise.resolve(jsonResponse({
+          default_model: 'openai',
+          notifications: {
+            email: true,
+            budgetAlerts: true,
+            deliveryUpdates: false,
+          },
+        }))
+      }
       return Promise.resolve(jsonResponse({}))
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -157,13 +177,34 @@ describe('customer-mode panels', () => {
     render(<SettingsPanel />)
 
     expect(await screen.findByRole('heading', { name: 'Tenant budget' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Model preference')).toBeInTheDocument()
-    expect(screen.getByLabelText('Budget alerts')).toBeInTheDocument()
-    expect(screen.getByLabelText('Email notifications')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByLabelText('Model preference')).toHaveValue('anthropic')
+    })
+    expect(screen.getByLabelText('Budget alerts')).toBeChecked()
+    expect(screen.getByLabelText('Email notifications')).not.toBeChecked()
+    expect(screen.getByLabelText('Delivery updates')).not.toBeChecked()
     expect(screen.queryByText('Interface Mode')).not.toBeInTheDocument()
     expect(screen.queryByText('Hook Profile')).not.toBeInTheDocument()
     expect(screen.queryByText('Agent Runtimes')).not.toBeInTheDocument()
     expect(screen.queryByText('Admin access required')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Model preference'), { target: { value: 'openai' } })
+    fireEvent.click(screen.getByLabelText('Email notifications'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save preferences' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/harness/tenant/ceo-assistant-v1/preferences', expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({
+          default_model: 'openai',
+          notifications: {
+            email: true,
+            budgetAlerts: true,
+            deliveryUpdates: false,
+          },
+        }),
+      }))
+    })
   })
 
   it('hides internal agent configuration while exposing editable customer preferences', async () => {
