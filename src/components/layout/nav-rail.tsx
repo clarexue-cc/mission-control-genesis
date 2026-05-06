@@ -60,6 +60,23 @@ function customerCheckpointIcon(panel: string) {
   return <TasksIcon />
 }
 
+const ADMIN_ONLY_NAV_PANEL_IDS = new Set([
+  'boundary',
+  'test-console',
+  'tests',
+  'super-admin',
+  'user-management',
+  'users',
+  'debug',
+  'vault',
+  'security-audit',
+  'security',
+])
+
+function resolveNavItemRole(panel: string, role?: EffectiveRole): EffectiveRole | undefined {
+  return role ?? (ADMIN_ONLY_NAV_PANEL_IDS.has(panel) ? 'admin' : undefined)
+}
+
 const customerCheckpointChildren: NavItem[] = customerCheckpointNavItems.map(item => ({
   id: item.id,
   targetPanel: item.panel,
@@ -68,7 +85,7 @@ const customerCheckpointChildren: NavItem[] = customerCheckpointNavItems.map(ite
   priority: false,
   essential: true,
   tenantScoped: item.tenantScoped,
-  role: item.role,
+  role: resolveNavItemRole(item.panel, item.role),
 }))
 
 const navGroups: NavGroup[] = [
@@ -102,7 +119,7 @@ const navGroups: NavGroup[] = [
     id: 'observe',
     label: 'OBSERVE',
     items: [
-      { id: 'vault', label: 'Vault', icon: <VaultIcon />, priority: false },
+      { id: 'vault', label: 'Vault', icon: <VaultIcon />, priority: false, role: 'admin' },
       { id: 'logs', label: 'Logs', icon: <LogsIcon />, priority: false, essential: true },
       { id: 'memory', label: 'Memory', icon: <MemoryIcon />, priority: false },
       { id: 'alerts', label: 'Alerts', icon: <AlertIcon />, priority: false },
@@ -129,8 +146,8 @@ const navGroups: NavGroup[] = [
       { id: 'monitor', label: 'Monitor', icon: <MonitorIcon />, priority: false },
       { id: 'harness', label: 'Harness', icon: <TestsIcon />, priority: false },
       { id: 'hermes-setup', label: 'Hermes', icon: <HermesIcon />, priority: false },
-      { id: 'security', label: 'Security', icon: <SecurityIcon />, priority: false },
-      { id: 'users', label: 'Users', icon: <UsersIcon />, priority: false },
+      { id: 'security', label: 'Security', icon: <SecurityIcon />, priority: false, role: 'admin' },
+      { id: 'users', label: 'Users', icon: <UsersIcon />, priority: false, role: 'admin' },
       { id: 'audit', label: 'Audit', icon: <AuditIcon />, priority: false },
       {
         id: 'gateway-parent', label: 'Gateway', icon: <GatewaysIcon />, priority: false,
@@ -140,7 +157,7 @@ const navGroups: NavGroup[] = [
         ],
       },
       { id: 'integrations', label: 'Integrations', icon: <IntegrationsIcon />, priority: false },
-      { id: 'debug', label: 'Debug', icon: <DebugIcon />, priority: false },
+      { id: 'debug', label: 'Debug', icon: <DebugIcon />, priority: false, role: 'admin' },
       { id: 'settings', label: 'Settings', icon: <SettingsIcon />, priority: false, essential: true },
     ],
   },
@@ -187,7 +204,13 @@ const gatewayOnlyPanels = new Set([
   'gateways', 'gateway-config', 'channels', 'nodes', 'exec-approvals',
   ...getPluginNavItems().filter(pi => pi.gatewayOnly).map(pi => pi.id),
 ])
-const adminOnlyPanels = new Set<string>(['tests', 'boundary', 'delivery', 'vault', 'harness', 'hermes', 'hermes-setup'])
+const adminOnlyPanels = new Set<string>([
+  ...ADMIN_ONLY_NAV_PANEL_IDS,
+  'delivery',
+  'harness',
+  'hermes',
+  'hermes-setup',
+])
 
 export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: EffectiveRole }) {
   const { activeTab, connection, dashboardMode, currentUser, activeTenant, tenants, osUsers, setActiveTenant, fetchTenants, fetchOsUsers, activeProject, projects, setActiveProject, fetchProjects, sidebarExpanded, collapsedGroups, toggleSidebar, toggleGroup, defaultOrgName, interfaceMode, setInterfaceMode } = useMissionControl()

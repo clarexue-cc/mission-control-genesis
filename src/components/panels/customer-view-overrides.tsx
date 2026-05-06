@@ -19,6 +19,12 @@ const panelCopy: Record<CustomerVisiblePanel, CustomerPanelCopy> = {
     empty_state: '你的 Agent 正在待命，随时可以开始新任务。',
     show_what: ['Agent 状态灯', '今日已完成任务数', '今日使用量', '未读告警条数'],
   },
+  agents: {
+    display_name: 'Agent',
+    description: '查看正在为你服务的 Agent 队列',
+    empty_state: '暂时没有可见 Agent。',
+    show_what: ['Agent 名称', '运行状态', '负责事项', '最近活动'],
+  },
   cron: {
     display_name: '定时任务',
     description: '查看和管理 Agent 定期自动执行的任务',
@@ -30,6 +36,12 @@ const panelCopy: Record<CustomerVisiblePanel, CustomerPanelCopy> = {
     description: '需要你知道的重要提醒',
     empty_state: '没有新告警，一切正常。',
     show_what: ['告警时间', '告警摘要', '建议操作', '是否需要你回复'],
+  },
+  'cost-tracker': {
+    display_name: '费用追踪',
+    description: '查看 Agent 使用量和预算状态',
+    empty_state: '暂无费用数据。',
+    show_what: ['本月使用量', '预算进度', '模型费用', '异常消耗提醒'],
   },
   channels: {
     display_name: '渠道管理',
@@ -48,6 +60,24 @@ const panelCopy: Record<CustomerVisiblePanel, CustomerPanelCopy> = {
     description: '查看当前交付清单和验收状态',
     empty_state: '暂无待验收交付项。',
     show_what: ['交付阶段', '验收结果', '阻塞事项', '下一步动作'],
+  },
+  settings: {
+    display_name: '设置',
+    description: '查看客户视图里的基础偏好',
+    empty_state: '暂无可配置项。',
+    show_what: ['通知偏好', '显示设置', '账号信息', '服务状态'],
+  },
+  integrations: {
+    display_name: '集成',
+    description: '查看已连接的客户侧工具',
+    empty_state: '暂未连接集成。',
+    show_what: ['集成名称', '连接状态', '授权范围', '最近同步时间'],
+  },
+  skills: {
+    display_name: 'Skills',
+    description: '查看当前 Agent 可用的技能模块',
+    empty_state: '暂未启用客户可见技能。',
+    show_what: ['技能名称', '启用状态', '适用场景', '最近更新'],
   },
 }
 

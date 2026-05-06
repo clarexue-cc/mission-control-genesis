@@ -1,7 +1,19 @@
 export type EffectiveRole = 'admin' | 'customer'
 
 export const RBAC_ROLE_COOKIE = 'mc-view-role'
-export const CUSTOMER_VISIBLE_PANELS = ['overview', 'cron', 'alerts', 'channels', 'tasks', 'delivery'] as const
+export const CUSTOMER_VISIBLE_PANELS = [
+  'overview',
+  'agents',
+  'tasks',
+  'delivery',
+  'channels',
+  'alerts',
+  'cron',
+  'cost-tracker',
+  'settings',
+  'integrations',
+  'skills',
+] as const
 
 export type CustomerVisiblePanel = typeof CUSTOMER_VISIBLE_PANELS[number]
 
