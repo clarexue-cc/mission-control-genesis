@@ -57,7 +57,7 @@ export interface User {
   id: number
   username: string
   display_name: string
-  role: 'admin' | 'operator' | 'viewer'
+  role: 'admin' | 'operator' | 'viewer' | 'customer'
   workspace_id: number
   tenant_id: number
   provider?: 'local' | 'google' | 'proxy'
@@ -87,7 +87,7 @@ interface SessionQueryRow {
   id: number
   username: string
   display_name: string
-  role: 'admin' | 'operator' | 'viewer'
+  role: User['role']
   provider: 'local' | 'google' | null
   email: string | null
   avatar_url: string | null
@@ -104,7 +104,7 @@ interface UserQueryRow {
   id: number
   username: string
   display_name: string
-  role: 'admin' | 'operator' | 'viewer'
+  role: User['role']
   provider: 'local' | 'google' | null
   email: string | null
   avatar_url: string | null
@@ -419,7 +419,7 @@ function resolveOrProvisionProxyUser(username: string): User | null {
 
     // Auto-provision if MC_PROXY_AUTH_DEFAULT_ROLE is configured
     const defaultRole = (process.env.MC_PROXY_AUTH_DEFAULT_ROLE || '').trim()
-    if (!defaultRole || !(['viewer', 'operator', 'admin'] as const).includes(defaultRole as User['role'])) {
+    if (!defaultRole || !(['viewer', 'customer', 'operator', 'admin'] as const).includes(defaultRole as User['role'])) {
       return null
     }
 
@@ -618,9 +618,9 @@ function deriveRoleFromScopes(scopes: Set<string>): User['role'] {
 
 /**
  * Role hierarchy levels for access control.
- * viewer < operator < admin
+ * viewer < customer < operator < admin
  */
-const ROLE_LEVELS: Record<string, number> = { viewer: 0, operator: 1, admin: 2 }
+const ROLE_LEVELS: Record<string, number> = { viewer: 0, customer: 1, operator: 2, admin: 3 }
 
 /**
  * Check if a user meets the minimum role requirement.
@@ -639,4 +639,3 @@ export function requireRole(
   }
   return { user }
 }
-

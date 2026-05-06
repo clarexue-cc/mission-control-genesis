@@ -38,7 +38,7 @@ export function normalizeConsoleMonth(value: unknown): string {
 
 export function sanitizeBudgetPayload(body: Record<string, unknown>): Record<string, unknown> {
   const ALLOWED_KEYS = ['monthly_budget_usd', 'alert_at_percent', 'action_on_exceed'] as const
-  const ALLOWED_ACTIONS = ['pause', 'warn-only', 'block-new-only'] as const
+  const ALLOWED_ACTIONS = ['pause', 'warn', 'warn-only', 'block-new-only'] as const
   const sanitized: Record<string, unknown> = {}
   for (const key of ALLOWED_KEYS) {
     if (body[key] !== undefined) sanitized[key] = body[key]
