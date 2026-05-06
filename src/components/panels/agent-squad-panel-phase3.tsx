@@ -21,6 +21,7 @@ import {
   ModelsTab,
   CreateAgentModal
 } from './agent-detail-tabs'
+import { AgentBudgetConfig } from './agent-budget-config'
 import { formatModelName, buildTaskStatParts } from '@/lib/agent-card-helpers'
 import { useMissionControl, type Agent } from '@/store'
 
@@ -595,7 +596,21 @@ function AgentDetailModalPhase3({
   onDelete: (agentId: number, removeWorkspace: boolean) => Promise<void>
 }) {
   const [agentState, setAgentState] = useState<Agent & { config?: any; working_memory?: string }>(agent as Agent & { config?: any; working_memory?: string })
-  const [activeTab, setActiveTab] = useState<'overview' | 'soul' | 'memory' | 'config' | 'tasks' | 'activity' | 'files' | 'tools' | 'channels' | 'cron' | 'models'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'soul' | 'memory' | 'config' | 'tasks' | 'activity' | 'files' | 'tools' | 'channels' | 'cron' | 'models' | 'budget'>('overview')
+  const { activeTenant, currentUser, tenants, fetchTenants } = useMissionControl()
+  const [budgetTenantId, setBudgetTenantId] = useState(currentUser?.role === 'admin' ? (activeTenant?.slug || '') : 'current')
+
+  useEffect(() => {
+    if (currentUser?.role === 'admin' && tenants.length === 0) {
+      fetchTenants().catch(() => {})
+    }
+  }, [currentUser?.role, tenants.length, fetchTenants])
+
+  useEffect(() => {
+    if (currentUser?.role === 'admin' && !budgetTenantId && activeTenant?.slug) {
+      setBudgetTenantId(activeTenant.slug)
+    }
+  }, [activeTenant?.slug, budgetTenantId, currentUser?.role])
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState({
     role: agent.role,
@@ -825,6 +840,7 @@ function AgentDetailModalPhase3({
     { id: 'files', label: 'Files', icon: 'F' },
     { id: 'tools', label: 'Tools', icon: 'W' },
     { id: 'models', label: 'Models', icon: 'P' },
+    { id: 'budget', label: 'Budget', icon: 'B' },
     { id: 'channels', label: 'Channels', icon: 'H' },
     { id: 'cron', label: 'Cron', icon: 'R' },
     { id: 'soul', label: 'SOUL', icon: 'S' },
@@ -1037,6 +1053,28 @@ function AgentDetailModalPhase3({
 
           {activeTab === 'models' && (
             <ModelsTab agent={agentState} />
+          )}
+
+          {activeTab === 'budget' && (
+            <div className="p-5">
+              <div className="mb-4 max-w-xs">
+                <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                  Tenant
+                  <select
+                    value={budgetTenantId}
+                    onChange={(event) => setBudgetTenantId(event.target.value)}
+                    className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+                  >
+                    {currentUser?.role === 'admin' && <option value="">先选择 tenant</option>}
+                    {currentUser?.role !== 'admin' && <option value="current">当前 tenant</option>}
+                    {tenants.map((tenant) => (
+                      <option key={tenant.slug} value={tenant.slug}>{tenant.display_name}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <AgentBudgetConfig key={`${budgetTenantId || 'none'}:${agentState.name}`} tenantId={budgetTenantId || null} agentName={agentState.name} compact />
+            </div>
           )}
 
           {activeTab === 'activity' && (

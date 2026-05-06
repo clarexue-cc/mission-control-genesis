@@ -7,6 +7,7 @@ import { Loader } from '@/components/ui/loader'
 import { useMissionControl } from '@/store'
 import { createClientLogger } from '@/lib/client-logger'
 import type { CostBudgetRule, CostBudgetSummary } from '@/lib/cost-budget-controls'
+import { AgentBudgetConfig, type TenantBudgetSnapshot } from '@/components/panels/agent-budget-config'
 import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, BarChart, Bar,
@@ -102,17 +103,45 @@ const VIEW_LABELS: Record<View, string> = {
   controls: '预算',
 }
 
+const ALL_TENANTS_SCOPE = 'all'
+const CURRENT_TENANT_SCOPE = 'current'
+
+function alertTone(status: TenantBudgetSnapshot['alert']['status']) {
+  if (status === 'exceeded') return 'bg-red-500 text-red-50'
+  if (status === 'critical') return 'bg-orange-500 text-orange-50'
+  if (status === 'warning') return 'bg-yellow-500 text-yellow-950'
+  if (status === 'unconfigured') return 'bg-slate-500 text-slate-50'
+  return 'bg-emerald-500 text-emerald-50'
+}
+
+function alertBarTone(status: TenantBudgetSnapshot['alert']['status']) {
+  if (status === 'exceeded') return 'bg-red-500'
+  if (status === 'critical') return 'bg-orange-500'
+  if (status === 'warning') return 'bg-yellow-500'
+  if (status === 'unconfigured') return 'bg-slate-500'
+  return 'bg-emerald-500'
+}
+
+function formatBudgetPercent(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return '0%'
+  return `${Math.min(value, 999).toFixed(value >= 100 ? 0 : 1)}%`
+}
+
 // ── Main Component ──────────────────────────────────
 
 export function CostTrackerPanel() {
   const t = useTranslations('costTracker')
-  const { sessions } = useMissionControl()
+  const { sessions, tenants, activeTenant, currentUser, fetchTenants } = useMissionControl()
 
   const [view, setView] = useState<View>('overview')
   const [timeframe, setTimeframe] = useState<Timeframe>('day')
   const [chartMode, setChartMode] = useState<'incremental' | 'cumulative'>('incremental')
   const [isLoading, setIsLoading] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [tenantScope, setTenantScope] = useState<string>(ALL_TENANTS_SCOPE)
+  const [tenantSnapshots, setTenantSnapshots] = useState<Record<string, TenantBudgetSnapshot>>({})
+  const [tenantBudgetLoading, setTenantBudgetLoading] = useState(false)
+  const [tenantBudgetError, setTenantBudgetError] = useState<string | null>(null)
 
   // Data
   const [usageStats, setUsageStats] = useState<UsageStats | null>(null)
@@ -196,13 +225,78 @@ export function CostTrackerPanel() {
     }
   }, [])
 
-  useEffect(() => { loadData() }, [loadData])
+  const loadTenantBudgets = useCallback(async () => {
+    const isAdmin = currentUser?.role === 'admin'
+    if (tenants.length === 0 && isAdmin && tenantScope === ALL_TENANTS_SCOPE) {
+      setTenantSnapshots({})
+      return
+    }
+
+    setTenantBudgetLoading(true)
+    setTenantBudgetError(null)
+    try {
+      const targets = tenantScope === ALL_TENANTS_SCOPE ? tenants.map((tenant) => tenant.slug) : [tenantScope]
+      const results = await Promise.all(targets.map(async (tenantId) => {
+        const response = await fetch(`/api/budget?tenantId=${encodeURIComponent(tenantId)}`, { cache: 'no-store' })
+        const payload = await response.json()
+        if (!response.ok) throw new Error(payload.error || `Failed to load tenant budget for ${tenantId}`)
+        return payload as TenantBudgetSnapshot
+      }))
+
+      setTenantSnapshots((prev) => {
+        const next = tenantScope === ALL_TENANTS_SCOPE ? {} : { ...prev }
+        for (const snapshot of results) {
+          next[snapshot.tenantId] = snapshot
+        }
+        return next
+      })
+    } catch (err) {
+      setTenantBudgetError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setTenantBudgetLoading(false)
+    }
+  }, [currentUser?.role, tenantScope, tenants])
+
   useEffect(() => {
+    if (currentUser && currentUser.role !== 'admin' && tenantScope === ALL_TENANTS_SCOPE) {
+      setTenantScope(CURRENT_TENANT_SCOPE)
+    }
+  }, [currentUser, tenantScope])
+
+  useEffect(() => {
+    if (tenantScope !== ALL_TENANTS_SCOPE) {
+      setIsLoading(false)
+      return
+    }
+    loadData()
+  }, [loadData, tenantScope])
+  useEffect(() => { fetchTenants().catch(() => {}) }, [fetchTenants])
+  useEffect(() => {
+    if (tenantScope !== ALL_TENANTS_SCOPE) {
+      if (refreshTimer.current) clearInterval(refreshTimer.current)
+      return
+    }
     refreshTimer.current = setInterval(loadData, 30_000)
     return () => { if (refreshTimer.current) clearInterval(refreshTimer.current) }
-  }, [loadData])
-  useEffect(() => { if (view === 'sessions') loadSessionCosts() }, [view, loadSessionCosts])
-  useEffect(() => { loadBudgetRules() }, [loadBudgetRules])
+  }, [loadData, tenantScope])
+  useEffect(() => {
+    if (tenantScope !== ALL_TENANTS_SCOPE) {
+      setSessionCosts([])
+      return
+    }
+    if (view === 'sessions') loadSessionCosts()
+  }, [view, loadSessionCosts, tenantScope])
+  useEffect(() => {
+    if (tenantScope !== ALL_TENANTS_SCOPE) {
+      setBudgetRules([])
+      setBudgetSummary(null)
+      setBudgetLoading(false)
+      setBudgetError(null)
+      return
+    }
+    loadBudgetRules()
+  }, [loadBudgetRules, tenantScope])
+  useEffect(() => { loadTenantBudgets().catch(() => {}) }, [loadTenantBudgets])
 
   const exportData = async (format: 'json' | 'csv') => {
     setIsExporting(true)
@@ -228,12 +322,28 @@ export function CostTrackerPanel() {
   const agentSummary = byAgentData?.summary
   const agentList = byAgentData?.agents || []
   const maxAgentCost = Math.max(...agentList.map(a => a.total_cost), 0.0001)
+  const selectedTenantSnapshot = tenantScope === ALL_TENANTS_SCOPE ? null : tenantSnapshots[tenantScope] || null
+  const selectedTenant = tenantScope === CURRENT_TENANT_SCOPE
+    ? activeTenant
+    : tenants.find((tenant) => tenant.slug === tenantScope) || activeTenant || null
 
   const getAgentTasks = (agentName: string): TaskCostEntry[] => {
     if (!taskData) return []
     const entry = taskData.agents[agentName]
     if (!entry) return []
     return taskData.tasks.filter(t => entry.taskIds.includes(t.taskId))
+  }
+
+  const handleTenantScopeChange = (nextScope: string) => {
+    setTenantScope(nextScope)
+  }
+
+  const tenantOptions = currentUser?.role === 'admin'
+    ? [{ value: ALL_TENANTS_SCOPE, label: '全局' }, ...tenants.map((tenant) => ({ value: tenant.slug, label: tenant.display_name }))]
+    : [{ value: CURRENT_TENANT_SCOPE, label: activeTenant?.display_name || '当前 tenant' }]
+
+  const handleTenantSnapshotSaved = (snapshot: TenantBudgetSnapshot) => {
+    setTenantSnapshots((prev) => ({ ...prev, [snapshot.tenantId]: snapshot }))
   }
 
   return (
@@ -245,7 +355,19 @@ export function CostTrackerPanel() {
             <h1 className="text-3xl font-bold text-foreground">{t('title')}</h1>
             <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Tenant</span>
+              <select
+                value={tenantScope}
+                onChange={(event) => handleTenantScopeChange(event.target.value)}
+                className="h-9 rounded-md border border-border bg-card px-3 text-sm text-foreground"
+              >
+                {tenantOptions.map((tenant) => (
+                  <option key={tenant.value} value={tenant.value}>{tenant.label}</option>
+                ))}
+              </select>
+            </label>
             {/* View tabs */}
             <div className="flex rounded-lg border border-border overflow-hidden">
               {(['overview', 'agents', 'sessions', 'tasks', 'controls'] as const).map(v => (
@@ -272,42 +394,406 @@ export function CostTrackerPanel() {
         </div>
       </div>
 
-      {isLoading && !usageStats && view !== 'controls' ? (
+      {isLoading && !usageStats && view !== 'controls' && tenantScope === ALL_TENANTS_SCOPE ? (
         <Loader variant="panel" label={t('loadingCostData')} />
       ) : view === 'overview' ? (
-        <OverviewView
-          stats={usageStats} trendData={trendData} agentSummary={agentSummary}
-          taskData={taskData} timeframe={timeframe} chartMode={chartMode}
-          setChartMode={setChartMode} exportData={exportData} isExporting={isExporting}
-          onRefresh={loadData}
-        />
+        tenantScope === ALL_TENANTS_SCOPE ? (
+          <div className="space-y-6">
+            <GlobalTenantCardsSection
+              tenants={tenants}
+              snapshots={tenantSnapshots}
+              loading={tenantBudgetLoading}
+              error={tenantBudgetError}
+              onRefresh={loadTenantBudgets}
+            />
+            <OverviewView
+              stats={usageStats} trendData={trendData} agentSummary={agentSummary}
+              taskData={taskData} timeframe={timeframe} chartMode={chartMode}
+              setChartMode={setChartMode} exportData={exportData} isExporting={isExporting}
+              onRefresh={loadData}
+            />
+          </div>
+        ) : (
+          <SelectedTenantOverviewView
+            snapshot={selectedTenantSnapshot}
+            tenantName={selectedTenant?.display_name || tenantScope}
+            loading={tenantBudgetLoading}
+            error={tenantBudgetError}
+            onRefresh={loadTenantBudgets}
+          />
+        )
       ) : view === 'agents' ? (
-        <AgentsView
-          agents={agentList} summary={agentSummary} maxCost={maxAgentCost}
-          expandedAgent={expandedAgent} setExpandedAgent={setExpandedAgent}
-          getAgentTasks={getAgentTasks} onRefresh={loadData}
-        />
+        tenantScope === ALL_TENANTS_SCOPE ? (
+          <AgentsView
+            agents={agentList} summary={agentSummary} maxCost={maxAgentCost}
+            expandedAgent={expandedAgent} setExpandedAgent={setExpandedAgent}
+            getAgentTasks={getAgentTasks} onRefresh={loadData}
+          />
+        ) : (
+          <TenantAgentBudgetView
+            snapshot={selectedTenantSnapshot}
+            tenantName={selectedTenant?.display_name || tenantScope}
+            loading={tenantBudgetLoading}
+            error={tenantBudgetError}
+            onRefresh={loadTenantBudgets}
+          />
+        )
       ) : view === 'sessions' ? (
-        <SessionsView
-          sessionCosts={sessionCosts} sessions={sessions}
-          sessionSort={sessionSort} setSessionSort={setSessionSort}
-        />
+        tenantScope === ALL_TENANTS_SCOPE ? (
+          <SessionsView
+            sessionCosts={sessionCosts} sessions={sessions}
+            sessionSort={sessionSort} setSessionSort={setSessionSort}
+          />
+        ) : (
+          <TenantScopedUnavailableView tenantName={selectedTenant?.display_name || tenantScope} viewLabel="Sessions" />
+        )
       ) : view === 'tasks' ? (
-        <TasksView taskData={taskData} onRefresh={loadData} />
+        tenantScope === ALL_TENANTS_SCOPE ? (
+          <TasksView taskData={taskData} onRefresh={loadData} />
+        ) : (
+          <TenantScopedUnavailableView tenantName={selectedTenant?.display_name || tenantScope} viewLabel="Tasks" />
+        )
       ) : (
-        <BudgetControlsView
-          rules={budgetRules}
-          summary={budgetSummary}
-          loading={budgetLoading}
-          error={budgetError}
-          agents={agentList.map(agent => agent.agent)}
-          tasks={taskData?.tasks || []}
-          onRefresh={loadBudgetRules}
-          onSaved={(data) => {
-            setBudgetRules(Array.isArray(data.rules) ? data.rules : [])
-            setBudgetSummary(data.summary || null)
-          }}
-        />
+        currentUser?.role === 'admin' && tenantScope === ALL_TENANTS_SCOPE ? (
+          <BudgetControlsView
+            rules={budgetRules}
+            summary={budgetSummary}
+            loading={budgetLoading}
+            error={budgetError}
+            agents={agentList.map(agent => agent.agent)}
+            tasks={taskData?.tasks || []}
+            onRefresh={loadBudgetRules}
+            onSaved={(data) => {
+              setBudgetRules(Array.isArray(data.rules) ? data.rules : [])
+              setBudgetSummary(data.summary || null)
+            }}
+          />
+        ) : (
+          <TenantBudgetControlsView
+            snapshot={selectedTenantSnapshot}
+            tenantName={selectedTenant?.display_name || tenantScope}
+            loading={tenantBudgetLoading}
+            error={tenantBudgetError}
+            onRefresh={loadTenantBudgets}
+            onSaved={handleTenantSnapshotSaved}
+          />
+        )
+      )}
+    </div>
+  )
+}
+
+function TenantScopedUnavailableView({ tenantName, viewLabel }: { tenantName: string; viewLabel: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-card/70 p-6 text-sm text-muted-foreground">
+      <h2 className="text-lg font-semibold text-foreground">{tenantName} · {viewLabel}</h2>
+      <p className="mt-2">
+        当前 tenant 隔离视图只开放 Overview、Agents 和 预算配置，避免把其他 tenant 的 session / task 成本一起带出来。
+      </p>
+    </div>
+  )
+}
+
+function GlobalTenantCardsSection({
+  tenants,
+  snapshots,
+  loading,
+  error,
+  onRefresh,
+}: {
+  tenants: Array<{ slug: string; display_name: string; status: string }>
+  snapshots: Record<string, TenantBudgetSnapshot>
+  loading: boolean
+  error: string | null
+  onRefresh: () => Promise<void>
+}) {
+  if (loading && tenants.length === 0) {
+    return <Loader variant="panel" label="Loading tenant budget snapshots" />
+  }
+
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Tenant 预算摘要</h2>
+          <p className="text-sm text-muted-foreground mt-1">全局视图保留，同时汇总每个 tenant 的成本、token 和预算状态。</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => onRefresh().catch(() => {})}>刷新摘要</Button>
+      </div>
+
+      {error && (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
+      )}
+
+      <div className="grid gap-4 xl:grid-cols-3 md:grid-cols-2">
+        {tenants.map((tenant) => {
+          const snapshot = snapshots[tenant.slug]
+          return (
+            <div key={tenant.slug} className="rounded-lg border border-border bg-card/70 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">{tenant.display_name}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">{tenant.slug}</p>
+                </div>
+                <span className={`rounded-full px-2 py-1 text-xs ${snapshot ? alertTone(snapshot.alert.status) : 'bg-secondary text-muted-foreground'}`}>
+                  {snapshot ? snapshot.alert.label : 'loading'}
+                </span>
+              </div>
+
+              {!snapshot ? (
+                <div className="mt-4 text-sm text-muted-foreground">{loading ? '加载中…' : '暂无预算数据'}</div>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-xs text-muted-foreground">成本</div>
+                      <div className="text-lg font-semibold text-foreground">{formatCost(snapshot.usage.totalCostUsd)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Tokens</div>
+                      <div className="text-lg font-semibold text-foreground">{formatNumber(snapshot.usage.totalTokens)}</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>预算进度</span>
+                      <span>{formatBudgetPercent(snapshot.usage.percentUsed)}</span>
+                    </div>
+                    <div className="h-2.5 rounded-full bg-secondary">
+                      <div className={`h-2.5 rounded-full ${alertBarTone(snapshot.alert.status)}`} style={{ width: `${Math.min(snapshot.usage.percentUsed, 100)}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{snapshot.budget.monthlyBudgetUsd > 0 ? formatCost(snapshot.budget.monthlyBudgetUsd) : '未设置'}</span>
+                      <span>{snapshot.agents.length} agents</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function SelectedTenantOverviewView({
+  snapshot,
+  tenantName,
+  loading,
+  error,
+  onRefresh,
+}: {
+  snapshot: TenantBudgetSnapshot | null
+  tenantName: string
+  loading: boolean
+  error: string | null
+  onRefresh: () => Promise<void>
+}) {
+  if (loading && !snapshot) {
+    return <Loader variant="panel" label={`Loading ${tenantName} budget`} />
+  }
+
+  if (!snapshot) {
+    return (
+      <div className="rounded-lg border border-border bg-card/70 p-6 text-sm text-muted-foreground">
+        {error || '当前 tenant 暂无预算数据。'}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">{tenantName} 预算总览</h2>
+          <p className="mt-1 text-sm text-muted-foreground">显示该 tenant 的成本、token 量、预算进度和告警状态。</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => onRefresh().catch(() => {})}>刷新</Button>
+      </div>
+
+      {error && (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="bg-card border border-border rounded-lg p-5">
+          <div className="text-3xl font-bold text-foreground">{formatCost(snapshot.usage.totalCostUsd)}</div>
+          <div className="text-sm text-muted-foreground">本月已用</div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-5">
+          <div className="text-3xl font-bold text-foreground">{formatNumber(snapshot.usage.totalTokens)}</div>
+          <div className="text-sm text-muted-foreground">总 Tokens</div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-5">
+          <div className="text-3xl font-bold text-foreground">{snapshot.budget.monthlyBudgetUsd > 0 ? formatCost(snapshot.budget.monthlyBudgetUsd) : '-'}</div>
+          <div className="text-sm text-muted-foreground">月预算</div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-5">
+          <div className="text-3xl font-bold text-foreground">{snapshot.alert.label}</div>
+          <div className="text-sm text-muted-foreground">当前告警</div>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border bg-card/70 p-6">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h3 className="text-lg font-semibold text-foreground">Tenant 预算进度</h3>
+          <span className={`rounded-full px-2 py-1 text-xs ${alertTone(snapshot.alert.status)}`}>{formatBudgetPercent(snapshot.usage.percentUsed)}</span>
+        </div>
+        <div className="h-3 rounded-full bg-secondary">
+          <div className={`h-3 rounded-full ${alertBarTone(snapshot.alert.status)}`} style={{ width: `${Math.min(snapshot.usage.percentUsed, 100)}%` }} />
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-3 text-sm text-muted-foreground">
+          <div>剩余：<span className="font-medium text-foreground">{snapshot.usage.remainingUsd == null ? '未设置' : formatCost(snapshot.usage.remainingUsd)}</span></div>
+          <div>日均速率：<span className="font-medium text-foreground">{formatCost(snapshot.usage.burnRateDailyUsd)}</span></div>
+          <div>请求数：<span className="font-medium text-foreground">{formatNumber(snapshot.usage.requestCount)}</span></div>
+        </div>
+      </div>
+
+      <TenantAgentBudgetView snapshot={snapshot} tenantName={tenantName} loading={false} error={null} onRefresh={onRefresh} />
+    </div>
+  )
+}
+
+function TenantAgentBudgetView({
+  snapshot,
+  tenantName,
+  loading,
+  error,
+  onRefresh,
+}: {
+  snapshot: TenantBudgetSnapshot | null
+  tenantName: string
+  loading: boolean
+  error: string | null
+  onRefresh: () => Promise<void>
+}) {
+  if (loading && !snapshot) {
+    return <Loader variant="panel" label={`Loading ${tenantName} agents`} />
+  }
+
+  if (!snapshot) {
+    return (
+      <div className="rounded-lg border border-border bg-card/70 p-6 text-sm text-muted-foreground">
+        {error || '暂无 Agent 预算数据。'}
+      </div>
+    )
+  }
+
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">{tenantName} Per-Agent 预算</h2>
+          <p className="mt-1 text-sm text-muted-foreground">每个 Agent 独立展示月预算、进度条、剩余和日均消耗。</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => onRefresh().catch(() => {})}>刷新</Button>
+      </div>
+
+      {error && (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
+      )}
+
+      {snapshot.agents.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">该 tenant 还没有 agent 成本记录。</div>
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {snapshot.agents.map((agent) => (
+            <div key={agent.agent} className="rounded-lg border border-border bg-card/70 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">{agent.agent}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">{formatCost(agent.usedUsd)} 已用 · {formatBudgetPercent(agent.percentUsed)}</p>
+                </div>
+                <span className={`rounded-full px-2 py-1 text-xs ${alertTone(agent.alert.status)}`}>{agent.alert.label}</span>
+              </div>
+
+              <div className="mt-4 h-2.5 rounded-full bg-secondary">
+                <div className={`h-2.5 rounded-full ${alertBarTone(agent.alert.status)}`} style={{ width: `${Math.min(agent.percentUsed, 100)}%` }} />
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-4 text-sm">
+                <div>
+                  <div className="text-xs text-muted-foreground">预算</div>
+                  <div className="font-medium text-foreground">{agent.budget.monthlyBudgetUsd > 0 ? formatCost(agent.budget.monthlyBudgetUsd) : '未设置'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">剩余</div>
+                  <div className="font-medium text-foreground">{agent.remainingUsd == null ? '未设置' : formatCost(agent.remainingUsd)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">日均</div>
+                  <div className="font-medium text-foreground">{formatCost(agent.burnRateDailyUsd)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Tokens</div>
+                  <div className="font-medium text-foreground">{formatNumber(agent.totalTokens)}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function TenantBudgetControlsView({
+  snapshot,
+  tenantName,
+  loading,
+  error,
+  onRefresh,
+  onSaved,
+}: {
+  snapshot: TenantBudgetSnapshot | null
+  tenantName: string
+  loading: boolean
+  error: string | null
+  onRefresh: () => Promise<void>
+  onSaved: (snapshot: TenantBudgetSnapshot) => void
+}) {
+  if (loading && !snapshot) {
+    return <Loader variant="panel" label={`Loading ${tenantName} controls`} />
+  }
+
+  if (!snapshot) {
+    return (
+      <div className="rounded-lg border border-border bg-card/70 p-6 text-sm text-muted-foreground">
+        {error || '暂无 tenant 预算配置。'}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">{tenantName} 预算配置</h2>
+          <p className="mt-1 text-sm text-muted-foreground">保存时会通过 /api/budget 同步 tenant 级预算到 harness，并回写 per-agent 预算配置。</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => onRefresh().catch(() => {})}>刷新</Button>
+      </div>
+
+      {error && (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
+      )}
+
+      {snapshot.agents.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">该 tenant 还没有可配置的 agent 成本记录。</div>
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {snapshot.agents.map((agent) => (
+            <AgentBudgetConfig
+              key={agent.agent}
+              tenantId={snapshot.tenantId}
+              agentName={agent.agent}
+              snapshot={snapshot}
+              onSaved={onSaved}
+            />
+          ))}
+        </div>
       )}
     </div>
   )
