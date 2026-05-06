@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
+import { getDatabase } from '@/lib/db'
 import {
   normalizeConsoleTenantId,
   normalizeProviderName,
@@ -14,8 +15,27 @@ type ProviderRouteContext = {
   params: { name: string } | Promise<{ name: string }>
 }
 
+function resolveSessionTenantSlug(sessionTenantId: number): string | null {
+  try {
+    const row = getDatabase()
+      .prepare('SELECT slug FROM tenants WHERE id = ? LIMIT 1')
+      .get(sessionTenantId) as { slug?: unknown } | undefined
+    return normalizeConsoleTenantId(row?.slug, 'tenantId')
+  } catch {
+    return null
+  }
+}
+
+function canAccessRequestedTenant(role: string, sessionTenantId: number, requestedTenantId: string): boolean {
+  if (role !== 'customer') return true
+  const allowedTenantIds = new Set<string>([normalizeConsoleTenantId(String(sessionTenantId), 'tenantId')])
+  const sessionTenantSlug = resolveSessionTenantSlug(sessionTenantId)
+  if (sessionTenantSlug) allowedTenantIds.add(sessionTenantSlug)
+  return allowedTenantIds.has(requestedTenantId)
+}
+
 export async function DELETE(request: NextRequest, context: ProviderRouteContext) {
-  const auth = requireRole(request, 'admin')
+  const auth = requireRole(request, 'customer')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   try {
@@ -25,6 +45,9 @@ export async function DELETE(request: NextRequest, context: ProviderRouteContext
     const tenantId = normalizeConsoleTenantId(
       typeof body?.tenantId === 'string' ? body.tenantId : request.nextUrl.searchParams.get('tenantId'),
     )
+    if (!canAccessRequestedTenant(auth.user.role, auth.user.tenant_id, tenantId)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
     const search = new URLSearchParams({ tenantId })
     return await proxyHarnessConsoleJson({
       method: 'DELETE',
@@ -32,6 +55,6 @@ export async function DELETE(request: NextRequest, context: ProviderRouteContext
       search,
     })
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 })
+    return NextResponse.json({ error: 'Failed to remove provider' }, { status: 400 })
   }
 }
