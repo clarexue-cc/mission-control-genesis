@@ -7,7 +7,7 @@ import { Loader } from '@/components/ui/loader'
 import { useMissionControl } from '@/store'
 import { createClientLogger } from '@/lib/client-logger'
 import type { CostBudgetRule, CostBudgetSummary } from '@/lib/cost-budget-controls'
-import { AgentBudgetConfig, type TenantBudgetSnapshot } from '@/components/panels/agent-budget-config'
+import { type TenantBudgetSnapshot } from '@/components/panels/agent-budget-config'
 import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, BarChart, Bar,
@@ -745,7 +745,6 @@ function TenantBudgetControlsView({
   loading,
   error,
   onRefresh,
-  onSaved,
 }: {
   snapshot: TenantBudgetSnapshot | null
   tenantName: string
@@ -770,8 +769,8 @@ function TenantBudgetControlsView({
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-foreground">{tenantName} 预算配置</h2>
-          <p className="mt-1 text-sm text-muted-foreground">保存时会通过 /api/budget 同步 tenant 级预算到 harness，并回写 per-agent 预算配置。</p>
+          <h2 className="text-xl font-semibold text-foreground">{tenantName} 预算概览</h2>
+          <p className="mt-1 text-sm text-muted-foreground">此页面仅供查看。如需修改 Agent 预算，请前往 Agent 设定页的 Budget 页签。</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => onRefresh().catch(() => {})}>刷新</Button>
       </div>
@@ -781,17 +780,42 @@ function TenantBudgetControlsView({
       )}
 
       {snapshot.agents.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">该 tenant 还没有可配置的 agent 成本记录。</div>
+        <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">该 tenant 还没有 agent 成本记录。</div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
           {snapshot.agents.map((agent) => (
-            <AgentBudgetConfig
-              key={agent.agent}
-              tenantId={snapshot.tenantId}
-              agentName={agent.agent}
-              snapshot={snapshot}
-              onSaved={onSaved}
-            />
+            <div key={agent.agent} className="rounded-lg border border-border bg-card/70 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">{agent.agent}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">{formatCost(agent.usedUsd)} 已用 · {formatBudgetPercent(agent.percentUsed)}</p>
+                </div>
+                <span className={`rounded-full px-2 py-1 text-xs ${alertTone(agent.alert.status)}`}>{agent.alert.label}</span>
+              </div>
+
+              <div className="mt-4 h-2.5 rounded-full bg-secondary">
+                <div className={`h-2.5 rounded-full ${alertBarTone(agent.alert.status)}`} style={{ width: `${Math.min(agent.percentUsed, 100)}%` }} />
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-4 text-sm">
+                <div>
+                  <div className="text-xs text-muted-foreground">预算</div>
+                  <div className="font-medium text-foreground">{agent.budget.monthlyBudgetUsd > 0 ? formatCost(agent.budget.monthlyBudgetUsd) : '未设置'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">剩余</div>
+                  <div className="font-medium text-foreground">{agent.remainingUsd == null ? '未设置' : formatCost(agent.remainingUsd)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">日均</div>
+                  <div className="font-medium text-foreground">{formatCost(agent.burnRateDailyUsd)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">动作</div>
+                  <div className="font-medium text-foreground">{agent.budget.action}</div>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       )}
