@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { buildLangfuseTraceUrl } from '@/lib/langfuse-links'
 
 interface AlertRule {
   id: number
@@ -43,6 +44,7 @@ interface AlertEvent {
   agent?: string | null
   acknowledged: boolean
   jump_href: string
+  langfuse_trace_id?: string | null
 }
 
 const ENTITY_FIELDS: Record<string, string[]> = {
@@ -205,42 +207,57 @@ export function AlertRulesPanel() {
           </div>
         ) : (
           <div className="space-y-2">
-            {alertEvents.slice(0, 8).map(alert => (
-              <div key={alert.id} className="rounded-md border border-border bg-background/70 p-3">
-                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded border px-1.5 py-0.5 text-2xs uppercase ${ALERT_SEVERITY_CLASS[alert.severity]}`}>
-                        {alert.severity}
-                      </span>
-                      <span className="rounded border border-border bg-secondary/50 px-1.5 py-0.5 text-2xs text-muted-foreground">
-                        {alert.source_label}
-                      </span>
-                      <span className={`rounded border px-1.5 py-0.5 text-2xs ${
-                        alert.acknowledged
-                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-                          : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                      }`}>
-                        {alert.acknowledged ? '已确认' : '待确认'}
-                      </span>
+            {alertEvents.slice(0, 8).map(alert => {
+              const langfuseTraceHref = buildLangfuseTraceUrl(alert.langfuse_trace_id)
+              return (
+                <div key={alert.id} className="rounded-md border border-border bg-background/70 p-3">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded border px-1.5 py-0.5 text-2xs uppercase ${ALERT_SEVERITY_CLASS[alert.severity]}`}>
+                          {alert.severity}
+                        </span>
+                        <span className="rounded border border-border bg-secondary/50 px-1.5 py-0.5 text-2xs text-muted-foreground">
+                          {alert.source_label}
+                        </span>
+                        <span className={`rounded border px-1.5 py-0.5 text-2xs ${
+                          alert.acknowledged
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                            : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                        }`}>
+                          {alert.acknowledged ? '已确认' : '待确认'}
+                        </span>
+                      </div>
+                      <h4 className="mt-2 truncate text-sm font-semibold text-foreground">{alert.title}</h4>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{alert.message}</p>
+                      <div className="mt-2 flex flex-wrap gap-2 text-2xs text-muted-foreground">
+                        {alert.tenant && <span>tenant={alert.tenant}</span>}
+                        {alert.agent && <span>agent={alert.agent}</span>}
+                        <span>{new Date(alert.timestamp).toLocaleString()}</span>
+                      </div>
                     </div>
-                    <h4 className="mt-2 truncate text-sm font-semibold text-foreground">{alert.title}</h4>
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{alert.message}</p>
-                    <div className="mt-2 flex flex-wrap gap-2 text-2xs text-muted-foreground">
-                      {alert.tenant && <span>tenant={alert.tenant}</span>}
-                      {alert.agent && <span>agent={alert.agent}</span>}
-                      <span>{new Date(alert.timestamp).toLocaleString()}</span>
+                    <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
+                      {langfuseTraceHref && (
+                        <a
+                          href={langfuseTraceHref}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-md border border-primary/35 px-2 py-1 text-xs text-primary transition hover:border-primary/70 hover:text-primary"
+                        >
+                          查看调用链路
+                        </a>
+                      )}
+                      <a
+                        href={alert.jump_href}
+                        className="rounded-md border border-border px-2 py-1 text-xs text-foreground transition hover:border-primary/50 hover:text-primary"
+                      >
+                        跳转
+                      </a>
                     </div>
                   </div>
-                  <a
-                    href={alert.jump_href}
-                    className="shrink-0 rounded-md border border-border px-2 py-1 text-xs text-foreground transition hover:border-primary/50 hover:text-primary"
-                  >
-                    跳转
-                  </a>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </section>

@@ -8,7 +8,39 @@ import { SignalPill, getLocalOsStatus, getProviderHealth, getMcHealth } from './
 import { OnboardingChecklistWidget } from './widgets/onboarding-checklist-widget'
 import { EmptyStateLaunchpad } from './empty-state-launchpad'
 import { WidgetGrid } from './widget-grid'
-import type { DbStats, ClaudeStats, LogLike, DashboardData } from './widget-primitives'
+import type { DbStats, ClaudeStats, LogLike, DashboardData, LlmTodaySummary } from './widget-primitives'
+
+const EMPTY_LLM_TODAY_SUMMARY: LlmTodaySummary = {
+  requestCount: 0,
+  avgDurationSeconds: 0,
+}
+
+function numberFrom(value: unknown): number | null {
+  const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function summarizeTodayLlmUsage(payload: unknown): LlmTodaySummary {
+  const data = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {}
+  const usage = Array.isArray(data.usage) ? data.usage : []
+  const requestCount = numberFrom(data.total) ?? numberFrom(data.recordCount) ?? usage.length
+  const durationMs = usage
+    .map(record => {
+      if (!record || typeof record !== 'object') return null
+      const row = record as Record<string, unknown>
+      return numberFrom(row.duration_ms ?? row.durationMs ?? row.duration)
+    })
+    .filter((value): value is number => value !== null && value > 0)
+
+  const avgDurationSeconds = durationMs.length
+    ? durationMs.reduce((sum, value) => sum + value, 0) / durationMs.length / 1000
+    : 0
+
+  return {
+    requestCount,
+    avgDurationSeconds,
+  }
+}
 
 export function Dashboard() {
   const {
@@ -44,6 +76,7 @@ export function Dashboard() {
   const [claudeStats, setClaudeStats] = useState<ClaudeStats | null>(null)
   const [githubStats, setGithubStats] = useState<any>(null)
   const [hermesCronJobCount, setHermesCronJobCount] = useState(0)
+  const [llmTodaySummary, setLlmTodaySummary] = useState<LlmTodaySummary>(EMPTY_LLM_TODAY_SUMMARY)
   const [loading, setLoading] = useState({
     system: true,
     sessions: true,
@@ -77,6 +110,16 @@ export function Dashboard() {
         })
         .catch(() => {})
         .finally(() => setLoading(prev => ({ ...prev, sessions: false })))
+    )
+
+    requests.push(
+      fetch('/api/tokens?action=list&timeframe=day')
+        .then(async (res) => {
+          if (!res.ok) return
+          const data = await res.json()
+          setLlmTodaySummary(summarizeTodayLlmUsage(data))
+        })
+        .catch(() => {})
     )
 
     if (isLocal) {
@@ -224,6 +267,7 @@ export function Dashboard() {
     tasks,
     connection,
     subscription,
+    llmTodaySummary,
     navigateToPanel,
     openSession,
     memPct,

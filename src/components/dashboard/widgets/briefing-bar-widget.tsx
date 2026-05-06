@@ -1,6 +1,7 @@
 'use client'
 
 import { formatTokensShort, type DashboardData } from '../widget-primitives'
+import { buildLangfuseTracesUrl } from '@/lib/langfuse-links'
 
 export function BriefingBarWidget({ data }: { data: DashboardData }) {
   const {
@@ -21,6 +22,7 @@ export function BriefingBarWidget({ data }: { data: DashboardData }) {
     navigateToPanel,
     dbStats,
     agents,
+    llmTodaySummary,
   } = data
 
   const totalTokens = (claudeStats?.total_input_tokens ?? 0) + (claudeStats?.total_output_tokens ?? 0)
@@ -29,6 +31,7 @@ export function BriefingBarWidget({ data }: { data: DashboardData }) {
     : `$${(claudeStats?.total_estimated_cost ?? 0).toFixed(2)}`
 
   const agentTotal = dbStats?.agents.total ?? agents.length
+  const tracesHref = buildLangfuseTracesUrl()
 
   return (
     <div className="rounded-xl border border-border bg-card/80 backdrop-blur-sm px-4 py-3">
@@ -101,6 +104,25 @@ export function BriefingBarWidget({ data }: { data: DashboardData }) {
               />
             </span>
           </span>
+        )}
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/60 pt-2 text-xs text-muted-foreground">
+        <span>今日 LLM 调用 {llmTodaySummary.requestCount} 次</span>
+        <span className="text-muted-foreground/40">|</span>
+        <span>平均耗时 {llmTodaySummary.avgDurationSeconds.toFixed(1)}s</span>
+        <span className="text-muted-foreground/40">|</span>
+        {tracesHref ? (
+          <a
+            href={tracesHref}
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary transition hover:text-primary/80"
+          >
+            查看全部 →
+          </a>
+        ) : (
+          <span>查看全部 →</span>
         )}
       </div>
     </div>

@@ -23,6 +23,11 @@ export interface ClaudeStats {
   unique_projects: number
 }
 
+export interface LlmTodaySummary {
+  requestCount: number
+  avgDurationSeconds: number
+}
+
 export type LogLike = {
   id: string
   timestamp: number
@@ -44,6 +49,7 @@ export interface DashboardData {
   tasks: any[]
   connection: { isConnected: boolean; url: string; reconnectAttempts: number; latency?: number; sseConnected?: boolean }
   subscription: { type: string; provider?: string; rateLimitTier?: string } | null
+  llmTodaySummary: LlmTodaySummary
   navigateToPanel: (tab: string) => void
   openSession: (session: any) => void
   // Pre-computed values
