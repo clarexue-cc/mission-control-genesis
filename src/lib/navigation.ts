@@ -10,6 +10,25 @@ export function panelHref(panel: string): string {
   return panel === 'overview' ? '/' : `/${panel}`
 }
 
+export function buildPanelNavigationHref(
+  panel: string,
+  options?: { role?: string | null; tenantScoped?: boolean; search?: string; activeTenantSlug?: string | null }
+): string {
+  const baseHref = panelHref(panel)
+  if (!options?.tenantScoped && !TENANT_CONTEXT_PANELS.has(panel)) {
+    return baseHref
+  }
+
+  const params = new URLSearchParams(options?.search || '')
+  const tenant = resolveCustomerTenantId(params, options?.activeTenantSlug)
+  const role = options?.role ?? params.get('role')
+  const nextParams = new URLSearchParams()
+  if (tenant) nextParams.set('tenant', tenant)
+  if (role) nextParams.set('role', role)
+  const query = nextParams.toString()
+  return query ? `${baseHref}?${query}` : baseHref
+}
+
 const TENANT_CONTEXT_PANELS = new Set([
   'onboarding/customer',
   'onboarding/customer/analyze',
@@ -31,6 +50,7 @@ const TENANT_CONTEXT_PANELS = new Set([
   'exec-approvals',
   'activity',
   'channels',
+  'cron',
   'tasks',
   'delivery',
 ])
@@ -65,18 +85,11 @@ export function useNavigateToPanel() {
   }, [pathname, router])
 
   return useCallback((panel: string, options?: { role?: string; tenantScoped?: boolean }) => {
-    const baseHref = panelHref(panel)
-    let href = baseHref
-    if (options?.tenantScoped || TENANT_CONTEXT_PANELS.has(panel)) {
-      const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
-      const tenant = resolveCustomerTenantId(params, activeTenant?.slug)
-      const role = options?.role ?? params.get('role')
-      const nextParams = new URLSearchParams()
-      if (tenant) nextParams.set('tenant', tenant)
-      if (role) nextParams.set('role', role)
-      const query = nextParams.toString()
-      if (query) href = `${baseHref}?${query}`
-    }
+    const href = buildPanelNavigationHref(panel, {
+      ...options,
+      search: typeof window !== 'undefined' ? window.location.search : '',
+      activeTenantSlug: activeTenant?.slug,
+    })
     if (href === pathname) return
     safePrefetch(router, href)
     startNavigationTiming(pathname, href)

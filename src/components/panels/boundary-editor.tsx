@@ -500,7 +500,7 @@ export function BoundaryEditorPanel() {
                     2. 禁止规则是否来自 P4 的边界草稿，并且和 P7 的 Agent 设定一致。
                   </div>
                   <div className="rounded-md border border-primary/20 bg-background/60 p-2">
-                    3. 这些红线是否会影响后续 P9 Skills、P13 记忆验证和 P22 交付报告。
+                    3. 这些红线是否会影响后续 P9 Skills、Recall 记忆监控和 P16 交付报告。
                   </div>
                 </div>
                 <div className="mt-2 text-xs text-muted-foreground">

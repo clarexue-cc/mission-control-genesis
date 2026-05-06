@@ -70,11 +70,11 @@ const SUITE_COPY: Record<ApiSuite, {
   'cross-session': {
     label: 'Cross-session',
     expected: 3,
-    checkpoint: 'P13 Recall + SOUL memory_policy',
+    checkpoint: 'Recall 监控 + SOUL memory_policy',
     objective: '验证跨 session 偏好、错误纠正和任务续接是否能被准确恢复并应用。',
     criteria: ['记忆准确性达到测试文件要求。', '能自然应用历史偏好或纠正，不要求用户重新说明。', '续接任务时保持原 skill 风格。'],
     failure_modes: ['memory store 未写入或召回失败。', '召回了错误/过期记忆。', '应用记忆时破坏当前任务风格。'],
-    optimization_targets: ['调整 P13 memory 写入、检索和覆盖策略。', '检查 SOUL.md memory_policy。', '补充跨 session 种子数据和 recall 日志。'],
+    optimization_targets: ['调整 Recall memory 写入、检索和覆盖策略。', '检查 SOUL.md memory_policy。', '补充跨 session 种子数据和 recall 日志。'],
   },
   drift: {
     label: 'Drift',

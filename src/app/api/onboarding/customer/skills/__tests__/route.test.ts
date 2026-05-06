@@ -128,9 +128,9 @@ ${JSON.stringify(p4Draft, null, 2)}
     const uatPath = path.join(harnessRoot, 'phase0/tenants', tenantId, 'uat-tasks.jsonl')
     await mkdir(path.dirname(uatPath), { recursive: true })
     await appendFile(uatPath, `${JSON.stringify({
-      id: 'uat_p21_skill_review',
+      id: 'uat_p15_skill_review',
       tenant_id: tenantId,
-      title: 'P21 验证 Media Intel Skills',
+      title: 'P15 验证 Media Intel Skills',
       description: '客户正在验证 P9 注入后的 Skill 行为。',
       status: 'open',
       created_by: 'clare-admin',

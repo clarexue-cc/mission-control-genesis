@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useMissionControl } from '@/store'
-import { useNavigateToPanel, usePrefetchPanel } from '@/lib/navigation'
+import { buildPanelNavigationHref, useNavigateToPanel, usePrefetchPanel } from '@/lib/navigation'
 import { Button } from '@/components/ui/button'
 import { APP_VERSION } from '@/lib/version'
 import { getPluginNavItems } from '@/lib/plugins'
@@ -28,6 +28,7 @@ interface NavItem {
   essential?: boolean // Visible in Essential interface mode (default false)
   tenantScoped?: boolean
   role?: EffectiveRole
+  customerOnly?: boolean
   children?: NavItem[] // Nested sub-items (expandable parent)
 }
 
@@ -77,6 +78,7 @@ const navGroups: NavGroup[] = [
       { id: 'overview', label: 'Overview', icon: <OverviewIcon />, priority: true, essential: true },
       { id: 'agents', label: 'Agents', icon: <AgentsIcon />, priority: true, essential: true },
       { id: 'tasks', label: 'Tasks', icon: <TasksIcon />, priority: true, essential: true },
+      { id: 'delivery', label: 'Delivery', icon: <DeliveryIcon />, priority: false, essential: true, customerOnly: true },
       { id: 'chat', label: 'Chat', icon: <ChatIcon />, priority: false, essential: true },
       { id: 'channels', label: 'Channels', icon: <ChannelsIcon />, priority: false },
       { id: 'skills', label: 'Skills Plaza', icon: <SkillsIcon />, priority: false, essential: true },
@@ -100,16 +102,14 @@ const navGroups: NavGroup[] = [
     id: 'observe',
     label: 'OBSERVE',
     items: [
-      { id: 'activity', label: 'Activity', icon: <ActivityIcon />, priority: true, essential: true },
-      { id: 'logs', label: 'Logs', icon: <LogsIcon />, priority: false, essential: true },
-      { id: 'tests', label: 'Tests', icon: <TestsIcon />, priority: false },
-      { id: 'boundary', label: 'Boundary', icon: <BoundaryIcon />, priority: false },
-      { id: 'delivery', label: 'Delivery', icon: <DeliveryIcon />, priority: false },
       { id: 'vault', label: 'Vault', icon: <VaultIcon />, priority: false },
+      { id: 'logs', label: 'Logs', icon: <LogsIcon />, priority: false, essential: true },
       { id: 'memory', label: 'Memory', icon: <MemoryIcon />, priority: false },
+      { id: 'alerts', label: 'Alerts', icon: <AlertIcon />, priority: false },
       { id: 'cost-tracker', label: 'Cost Tracker', icon: <TokensIcon />, priority: false },
-      { id: 'nodes', label: 'Nodes', icon: <NodesIcon />, priority: false },
       { id: 'exec-approvals', label: 'Approvals', icon: <ApprovalsIcon />, priority: false },
+      { id: 'activity', label: 'Activity', icon: <ActivityIcon />, priority: true, essential: true },
+      { id: 'nodes', label: 'Nodes', icon: <NodesIcon />, priority: false },
       { id: 'office', label: 'Office', icon: <OfficeIcon />, priority: false },
     ],
   },
@@ -119,7 +119,6 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'cron', label: 'Cron', icon: <CronIcon />, priority: false },
       { id: 'webhooks', label: 'Webhooks', icon: <WebhookIcon />, priority: false },
-      { id: 'alerts', label: 'Alerts', icon: <AlertIcon />, priority: false },
       { id: 'github', label: 'GitHub', icon: <GitHubIcon />, priority: false },
     ],
   },
@@ -129,7 +128,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'monitor', label: 'Monitor', icon: <MonitorIcon />, priority: false },
       { id: 'harness', label: 'Harness', icon: <TestsIcon />, priority: false },
-      { id: 'hermes', label: 'Hermes', icon: <HermesIcon />, priority: false },
+      { id: 'hermes-setup', label: 'Hermes', icon: <HermesIcon />, priority: false },
       { id: 'security', label: 'Security', icon: <SecurityIcon />, priority: false },
       { id: 'users', label: 'Users', icon: <UsersIcon />, priority: false },
       { id: 'audit', label: 'Audit', icon: <AuditIcon />, priority: false },
@@ -188,7 +187,7 @@ const gatewayOnlyPanels = new Set([
   'gateways', 'gateway-config', 'channels', 'nodes', 'exec-approvals',
   ...getPluginNavItems().filter(pi => pi.gatewayOnly).map(pi => pi.id),
 ])
-const adminOnlyPanels = new Set<string>(['tests', 'boundary', 'delivery', 'vault', 'harness', 'hermes'])
+const adminOnlyPanels = new Set<string>(['tests', 'boundary', 'delivery', 'vault', 'harness', 'hermes', 'hermes-setup'])
 
 export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: EffectiveRole }) {
   const { activeTab, connection, dashboardMode, currentUser, activeTenant, tenants, osUsers, setActiveTenant, fetchTenants, fetchOsUsers, activeProject, projects, setActiveProject, fetchProjects, sidebarExpanded, collapsedGroups, toggleSidebar, toggleGroup, defaultOrgName, interfaceMode, setInterfaceMode } = useMissionControl()
@@ -251,6 +250,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
           return { ...i, children: filteredChildren }
         }
         const panel = i.targetPanel ?? i.id
+        if (!isCustomer && i.customerOnly) return null
         if (isCustomer && !canAccessPanel(effectiveRole, panel)) return null
         if (isCustomer) return i
         if (isLocal && gatewayOnlyPanels.has(panel)) return null
@@ -282,6 +282,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
   })
 
   const filteredGroups = mergedGroups
+    .filter(g => !(isCustomer && g.id === 'customer-setup'))
     .map(g => ({ ...g, items: filterItems(g.items) }))
     .filter(g => g.items.length > 0)
   function flattenItems(items: NavItem[]): NavItem[] {
@@ -292,7 +293,20 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
     return item.targetPanel ?? item.id
   }
   function navigateNavItem(item: NavItem) {
-    navigateToPanel(navPanel(item), { role: item.role, tenantScoped: item.tenantScoped })
+    const panel = navPanel(item)
+    const options = {
+      role: item.role ?? (isCustomer ? 'customer' : undefined),
+      tenantScoped: item.tenantScoped ?? isCustomer,
+    }
+    if (isCustomer && typeof window !== 'undefined') {
+      window.location.assign(buildPanelNavigationHref(panel, {
+        ...options,
+        search: window.location.search,
+        activeTenantSlug: activeTenant?.slug,
+      }))
+      return
+    }
+    navigateToPanel(panel, options)
   }
   function prefetchNavItem(item: NavItem) {
     prefetchPanel(navPanel(item))

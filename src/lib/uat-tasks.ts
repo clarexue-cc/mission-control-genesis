@@ -5,6 +5,8 @@ import { constants } from 'node:fs'
 import { access, appendFile, mkdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { resolveHarnessRoot } from '@/lib/harness-boundary'
+import { readCustomerAnalysisState } from '@/lib/customer-analysis'
+import { buildCustomerUatDraft } from '@/lib/customer-blueprint'
 import { resolveWithin } from '@/lib/paths'
 import { normalizeTenantId } from '@/lib/tenant-id'
 
@@ -131,6 +133,47 @@ export async function createUatTask(input: {
   return task
 }
 
+export async function materializeP4UatDraftTasks(input: {
+  tenant_id: unknown
+  created_by?: string
+  now?: Date
+}): Promise<UatTaskRecord[]> {
+  const { tenantId, filePath } = await tenantFilePath(input.tenant_id, UAT_TASKS_FILE)
+  const state = await readCustomerAnalysisState(tenantId)
+  if (state.analysisMatchesIntake === false || !state.draft) return []
+
+  const existing = await readJsonlFile<UatTaskRecord>(filePath)
+  const existingKeys = new Set(
+    existing
+      .filter(task => task.tenant_id === tenantId)
+      .map(task => `${task.title}\n${task.description}`),
+  )
+  const created: UatTaskRecord[] = []
+
+  for (const draftTask of buildCustomerUatDraft({ tenantId, draft: state.draft })) {
+    const title = cleanText(draftTask.title, 180)
+    if (!title) continue
+    const description = cleanText(draftTask.description, 4000)
+    const key = `${title}\n${description}`
+    if (existingKeys.has(key)) continue
+
+    const task: UatTaskRecord = {
+      id: `uat_${randomUUID()}`,
+      tenant_id: tenantId,
+      title,
+      description,
+      status: 'open',
+      created_by: input.created_by || 'p4-blueprint',
+      created_at: (input.now || new Date()).toISOString(),
+    }
+    await appendJsonlRecord(filePath, task)
+    existingKeys.add(key)
+    created.push(task)
+  }
+
+  return created
+}
+
 export async function listUatTasks(tenantIdInput: unknown): Promise<UatTaskRecord[]> {
   const { tenantId, filePath } = await tenantFilePath(tenantIdInput, UAT_TASKS_FILE)
   const tasks = await readJsonlFile<UatTaskRecord>(filePath)
@@ -149,6 +192,7 @@ export async function listUatSubmissions(tenantIdInput: unknown, taskId?: string
 
 export async function listCustomerUatTasks(tenantIdInput: unknown): Promise<UatCustomerTask[]> {
   const tenantId = normalizeTenantId(tenantIdInput)
+  await materializeP4UatDraftTasks({ tenant_id: tenantId })
   const [tasks, submissions] = await Promise.all([
     listUatTasks(tenantId),
     listUatSubmissions(tenantId),
