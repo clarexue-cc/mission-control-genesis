@@ -599,22 +599,119 @@ export function AgentSquadPanelPhase3() {
 }
 
 function readAgentPreference(agent: Agent, key: 'tone' | 'language' | 'response_length', fallback: string) {
-  const preferences = (agent.config as any)?.preferences
+  const preferences = agent.config && typeof agent.config === 'object' && !Array.isArray(agent.config)
+    ? (agent.config as { preferences?: Record<string, unknown> }).preferences
+    : undefined
   const value = preferences && typeof preferences === 'object' ? preferences[key] : null
   return typeof value === 'string' && value.trim() ? value : fallback
 }
 
-function CustomerAgentPreferences({ agent }: { agent: Agent }) {
-  const [preferences, setPreferences] = useState(() => ({
+type CustomerPreferences = {
+  tone: string
+  language: string
+  response_length: string
+}
+
+function buildCustomerPreferences(agent: Agent): CustomerPreferences {
+  return {
     tone: readAgentPreference(agent, 'tone', 'professional'),
     language: readAgentPreference(agent, 'language', 'zh-CN'),
     response_length: readAgentPreference(agent, 'response_length', 'balanced'),
-  }))
+  }
+}
+
+function normalizeCustomerPreferences(payload: unknown, fallback: CustomerPreferences): CustomerPreferences {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return fallback
+  }
+
+  const source = payload as Record<string, unknown>
+  return {
+    tone: source.tone === 'professional' || source.tone === 'warm' || source.tone === 'direct' ? source.tone : fallback.tone,
+    language: source.language === 'zh-CN' || source.language === 'en-US' || source.language === 'bilingual' ? source.language : fallback.language,
+    response_length: source.response_length === 'brief' || source.response_length === 'balanced' || source.response_length === 'detailed'
+      ? source.response_length
+      : fallback.response_length,
+  }
+}
+
+function CustomerAgentPreferences({ agent }: { agent: Agent }) {
+  const [preferences, setPreferences] = useState<CustomerPreferences>(() => buildCustomerPreferences(agent))
   const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const fallback = buildCustomerPreferences(agent)
+
+    async function loadPreferences() {
+      setPreferences(fallback)
+      setSaved(false)
+      setError(null)
+      setLoading(true)
+
+      try {
+        const response = await fetch(`/api/harness/agents/${encodeURIComponent(agent.name)}/preferences`, {
+          cache: 'no-store',
+        })
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          throw new Error(data?.error || 'Failed to load preferences')
+        }
+        if (!cancelled) {
+          setPreferences(normalizeCustomerPreferences(data, fallback))
+        }
+      } catch (err) {
+        if (cancelled) return
+        setPreferences(fallback)
+        setError(err instanceof Error ? err.message : 'Failed to load preferences')
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void loadPreferences()
+
+    return () => {
+      cancelled = true
+    }
+  }, [agent.name])
 
   function updatePreference<K extends keyof typeof preferences>(key: K, value: typeof preferences[K]) {
     setSaved(false)
+    setError(null)
     setPreferences(prev => ({ ...prev, [key]: value }))
+  }
+
+  async function savePreferences() {
+    if (loading || saving) return
+
+    setSaving(true)
+    setSaved(false)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/harness/agents/${encodeURIComponent(agent.name)}/preferences`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(preferences),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to save preferences')
+      }
+
+      setPreferences(normalizeCustomerPreferences(data?.preferences, preferences))
+      setSaved(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save preferences')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -630,8 +727,9 @@ function CustomerAgentPreferences({ agent }: { agent: Agent }) {
           <select
             aria-label="Tone"
             value={preferences.tone}
+            disabled={loading || saving}
             onChange={event => updatePreference('tone', event.target.value)}
-            className="h-8 rounded border border-border bg-card px-2 text-xs text-foreground"
+            className="h-8 rounded border border-border bg-card px-2 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-60"
           >
             <option value="professional">Professional</option>
             <option value="warm">Warm</option>
@@ -643,8 +741,9 @@ function CustomerAgentPreferences({ agent }: { agent: Agent }) {
           <select
             aria-label="Language"
             value={preferences.language}
+            disabled={loading || saving}
             onChange={event => updatePreference('language', event.target.value)}
-            className="h-8 rounded border border-border bg-card px-2 text-xs text-foreground"
+            className="h-8 rounded border border-border bg-card px-2 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-60"
           >
             <option value="zh-CN">Chinese</option>
             <option value="en-US">English</option>
@@ -656,8 +755,9 @@ function CustomerAgentPreferences({ agent }: { agent: Agent }) {
           <select
             aria-label="Response length"
             value={preferences.response_length}
+            disabled={loading || saving}
             onChange={event => updatePreference('response_length', event.target.value)}
-            className="h-8 rounded border border-border bg-card px-2 text-xs text-foreground"
+            className="h-8 rounded border border-border bg-card px-2 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-60"
           >
             <option value="brief">Brief</option>
             <option value="balanced">Balanced</option>
@@ -666,9 +766,19 @@ function CustomerAgentPreferences({ agent }: { agent: Agent }) {
         </label>
       </div>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] text-muted-foreground">{saved ? 'Preferences saved' : 'Editable customer defaults'}</span>
-        <Button type="button" size="xs" variant="outline" onClick={() => setSaved(true)}>
-          Save preferences
+        <div className="min-h-4 text-[11px] text-muted-foreground">
+          {loading ? (
+            <Loader variant="inline" label="Loading preferences" />
+          ) : error ? (
+            <span className="text-rose-300">{error}</span>
+          ) : saved ? (
+            'Preferences saved'
+          ) : (
+            'Editable customer defaults'
+          )}
+        </div>
+        <Button type="button" size="xs" variant="outline" disabled={loading || saving} onClick={savePreferences}>
+          {saving ? 'Saving...' : 'Save preferences'}
         </Button>
       </div>
     </fieldset>
