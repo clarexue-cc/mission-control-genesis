@@ -1029,6 +1029,18 @@ type CustomerProviderOption = {
   baseUrl: string
 }
 
+type CustomerNotifications = {
+  email: boolean
+  budgetAlerts: boolean
+  deliveryUpdates: boolean
+}
+
+const DEFAULT_CUSTOMER_NOTIFICATIONS: CustomerNotifications = {
+  email: true,
+  budgetAlerts: true,
+  deliveryUpdates: true,
+}
+
 function normalizeCustomerProvider(raw: any): CustomerProviderOption | null {
   const name = String(raw?.name || raw?.id || '').trim()
   if (!name) return null
@@ -1039,19 +1051,21 @@ function normalizeCustomerProvider(raw: any): CustomerProviderOption | null {
 }
 
 function CustomerSettingsView() {
+  const { activeTenant } = useMissionControl()
+  const tenantId = activeTenant?.slug || 'ceo-assistant-v1'
   const [providers, setProviders] = useState<CustomerProviderOption[]>([])
   const [modelPreference, setModelPreference] = useState('')
-  const [notifications, setNotifications] = useState({
-    email: true,
-    budgetAlerts: true,
-    deliveryUpdates: true,
-  })
+  const [notifications, setNotifications] = useState<CustomerNotifications>(DEFAULT_CUSTOMER_NOTIFICATIONS)
+  const [preferenceLoading, setPreferenceLoading] = useState(true)
+  const [preferenceSaving, setPreferenceSaving] = useState(false)
+  const [preferenceError, setPreferenceError] = useState<string | null>(null)
+  const [preferenceFeedback, setPreferenceFeedback] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     async function loadProviders() {
       try {
-        const res = await fetch('/api/harness/providers?tenantId=ceo-assistant-v1', { cache: 'no-store' })
+        const res = await fetch(`/api/harness/providers?tenantId=${encodeURIComponent(tenantId)}`, { cache: 'no-store' })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) return
         const list = (Array.isArray(data.providers) ? data.providers : Array.isArray(data.items) ? data.items : [])
@@ -1067,11 +1081,80 @@ function CustomerSettingsView() {
 
     loadProviders()
     return () => { cancelled = true }
-  }, [])
+  }, [tenantId])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadPreferences() {
+      setPreferenceLoading(true)
+      setPreferenceError(null)
+      try {
+        const res = await fetch(`/api/harness/tenant/${encodeURIComponent(tenantId)}/preferences`, { cache: 'no-store' })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.error || 'Failed to load customer preferences')
+        if (cancelled) return
+        if (typeof data.default_model === 'string' && data.default_model.trim()) {
+          setModelPreference(data.default_model.trim())
+        }
+        if (data.notifications && typeof data.notifications === 'object') {
+          setNotifications(prev => ({
+            ...prev,
+            ...(typeof data.notifications.email === 'boolean' ? { email: data.notifications.email } : {}),
+            ...(typeof data.notifications.budgetAlerts === 'boolean' ? { budgetAlerts: data.notifications.budgetAlerts } : {}),
+            ...(typeof data.notifications.deliveryUpdates === 'boolean' ? { deliveryUpdates: data.notifications.deliveryUpdates } : {}),
+          }))
+        }
+      } catch (err) {
+        if (!cancelled) setPreferenceError(err instanceof Error ? err.message : String(err))
+      } finally {
+        if (!cancelled) setPreferenceLoading(false)
+      }
+    }
+
+    loadPreferences()
+    return () => { cancelled = true }
+  }, [tenantId])
 
   function updateNotification(key: keyof typeof notifications, value: boolean) {
+    setPreferenceFeedback(null)
     setNotifications(prev => ({ ...prev, [key]: value }))
   }
+
+  async function savePreferences() {
+    setPreferenceSaving(true)
+    setPreferenceError(null)
+    setPreferenceFeedback(null)
+    try {
+      const res = await fetch(`/api/harness/tenant/${encodeURIComponent(tenantId)}/preferences`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          default_model: modelPreference,
+          notifications,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to save customer preferences')
+      if (typeof data.default_model === 'string' && data.default_model.trim()) {
+        setModelPreference(data.default_model.trim())
+      }
+      if (data.notifications && typeof data.notifications === 'object') {
+        setNotifications(prev => ({
+          ...prev,
+          ...(typeof data.notifications.email === 'boolean' ? { email: data.notifications.email } : {}),
+          ...(typeof data.notifications.budgetAlerts === 'boolean' ? { budgetAlerts: data.notifications.budgetAlerts } : {}),
+          ...(typeof data.notifications.deliveryUpdates === 'boolean' ? { deliveryUpdates: data.notifications.deliveryUpdates } : {}),
+        }))
+      }
+      setPreferenceFeedback('Preferences saved')
+    } catch (err) {
+      setPreferenceError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setPreferenceSaving(false)
+    }
+  }
+
+  const hasSelectedProvider = providers.some(provider => provider.name === modelPreference)
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
@@ -1081,6 +1164,16 @@ function CustomerSettingsView() {
       </div>
 
       <BudgetSettingsBlock />
+
+      {(preferenceError || preferenceFeedback) && (
+        <div className={`rounded-lg border p-3 text-xs ${
+          preferenceError
+            ? 'border-red-500/30 bg-red-500/10 text-red-300'
+            : 'border-green-500/30 bg-green-500/10 text-green-300'
+        }`}>
+          {preferenceError || preferenceFeedback}
+        </div>
+      )}
 
       <section className="rounded-lg border border-border bg-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1103,6 +1196,9 @@ function CustomerSettingsView() {
                   {provider.name}
                 </option>
               ))}
+              {modelPreference && !hasSelectedProvider && (
+                <option value={modelPreference}>{modelPreference}</option>
+              )}
             </select>
           </label>
         </div>
@@ -1130,6 +1226,16 @@ function CustomerSettingsView() {
               />
             </label>
           ))}
+        </div>
+        <div className="mt-5 flex justify-end">
+          <Button
+            type="button"
+            size="sm"
+            onClick={savePreferences}
+            disabled={preferenceLoading || preferenceSaving || !modelPreference}
+          >
+            {preferenceSaving ? 'Saving' : 'Save preferences'}
+          </Button>
         </div>
       </section>
     </div>
