@@ -8,6 +8,7 @@ import { useMissionControl } from '@/store'
 import { createClientLogger } from '@/lib/client-logger'
 import type { CostBudgetRule, CostBudgetSummary } from '@/lib/cost-budget-controls'
 import { TenantBillingComparison } from '@/components/panels/tenant-billing-comparison'
+import { isCustomerRole, readEffectiveRoleFromBrowser } from '@/lib/rbac'
 import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, BarChart, Bar,
@@ -108,6 +109,7 @@ const VIEW_LABELS: Record<View, string> = {
 export function CostTrackerPanel() {
   const t = useTranslations('costTracker')
   const { sessions } = useMissionControl()
+  const [effectiveRole] = useState(() => readEffectiveRoleFromBrowser())
 
   const [view, setView] = useState<View>('overview')
   const [timeframe, setTimeframe] = useState<Timeframe>('day')
@@ -127,6 +129,7 @@ export function CostTrackerPanel() {
   const [budgetSummary, setBudgetSummary] = useState<CostBudgetSummary | null>(null)
   const [budgetLoading, setBudgetLoading] = useState(false)
   const [budgetError, setBudgetError] = useState<string | null>(null)
+  const isCustomer = isCustomerRole(effectiveRole)
 
   const refreshTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -203,7 +206,10 @@ export function CostTrackerPanel() {
     return () => { if (refreshTimer.current) clearInterval(refreshTimer.current) }
   }, [loadData])
   useEffect(() => { if (view === 'sessions') loadSessionCosts() }, [view, loadSessionCosts])
-  useEffect(() => { loadBudgetRules() }, [loadBudgetRules])
+  useEffect(() => { if (!isCustomer) loadBudgetRules() }, [isCustomer, loadBudgetRules])
+  useEffect(() => {
+    if (isCustomer && view === 'controls') setView('overview')
+  }, [isCustomer, view])
 
   const exportData = async (format: 'json' | 'csv') => {
     setIsExporting(true)
@@ -229,6 +235,10 @@ export function CostTrackerPanel() {
   const agentSummary = byAgentData?.summary
   const agentList = byAgentData?.agents || []
   const maxAgentCost = Math.max(...agentList.map(a => a.total_cost), 0.0001)
+  const visibleViews = (isCustomer
+    ? ['overview', 'agents', 'sessions', 'tasks']
+    : ['overview', 'agents', 'sessions', 'tasks', 'controls']) as View[]
+  const activeView = isCustomer && view === 'controls' ? 'overview' : view
 
   const getAgentTasks = (agentName: string): TaskCostEntry[] => {
     if (!taskData) return []
@@ -249,12 +259,12 @@ export function CostTrackerPanel() {
           <div className="flex items-center gap-3">
             {/* View tabs */}
             <div className="flex rounded-lg border border-border overflow-hidden">
-              {(['overview', 'agents', 'sessions', 'tasks', 'controls'] as const).map(v => (
+              {visibleViews.map(v => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
                   className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                    view === v ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:text-foreground'
+                    activeView === v ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {VIEW_LABELS[v]}
@@ -275,27 +285,27 @@ export function CostTrackerPanel() {
 
       <TenantBillingComparison />
 
-      {isLoading && !usageStats && view !== 'controls' ? (
+      {isLoading && !usageStats && activeView !== 'controls' ? (
         <Loader variant="panel" label={t('loadingCostData')} />
-      ) : view === 'overview' ? (
+      ) : activeView === 'overview' ? (
         <OverviewView
           stats={usageStats} trendData={trendData} agentSummary={agentSummary}
           taskData={taskData} timeframe={timeframe} chartMode={chartMode}
           setChartMode={setChartMode} exportData={exportData} isExporting={isExporting}
           onRefresh={loadData}
         />
-      ) : view === 'agents' ? (
+      ) : activeView === 'agents' ? (
         <AgentsView
           agents={agentList} summary={agentSummary} maxCost={maxAgentCost}
           expandedAgent={expandedAgent} setExpandedAgent={setExpandedAgent}
           getAgentTasks={getAgentTasks} onRefresh={loadData}
         />
-      ) : view === 'sessions' ? (
+      ) : activeView === 'sessions' ? (
         <SessionsView
           sessionCosts={sessionCosts} sessions={sessions}
           sessionSort={sessionSort} setSessionSort={setSessionSort}
         />
-      ) : view === 'tasks' ? (
+      ) : activeView === 'tasks' ? (
         <TasksView taskData={taskData} onRefresh={loadData} />
       ) : (
         <BudgetControlsView

@@ -3,11 +3,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TENANT_OPTIONS } from '@/components/panels/budget-settings-block'
+import { isCustomerRole, readEffectiveRoleFromBrowser } from '@/lib/rbac'
 
 type ProviderRecord = {
   name: string
   baseUrl: string
   keyLast4: string | null
+  apiKey: string | null
+  maskedKey: string | null
+  systemLevel: boolean
 }
 
 type ProviderDraft = {
@@ -22,6 +26,23 @@ const EMPTY_DRAFT: ProviderDraft = {
   apiKey: '',
 }
 
+export function maskApiKey(value: string | null | undefined): string {
+  const key = String(value || '').trim()
+  if (!key) return 'No key'
+  if (key.length <= 7) return `${key.slice(0, 3)}****${key.slice(-1)}`
+  return `${key.slice(0, 3)}****${key.slice(-4)}`
+}
+
+function isSystemProvider(raw: any): boolean {
+  return raw?.isSystem === true
+    || raw?.is_system === true
+    || raw?.isMaster === true
+    || raw?.is_master === true
+    || raw?.master === true
+    || raw?.scope === 'system'
+    || raw?.kind === 'master'
+}
+
 function normalizeProvider(raw: any): ProviderRecord {
   return {
     name: String(raw?.name || raw?.id || 'provider'),
@@ -33,18 +54,32 @@ function normalizeProvider(raw: any): ProviderRecord {
         : typeof raw?.apiKeyLast4 === 'string'
           ? raw.apiKeyLast4
           : null,
+    apiKey: typeof raw?.apiKey === 'string'
+      ? raw.apiKey
+      : typeof raw?.api_key === 'string'
+        ? raw.api_key
+        : null,
+    maskedKey: typeof raw?.maskedKey === 'string'
+      ? raw.maskedKey
+      : typeof raw?.masked_key === 'string'
+        ? raw.masked_key
+        : null,
+    systemLevel: isSystemProvider(raw),
   }
 }
 
 export function HarnessProviderManager() {
+  const [effectiveRole] = useState(() => readEffectiveRoleFromBrowser())
   const [tenantId, setTenantId] = useState(TENANT_OPTIONS[0].id)
   const [providers, setProviders] = useState<ProviderRecord[]>([])
   const [draft, setDraft] = useState<ProviderDraft>(EMPTY_DRAFT)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const isCustomer = isCustomerRole(effectiveRole)
 
   const loadProviders = useCallback(async () => {
     setLoading(true)
@@ -119,7 +154,36 @@ export function HarnessProviderManager() {
     }
   }
 
+  async function deleteProvider(name: string) {
+    setDeleting(name)
+    setFeedback(null)
+    setError(null)
+    try {
+      const res = await fetch(`/api/harness/providers/${encodeURIComponent(name)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || `Failed to delete ${name}`)
+      setFeedback(`${name} deleted`)
+      await loadProviders()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setDeleting(null)
+    }
+  }
+
   const canSave = draft.name.trim() && draft.baseUrl.trim() && draft.apiKey
+  const visibleProviders = isCustomer ? providers.filter(provider => !provider.systemLevel) : providers
+  const formatProviderKey = (provider: ProviderRecord) => {
+    if (isCustomer) {
+      if (provider.apiKey) return maskApiKey(provider.apiKey)
+      if (provider.maskedKey) return provider.maskedKey
+    }
+    return provider.keyLast4 ? `•••• ${provider.keyLast4}` : 'No key'
+  }
 
   return (
     <section className="rounded-lg border border-border bg-card p-5">
@@ -151,30 +215,43 @@ export function HarnessProviderManager() {
       )}
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
-        {providers.map(provider => (
+        {visibleProviders.map(provider => (
           <div key={provider.name} className="rounded-lg border border-border bg-secondary/30 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold text-foreground">{provider.name}</div>
                 <div className="mt-1 truncate font-mono text-xs text-muted-foreground">{provider.baseUrl || 'Base URL not set'}</div>
                 <div className="mt-2 inline-flex rounded bg-background px-2 py-1 font-mono text-[11px] text-muted-foreground">
-                  {provider.keyLast4 ? `•••• ${provider.keyLast4}` : 'No key'}
+                  {formatProviderKey(provider)}
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                aria-label={`Test ${provider.name}`}
-                onClick={() => testProvider(provider.name)}
-                disabled={testing === provider.name}
-              >
-                {testing === provider.name ? 'Testing' : 'Test'}
-              </Button>
+              <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label={`Test ${provider.name}`}
+                  onClick={() => testProvider(provider.name)}
+                  disabled={testing === provider.name || deleting === provider.name}
+                >
+                  {testing === provider.name ? 'Testing' : 'Test'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Delete ${provider.name}`}
+                  onClick={() => deleteProvider(provider.name)}
+                  disabled={deleting === provider.name || testing === provider.name}
+                  className="text-rose-300 hover:bg-rose-500/10 hover:text-rose-200"
+                >
+                  {deleting === provider.name ? 'Deleting' : 'Delete'}
+                </Button>
+              </div>
             </div>
           </div>
         ))}
-        {!providers.length && (
+        {!visibleProviders.length && (
           <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground md:col-span-2">
             {loading ? 'Loading providers...' : 'No providers saved for this tenant.'}
           </div>

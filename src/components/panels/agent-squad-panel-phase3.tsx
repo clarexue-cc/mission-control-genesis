@@ -23,6 +23,7 @@ import {
 } from './agent-detail-tabs'
 import { formatModelName, buildTaskStatParts } from '@/lib/agent-card-helpers'
 import { useMissionControl, type Agent } from '@/store'
+import { isCustomerRole, readEffectiveRoleFromBrowser } from '@/lib/rbac'
 
 const log = createClientLogger('AgentSquadPhase3')
 
@@ -96,6 +97,7 @@ const statusCardStyles: Record<string, { edge: string; glow: string; dot: string
 export function AgentSquadPanelPhase3() {
   const t = useTranslations('agentSquadPhase3')
   const { agents, setAgents } = useMissionControl()
+  const [effectiveRole] = useState(() => readEffectiveRoleFromBrowser())
   const [loading, setLoading] = useState(agents.length === 0)
   const [error, setError] = useState<string | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
@@ -105,6 +107,7 @@ export function AgentSquadPanelPhase3() {
   const [syncing, setSyncing] = useState(false)
   const [syncToast, setSyncToast] = useState<string | null>(null)
   const [showHidden, setShowHidden] = useState(false)
+  const isCustomer = isCustomerRole(effectiveRole)
 
   // Sync agents from gateway config or local disk
   const syncFromConfig = async (source?: 'local') => {
@@ -143,7 +146,7 @@ export function AgentSquadPanelPhase3() {
       setError(null)
       if (agents.length === 0) setLoading(true)
 
-      const url = showHidden ? '/api/agents?show_hidden=true' : '/api/agents'
+      const url = !isCustomer && showHidden ? '/api/agents?show_hidden=true' : '/api/agents'
       const response = await fetch(url)
       if (response.status === 401) {
         window.location.assign('/login?next=%2Fagents')
@@ -164,7 +167,7 @@ export function AgentSquadPanelPhase3() {
     } finally {
       setLoading(false)
     }
-  }, [agents.length, setAgents, showHidden])
+  }, [agents.length, isCustomer, setAgents, showHidden])
 
   // Smart polling with visibility pause
   useSmartPoll(fetchAgents, 30000, { enabled: autoRefresh, pauseWhenSseConnected: true })
@@ -338,35 +341,39 @@ export function AgentSquadPanelPhase3() {
           >
             {autoRefresh ? t('live') : t('manual')}
           </Button>
-          <Button
-            onClick={() => syncFromConfig()}
-            disabled={syncing}
-            size="sm"
-            className="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/30"
-          >
-            {syncing ? t('syncing') : t('syncConfig')}
-          </Button>
-          <Button
-            onClick={() => syncFromConfig('local')}
-            disabled={syncing}
-            size="sm"
-            className="bg-violet-500/20 text-violet-400 border border-violet-500/30 hover:bg-violet-500/30"
-          >
-            {t('syncLocal')}
-          </Button>
-          <Button
-            onClick={() => setShowHidden(!showHidden)}
-            variant={showHidden ? 'success' : 'secondary'}
-            size="sm"
-          >
-            {showHidden ? 'Showing hidden' : 'Show hidden'}
-          </Button>
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            size="sm"
-          >
-            {t('addAgent')}
-          </Button>
+          {!isCustomer && (
+            <>
+              <Button
+                onClick={() => syncFromConfig()}
+                disabled={syncing}
+                size="sm"
+                className="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/30"
+              >
+                {syncing ? t('syncing') : t('syncConfig')}
+              </Button>
+              <Button
+                onClick={() => syncFromConfig('local')}
+                disabled={syncing}
+                size="sm"
+                className="bg-violet-500/20 text-violet-400 border border-violet-500/30 hover:bg-violet-500/30"
+              >
+                {t('syncLocal')}
+              </Button>
+              <Button
+                onClick={() => setShowHidden(!showHidden)}
+                variant={showHidden ? 'success' : 'secondary'}
+                size="sm"
+              >
+                {showHidden ? 'Showing hidden' : 'Show hidden'}
+              </Button>
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                size="sm"
+              >
+                {t('addAgent')}
+              </Button>
+            </>
+          )}
           <Button
             onClick={fetchAgents}
             variant="secondary"
@@ -423,8 +430,8 @@ export function AgentSquadPanelPhase3() {
               return (
                 <div
                   key={agent.id}
-                  className="group relative overflow-hidden rounded-xl border border-border/70 bg-card p-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-border hover:shadow-lg cursor-pointer"
-                  onClick={() => setSelectedAgent(agent)}
+                  className={`group relative overflow-hidden rounded-xl border border-border/70 bg-card p-4 transition-all duration-200 ease-out hover:border-border hover:shadow-lg ${isCustomer ? '' : 'cursor-pointer hover:-translate-y-0.5'}`}
+                  onClick={isCustomer ? undefined : () => setSelectedAgent(agent)}
                 >
                   <div className={`pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${(statusCardStyles[agent.status] || defaultCardStyle).edge}`} />
                   {agent.hidden ? <div className="absolute top-2 right-2 text-2xs text-slate-500">hidden</div> : null}
@@ -478,63 +485,76 @@ export function AgentSquadPanelPhase3() {
                     </div>
                   )}
 
-                  {/* Footer: last seen + actions */}
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
-                    <span className="text-[11px] text-muted-foreground/70">
-                      {formatLastSeen(agent.last_seen)}
-                    </span>
-                    <div className="flex gap-1">
-                      {agent.session_key ? (
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            wakeAgent(agent.name, agent.session_key!)
-                          }}
-                          size="xs"
-                          variant="ghost"
-                          className="h-6 px-2 text-xs text-cyan-300 hover:bg-cyan-500/15 hover:text-cyan-200"
-                          title="Wake agent via session"
-                        >
-                          {t('wake')}
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            updateAgentStatus(agent.name, 'idle', 'Manually activated')
-                          }}
-                          disabled={agent.status === 'idle'}
-                          size="xs"
-                          variant="ghost"
-                          className="h-6 px-2 text-xs"
-                        >
-                          {t('wake')}
-                        </Button>
-                      )}
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedAgent(agent)
-                          setShowQuickSpawnModal(true)
-                        }}
-                        size="xs"
-                        variant="ghost"
-                        className="h-6 px-2 text-xs text-blue-300 hover:bg-blue-500/15 hover:text-blue-200"
-                      >
-                        {t('spawn')}
-                      </Button>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleAgentHidden(agent.id, !agent.hidden)
-                        }}
-                        size="xs"
-                        variant="ghost"
-                        className="h-6 px-2 text-xs text-slate-400 hover:bg-slate-500/15 hover:text-slate-300"
-                      >
-                        {agent.hidden ? 'Unhide' : 'Hide'}
-                      </Button>
+                  {isCustomer && (
+                    <div className="mb-2 rounded-lg border border-border/50 bg-secondary/20 p-2.5">
+                      <div className="text-[11px] font-medium text-muted-foreground">Recent execution</div>
+                      <div className="mt-1 text-xs text-foreground/85">
+                        {agent.last_activity || `Last seen ${formatLastSeen(agent.last_seen)}`}
+                      </div>
                     </div>
+                  )}
+
+                  {/* Footer: last seen + actions */}
+                  <div className={`${isCustomer ? 'block' : 'flex items-center justify-between'} mt-2 pt-2 border-t border-border/30`}>
+                    <span className="text-[11px] text-muted-foreground/70">
+                      Last seen {formatLastSeen(agent.last_seen)}
+                    </span>
+                    {isCustomer ? (
+                      <CustomerAgentPreferences agent={agent} />
+                    ) : (
+                      <div className="flex gap-1">
+                        {agent.session_key ? (
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              wakeAgent(agent.name, agent.session_key!)
+                            }}
+                            size="xs"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs text-cyan-300 hover:bg-cyan-500/15 hover:text-cyan-200"
+                            title="Wake agent via session"
+                          >
+                            {t('wake')}
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              updateAgentStatus(agent.name, 'idle', 'Manually activated')
+                            }}
+                            disabled={agent.status === 'idle'}
+                            size="xs"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs"
+                          >
+                            {t('wake')}
+                          </Button>
+                        )}
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedAgent(agent)
+                            setShowQuickSpawnModal(true)
+                          }}
+                          size="xs"
+                          variant="ghost"
+                          className="h-6 px-2 text-xs text-blue-300 hover:bg-blue-500/15 hover:text-blue-200"
+                        >
+                          {t('spawn')}
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleAgentHidden(agent.id, !agent.hidden)
+                          }}
+                          size="xs"
+                          variant="ghost"
+                          className="h-6 px-2 text-xs text-slate-400 hover:bg-slate-500/15 hover:text-slate-300"
+                        >
+                          {agent.hidden ? 'Unhide' : 'Hide'}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )
@@ -544,7 +564,7 @@ export function AgentSquadPanelPhase3() {
       </div>
 
       {/* Agent Detail Modal */}
-      {selectedAgent && (
+      {selectedAgent && !isCustomer && (
         <AgentDetailModalPhase3
           agent={selectedAgent}
           onClose={() => setSelectedAgent(null)}
@@ -556,7 +576,7 @@ export function AgentSquadPanelPhase3() {
       )}
 
       {/* Create Agent Modal */}
-      {showCreateModal && (
+      {showCreateModal && !isCustomer && (
         <CreateAgentModal
           onClose={() => setShowCreateModal(false)}
           onCreated={fetchAgents}
@@ -564,7 +584,7 @@ export function AgentSquadPanelPhase3() {
       )}
 
       {/* Quick Spawn Modal */}
-      {showQuickSpawnModal && selectedAgent && (
+      {showQuickSpawnModal && selectedAgent && !isCustomer && (
         <QuickSpawnModal
           agent={selectedAgent}
           onClose={() => {
@@ -575,6 +595,83 @@ export function AgentSquadPanelPhase3() {
         />
       )}
     </div>
+  )
+}
+
+function readAgentPreference(agent: Agent, key: 'tone' | 'language' | 'response_length', fallback: string) {
+  const preferences = (agent.config as any)?.preferences
+  const value = preferences && typeof preferences === 'object' ? preferences[key] : null
+  return typeof value === 'string' && value.trim() ? value : fallback
+}
+
+function CustomerAgentPreferences({ agent }: { agent: Agent }) {
+  const [preferences, setPreferences] = useState(() => ({
+    tone: readAgentPreference(agent, 'tone', 'professional'),
+    language: readAgentPreference(agent, 'language', 'zh-CN'),
+    response_length: readAgentPreference(agent, 'response_length', 'balanced'),
+  }))
+  const [saved, setSaved] = useState(false)
+
+  function updatePreference<K extends keyof typeof preferences>(key: K, value: typeof preferences[K]) {
+    setSaved(false)
+    setPreferences(prev => ({ ...prev, [key]: value }))
+  }
+
+  return (
+    <fieldset
+      aria-label="Customer preferences"
+      className="mt-3 grid gap-2 rounded-lg border border-border/50 bg-background/40 p-3"
+      onClick={event => event.stopPropagation()}
+    >
+      <legend className="px-1 text-[11px] font-medium text-muted-foreground">Customer preferences</legend>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <label className="grid gap-1 text-[11px] font-medium text-muted-foreground">
+          Tone
+          <select
+            aria-label="Tone"
+            value={preferences.tone}
+            onChange={event => updatePreference('tone', event.target.value)}
+            className="h-8 rounded border border-border bg-card px-2 text-xs text-foreground"
+          >
+            <option value="professional">Professional</option>
+            <option value="warm">Warm</option>
+            <option value="direct">Direct</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-[11px] font-medium text-muted-foreground">
+          Language
+          <select
+            aria-label="Language"
+            value={preferences.language}
+            onChange={event => updatePreference('language', event.target.value)}
+            className="h-8 rounded border border-border bg-card px-2 text-xs text-foreground"
+          >
+            <option value="zh-CN">Chinese</option>
+            <option value="en-US">English</option>
+            <option value="bilingual">Bilingual</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-[11px] font-medium text-muted-foreground">
+          Response length
+          <select
+            aria-label="Response length"
+            value={preferences.response_length}
+            onChange={event => updatePreference('response_length', event.target.value)}
+            className="h-8 rounded border border-border bg-card px-2 text-xs text-foreground"
+          >
+            <option value="brief">Brief</option>
+            <option value="balanced">Balanced</option>
+            <option value="detailed">Detailed</option>
+          </select>
+        </label>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] text-muted-foreground">{saved ? 'Preferences saved' : 'Editable customer defaults'}</span>
+        <Button type="button" size="xs" variant="outline" onClick={() => setSaved(true)}>
+          Save preferences
+        </Button>
+      </div>
+    </fieldset>
   )
 }
 

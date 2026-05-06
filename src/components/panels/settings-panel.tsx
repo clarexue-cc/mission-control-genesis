@@ -12,6 +12,7 @@ import { BudgetSettingsBlock } from '@/components/panels/budget-settings-block'
 import { Loader } from '@/components/ui/loader'
 import { clearOnboardingDismissedThisSession, clearOnboardingReplayFromStart } from '@/lib/onboarding-session'
 import { resolveCoordinatorDeliveryTarget, type CoordinatorAgentRecord } from '@/lib/coordinator-routing'
+import { isCustomerRole, readEffectiveRoleFromBrowser } from '@/lib/rbac'
 import type { GatewaySession } from '@/lib/sessions'
 
 interface Setting {
@@ -109,6 +110,7 @@ export function SettingsPanel() {
   const t = useTranslations('settings')
   const { currentUser, setShowOnboarding } = useMissionControl()
   const navigateToPanel = useNavigateToPanel()
+  const [effectiveRole] = useState(() => readEffectiveRoleFromBrowser())
   const [settings, setSettings] = useState<Setting[]>([])
   const [grouped, setGrouped] = useState<Record<string, Setting[]>>({})
   const [loading, setLoading] = useState(true)
@@ -151,6 +153,7 @@ export function SettingsPanel() {
   // Backup state
   const [mcBackupRunning, setMcBackupRunning] = useState(false)
   const [gwBackupRunning, setGwBackupRunning] = useState(false)
+  const isCustomer = isCustomerRole(effectiveRole)
 
   const showFeedback = (ok: boolean, text: string) => {
     setFeedback({ ok, text })
@@ -319,7 +322,15 @@ export function SettingsPanel() {
     } catch { /* non-critical */ }
   }, [])
 
-  useEffect(() => { fetchSettings(); fetchApiKeyInfo(); fetchHermesStatus() }, [fetchSettings, fetchApiKeyInfo, fetchHermesStatus])
+  useEffect(() => {
+    if (isCustomer) {
+      setLoading(false)
+      return
+    }
+    fetchSettings()
+    fetchApiKeyInfo()
+    fetchHermesStatus()
+  }, [fetchSettings, fetchApiKeyInfo, fetchHermesStatus, isCustomer])
 
   const handleEdit = (key: string, value: string) => {
     setEdits(prev => ({ ...prev, [key]: value }))
@@ -386,6 +397,10 @@ export function SettingsPanel() {
 
   const handleDiscard = () => {
     setEdits({})
+  }
+
+  if (isCustomer) {
+    return <CustomerSettingsView />
   }
 
   if (loading) {
@@ -1005,6 +1020,118 @@ export function SettingsPanel() {
           </Button>
         </div>
       )}
+    </div>
+  )
+}
+
+type CustomerProviderOption = {
+  name: string
+  baseUrl: string
+}
+
+function normalizeCustomerProvider(raw: any): CustomerProviderOption | null {
+  const name = String(raw?.name || raw?.id || '').trim()
+  if (!name) return null
+  return {
+    name,
+    baseUrl: String(raw?.baseUrl || raw?.base_url || raw?.url || ''),
+  }
+}
+
+function CustomerSettingsView() {
+  const [providers, setProviders] = useState<CustomerProviderOption[]>([])
+  const [modelPreference, setModelPreference] = useState('')
+  const [notifications, setNotifications] = useState({
+    email: true,
+    budgetAlerts: true,
+    deliveryUpdates: true,
+  })
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadProviders() {
+      try {
+        const res = await fetch('/api/harness/providers?tenantId=ceo-assistant-v1', { cache: 'no-store' })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) return
+        const list = (Array.isArray(data.providers) ? data.providers : Array.isArray(data.items) ? data.items : [])
+          .map(normalizeCustomerProvider)
+          .filter(Boolean) as CustomerProviderOption[]
+        if (cancelled) return
+        setProviders(list)
+        setModelPreference(prev => prev || list[0]?.name || '')
+      } catch {
+        // Customer settings remain editable even if provider discovery is temporarily unavailable.
+      }
+    }
+
+    loadProviders()
+    return () => { cancelled = true }
+  }, [])
+
+  function updateNotification(key: keyof typeof notifications, value: boolean) {
+    setNotifications(prev => ({ ...prev, [key]: value }))
+  }
+
+  return (
+    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">Settings</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">Customer workspace preferences and usage guardrails.</p>
+      </div>
+
+      <BudgetSettingsBlock />
+
+      <section className="rounded-lg border border-border bg-card p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Model preferences</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Default provider for your agent responses.</p>
+          </div>
+          <label className="grid min-w-[220px] gap-1 text-xs font-medium text-muted-foreground">
+            Model preference
+            <select
+              aria-label="Model preference"
+              value={modelPreference}
+              onChange={event => setModelPreference(event.target.value)}
+              className="h-9 rounded border border-border bg-background px-3 text-sm text-foreground"
+            >
+              {providers.length === 0 ? (
+                <option value="">No providers available</option>
+              ) : providers.map(provider => (
+                <option key={provider.name} value={provider.name}>
+                  {provider.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-card p-5">
+        <h2 className="text-lg font-semibold text-foreground">Notifications</h2>
+        <div className="mt-4 grid gap-3">
+          {([
+            ['email', 'Email notifications', 'Send summaries and direct notices by email.'],
+            ['budgetAlerts', 'Budget alerts', 'Warn when usage approaches the configured budget.'],
+            ['deliveryUpdates', 'Delivery updates', 'Notify when a delivery item changes status.'],
+          ] as const).map(([key, label, description]) => (
+            <label key={key} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-secondary/30 p-3">
+              <span>
+                <span className="block text-sm font-medium text-foreground">{label}</span>
+                <span className="block text-xs text-muted-foreground">{description}</span>
+              </span>
+              <input
+                aria-label={label}
+                type="checkbox"
+                checked={notifications[key]}
+                onChange={event => updateNotification(key, event.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+            </label>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }
