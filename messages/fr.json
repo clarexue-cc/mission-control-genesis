@@ -1621,6 +1621,8 @@
     "lastAttempt": "Dernière tentative",
     "action": "Action",
     "roleViewer": "Lecteur",
+    "roleCustomerUser": "Utilisateur client",
+    "roleCustomerAdmin": "Administrateur client",
     "roleOperator": "Opérateur",
     "roleAdmin": "Administrateur",
     "noteOptional": "Note (optionnel)",

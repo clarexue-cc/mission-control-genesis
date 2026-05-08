@@ -74,10 +74,10 @@ const panelCopy: Record<CustomerVisiblePanel, CustomerPanelCopy> = {
     show_what: ['集成名称', '连接状态', '授权范围', '最近同步时间'],
   },
   skills: {
-    display_name: 'Skills',
+    display_name: '技能',
     description: '查看当前 Agent 可用的技能模块',
     empty_state: '暂未启用客户可见技能。',
-    show_what: ['技能名称', '启用状态', '适用场景', '最近更新'],
+    show_what: ['技能名称', '启用状态', '适用场景', '最近活动'],
   },
 }
 

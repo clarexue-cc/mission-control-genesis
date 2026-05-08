@@ -1621,6 +1621,8 @@
     "lastAttempt": "最終試行",
     "action": "アクション",
     "roleViewer": "閲覧者",
+    "roleCustomerUser": "顧客ユーザー",
+    "roleCustomerAdmin": "顧客管理者",
     "roleOperator": "オペレーター",
     "roleAdmin": "管理者",
     "noteOptional": "メモ（任意）",

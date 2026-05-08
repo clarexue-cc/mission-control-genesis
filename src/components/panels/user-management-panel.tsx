@@ -304,8 +304,8 @@ export function UserManagementPanel() {
                             className="h-7 px-2 rounded bg-secondary border border-border text-xs text-foreground"
                           >
                             <option value="viewer">{t('roleViewer')}</option>
-                            <option value="customer-user">Customer User</option>
-                            <option value="customer-admin">Customer Admin</option>
+                            <option value="customer-user">{t('roleCustomerUser')}</option>
+                            <option value="customer-admin">{t('roleCustomerAdmin')}</option>
                             <option value="operator">{t('roleOperator')}</option>
                             <option value="admin">{t('roleAdmin')}</option>
                           </select>
@@ -377,8 +377,8 @@ export function UserManagementPanel() {
             <input value={createForm.display_name} onChange={(e) => setCreateForm((f) => ({ ...f, display_name: e.target.value }))} placeholder={t('displayName')} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground" />
             <select value={createForm.role} onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value as any }))} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground">
               <option value="viewer">{t('roleViewer')}</option>
-              <option value="customer-user">Customer User</option>
-              <option value="customer-admin">Customer Admin</option>
+              <option value="customer-user">{t('roleCustomerUser')}</option>
+              <option value="customer-admin">{t('roleCustomerAdmin')}</option>
               <option value="operator">{t('roleOperator')}</option>
               <option value="admin">{t('roleAdmin')}</option>
             </select>
@@ -414,8 +414,8 @@ export function UserManagementPanel() {
                     <td className="px-4 py-2.5">
                       <select value={editForm.role} onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value as any }))} className="h-8 px-2 rounded bg-secondary border border-border text-sm text-foreground" disabled={u.id === currentUser?.id}>
                         <option value="viewer">{t('roleViewer')}</option>
-                        <option value="customer-user">Customer User</option>
-                        <option value="customer-admin">Customer Admin</option>
+                        <option value="customer-user">{t('roleCustomerUser')}</option>
+                        <option value="customer-admin">{t('roleCustomerAdmin')}</option>
                         <option value="operator">{t('roleOperator')}</option>
                         <option value="admin">{t('roleAdmin')}</option>
                       </select>

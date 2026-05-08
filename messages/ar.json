@@ -1621,6 +1621,8 @@
     "lastAttempt": "آخر محاولة",
     "action": "الإجراء",
     "roleViewer": "مشاهد",
+    "roleCustomerUser": "مستخدم عميل",
+    "roleCustomerAdmin": "مسؤول عميل",
     "roleOperator": "مشغّل",
     "roleAdmin": "مسؤول",
     "noteOptional": "ملاحظة (اختياري)",

@@ -1621,6 +1621,8 @@
     "lastAttempt": "Последняя попытка",
     "action": "Действие",
     "roleViewer": "Читатель",
+    "roleCustomerUser": "Пользователь клиента",
+    "roleCustomerAdmin": "Администратор клиента",
     "roleOperator": "Оператор",
     "roleAdmin": "Администратор",
     "noteOptional": "Заметка (необязательно)",
