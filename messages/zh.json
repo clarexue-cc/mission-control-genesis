@@ -1861,6 +1861,8 @@
     "lastAttempt": "最后尝试",
     "action": "操作",
     "roleViewer": "查看者",
+    "roleCustomerUser": "客户用户",
+    "roleCustomerAdmin": "客户管理员",
     "roleOperator": "操作员",
     "roleAdmin": "管理员",
     "noteOptional": "备注（可选）",

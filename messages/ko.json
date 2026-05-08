@@ -1621,6 +1621,8 @@
     "lastAttempt": "마지막 시도",
     "action": "작업",
     "roleViewer": "뷰어",
+    "roleCustomerUser": "고객 사용자",
+    "roleCustomerAdmin": "고객 관리자",
     "roleOperator": "운영자",
     "roleAdmin": "관리자",
     "noteOptional": "메모 (선택사항)",

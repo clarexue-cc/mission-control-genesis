@@ -301,7 +301,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
         priority: false,
       } as NavItem))
     const items = translateItems(pluginItems.length > 0 ? [...g.items, ...pluginItems] : g.items)
-    return { ...g, label: tGroup(g.id, g.label), items }
+    return { ...g, label: isCustomer ? undefined : tGroup(g.id, g.label), items }
   })
 
   const filteredGroups = mergedGroups
@@ -373,7 +373,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
           <div className="w-9 h-9 rounded-lg overflow-hidden bg-background border border-border/50 flex items-center justify-center shrink-0 hover:border-void-cyan/40 hover:glow-cyan transition-smooth">
             <Image
               src="/brand/mc-logo-128.png"
-              alt="Mission Control logo"
+              alt={isCustomer ? '客户工作台' : 'Mission Control logo'}
               width={36}
               height={36}
               className="w-full h-full object-cover"
@@ -381,8 +381,12 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
           </div>
           {sidebarExpanded && (
             <div className="flex items-baseline gap-2 truncate flex-1 min-w-0">
-              <span className="text-sm font-semibold text-foreground truncate">Mission Control</span>
-              <span className="text-2xs text-muted-foreground font-mono-tight shrink-0">v{APP_VERSION}</span>
+              <span className="text-sm font-semibold text-foreground truncate">
+                {isCustomer ? '客户工作台' : 'Mission Control'}
+              </span>
+              {!isCustomer && (
+                <span className="text-2xs text-muted-foreground font-mono-tight shrink-0">v{APP_VERSION}</span>
+              )}
             </div>
           )}
           <Button
