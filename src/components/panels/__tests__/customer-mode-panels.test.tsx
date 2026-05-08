@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AgentSquadPanelPhase3 } from '@/components/panels/agent-squad-panel-phase3'
@@ -58,9 +58,9 @@ function jsonResponse(body: unknown, ok = true) {
   }
 }
 
-function setCustomerMode() {
-  window.history.pushState({}, '', '/?role=customer&tenant=ceo-assistant-v1')
-  document.cookie = 'mc-view-role=customer; path=/'
+function setCustomerMode(role = 'customer-admin') {
+  window.history.pushState({}, '', `/?role=${encodeURIComponent(role)}&tenant=ceo-assistant-v1`)
+  document.cookie = `mc-view-role=${encodeURIComponent(role)}; path=/`
 }
 
 describe('customer-mode panels', () => {
@@ -207,7 +207,8 @@ describe('customer-mode panels', () => {
     })
   })
 
-  it('hides internal agent configuration while exposing editable customer preferences', async () => {
+  it('keeps customer-user agent cards read-only without internal configuration or preferences', async () => {
+    setCustomerMode('customer-user')
     useMissionControl.setState({ agents: [customerAgent] })
     vi.stubGlobal('fetch', vi.fn((url: string) => {
       if (url === '/api/agents') {
@@ -223,11 +224,6 @@ describe('customer-mode panels', () => {
     expect(screen.getByText('CEO assistant')).toBeInTheDocument()
     expect(screen.getByText('Prepared the morning briefing')).toBeInTheDocument()
 
-    const customerPreferences = screen.getByRole('group', { name: 'Customer preferences' })
-    expect(within(customerPreferences).getByLabelText('Tone')).toBeInTheDocument()
-    expect(within(customerPreferences).getByLabelText('Language')).toBeInTheDocument()
-    expect(within(customerPreferences).getByLabelText('Response length')).toBeInTheDocument()
-
     fireEvent.click(card)
 
     await waitFor(() => {
@@ -235,6 +231,7 @@ describe('customer-mode panels', () => {
       expect(screen.queryByText('Config')).not.toBeInTheDocument()
       expect(screen.queryByText(/prompt/i)).not.toBeInTheDocument()
     })
+    expect(screen.queryByRole('group', { name: 'Customer preferences' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add Agent' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Sync Config' })).not.toBeInTheDocument()
   })

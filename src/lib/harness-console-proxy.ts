@@ -4,6 +4,11 @@ import { NextRequest, NextResponse } from 'next/server'
 
 type JsonObject = Record<string, unknown>
 
+export interface HarnessConsoleProxyUser {
+  role?: string | null
+  tenant_id?: string | number | null
+}
+
 export function resolveHarnessConsoleBaseUrl(env: NodeJS.ProcessEnv = process.env): string {
   const raw = env.MC_HARNESS_CONSOLE_URL
     || env.MC_HARNESS_API_URL
@@ -18,6 +23,57 @@ export function normalizeConsoleTenantId(value: unknown, field = 'tenantId'): st
     throw new Error(`${field} must contain only lowercase letters, numbers, and hyphens`)
   }
   return tenantId
+}
+
+export function isCustomerHarnessRole(role: unknown): boolean {
+  return typeof role === 'string' && (role === 'customer' || role.startsWith('customer-'))
+}
+
+function inferRequestedTenantId(input: {
+  requestedTenantId?: unknown
+  search?: URLSearchParams
+  body?: JsonObject
+}): unknown {
+  if (input.requestedTenantId !== undefined) return input.requestedTenantId
+  const queryTenantId = input.search?.get('tenantId')
+  if (queryTenantId !== null && queryTenantId !== undefined) return queryTenantId
+  return input.body?.tenantId
+}
+
+export function resolveHarnessTenantIsolation(input: {
+  user?: HarnessConsoleProxyUser | null
+  requestedTenantId?: unknown
+}): { ok: true; headers: Record<string, string> } | { ok: false; response: NextResponse } {
+  if (!isCustomerHarnessRole(input.user?.role)) {
+    return { ok: true, headers: {} }
+  }
+
+  let ownedTenantId: string
+  try {
+    ownedTenantId = normalizeConsoleTenantId(input.user?.tenant_id, 'user.tenant_id')
+  } catch {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'Forbidden tenant access: missing customer tenant' }, { status: 403 }),
+    }
+  }
+
+  if (input.requestedTenantId !== undefined) {
+    const requestedTenantId = normalizeConsoleTenantId(input.requestedTenantId)
+    if (requestedTenantId !== ownedTenantId) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: 'Forbidden tenant access' }, { status: 403 }),
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    headers: {
+      'X-Tenant-Id': ownedTenantId,
+    },
+  }
 }
 
 export function normalizeProviderName(value: unknown): string {
@@ -122,12 +178,26 @@ export async function proxyHarnessConsoleJson(input: {
   path: string
   search?: URLSearchParams
   body?: JsonObject
+  requestedTenantId?: unknown
+  user?: HarnessConsoleProxyUser | null
 }) {
+  const tenantIsolation = resolveHarnessTenantIsolation({
+    user: input.user,
+    requestedTenantId: inferRequestedTenantId(input),
+  })
+  if (!tenantIsolation.ok) {
+    return tenantIsolation.response
+  }
+
   const query = input.search?.toString()
   const url = `${resolveHarnessConsoleBaseUrl()}/api/console${input.path}${query ? `?${query}` : ''}`
+  const headers = {
+    ...(input.body ? { 'content-type': 'application/json' } : {}),
+    ...tenantIsolation.headers,
+  }
   const upstream = await fetch(url, {
     method: input.method,
-    headers: input.body ? { 'content-type': 'application/json' } : undefined,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: input.body ? JSON.stringify(input.body) : undefined,
     cache: 'no-store',
   })

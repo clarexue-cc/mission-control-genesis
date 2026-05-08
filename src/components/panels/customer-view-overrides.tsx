@@ -1,7 +1,5 @@
 'use client'
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import type { CustomerVisiblePanel } from '@/lib/rbac'
 import { CustomerUatTasksPanel } from '@/components/panels/customer-uat-tasks-panel'
 
@@ -17,7 +15,7 @@ const panelCopy: Record<CustomerVisiblePanel, CustomerPanelCopy> = {
     display_name: '总览',
     description: '你今天的 Agent 在做什么',
     empty_state: '你的 Agent 正在待命，随时可以开始新任务。',
-    show_what: ['Agent 状态灯', '今日已完成任务数', '今日使用量', '未读告警条数'],
+    show_what: ['Agent 状态灯', '今日摘要', '今日已完成任务数', '未读告警条数'],
   },
   agents: {
     display_name: 'Agent',
@@ -47,7 +45,7 @@ const panelCopy: Record<CustomerVisiblePanel, CustomerPanelCopy> = {
     display_name: '渠道管理',
     description: '管理 Agent 向你发消息的方式',
     empty_state: '还没有绑定任何消息渠道，联系你的管家来设置。',
-    show_what: ['渠道开关（飞书 / Telegram / 邮件）', '绑定状态', '消息预览', '测试发送按钮'],
+    show_what: ['渠道名称', '在线 / 离线', '绑定状态'],
   },
   tasks: {
     display_name: 'UAT 任务',
@@ -175,8 +173,8 @@ function CustomerOverview({ copy }: { copy: CustomerPanelCopy }) {
         <h2 className="text-sm font-semibold text-foreground">今日状态</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <CustomerMetric label="Agent 状态" value="在线" hint="Agent 正常运行中" tone="emerald" />
+          <CustomerMetric label="今日摘要" value="正常" hint="暂无需要你处理的事项" tone="cyan" />
           <CustomerMetric label="今日完成" value="12" hint="已完成任务数" tone="cyan" />
-          <CustomerMetric label="今日使用量" value="62%" hint="额度使用正常" tone="amber" />
           <CustomerMetric label="未读告警" value="0" hint="没有新告警，一切正常" tone="emerald" />
         </div>
       </section>
@@ -217,8 +215,8 @@ function CustomerAlerts({ copy }: { copy: CustomerPanelCopy }) {
       <section className={`${panelClassName} p-5`}>
         <h2 className="text-sm font-semibold text-foreground">告警</h2>
         <div className="mt-4 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-5">
-          <div className="text-sm font-medium text-emerald-100">{copy.empty_state}</div>
-          <p className="mt-1 text-xs text-emerald-100/75">需要你处理的提醒会显示在这里。</p>
+          <div className="text-2xl font-semibold text-emerald-100">有 0 个异常</div>
+          <p className="mt-1 text-xs text-emerald-100/75">{copy.empty_state}</p>
         </div>
       </section>
       <CustomerWhatIsVisible copy={copy} />
@@ -227,26 +225,17 @@ function CustomerAlerts({ copy }: { copy: CustomerPanelCopy }) {
 }
 
 function CustomerChannels({ copy }: { copy: CustomerPanelCopy }) {
-  const [enabledChannels, setEnabledChannels] = useState<Record<CustomerChannelId, boolean>>(() => (
-    customerChannels.reduce((acc, channel) => {
-      acc[channel.id] = channel.bound && channel.defaultEnabled
-      return acc
-    }, {} as Record<CustomerChannelId, boolean>)
-  ))
-  const [testResult, setTestResult] = useState<string | null>(null)
-  const allOff = customerChannels.every(channel => !enabledChannels[channel.id])
-
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
       <div className="space-y-4">
         <section className={`${panelClassName} p-5`}>
           <div className="flex flex-col gap-1">
             <h2 className="text-sm font-semibold text-foreground">消息渠道</h2>
-            <p className="text-xs text-muted-foreground">选择 Agent 通知你的方式，可同时开启多个渠道</p>
+            <p className="text-xs text-muted-foreground">查看当前通知渠道是否在线</p>
           </div>
           <div className="mt-4 grid gap-3">
             {customerChannels.map(channel => {
-              const enabled = enabledChannels[channel.id]
+              const online = channel.bound && channel.defaultEnabled
               return (
                 <div key={channel.id} className="rounded-lg border border-border bg-background/70 p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -266,47 +255,18 @@ function CustomerChannels({ copy }: { copy: CustomerPanelCopy }) {
                         <p className="mt-2 text-xs text-amber-200">未绑定 {channel.name}，联系管家开通。</p>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={enabled}
-                      aria-label={`${enabled ? '关闭' : '开启'} ${channel.name}`}
-                      disabled={!channel.bound}
-                      onClick={() => {
-                        setEnabledChannels(current => ({ ...current, [channel.id]: !current[channel.id] }))
-                        setTestResult(null)
-                      }}
-                      className={`inline-flex h-8 w-16 shrink-0 items-center rounded-full border px-1 transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                        enabled
-                          ? 'border-primary/40 bg-primary/30 justify-end'
-                          : 'border-border bg-secondary/60 justify-start'
-                      }`}
-                    >
-                      <span className="h-6 w-6 rounded-full bg-foreground shadow-sm" />
-                    </button>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                    <span className={`text-xs ${enabled ? 'text-primary' : 'text-muted-foreground'}`}>
-                      {enabled ? '已开启' : '已关闭'}
+                    <span className={`w-fit rounded-md border px-2.5 py-1 text-xs ${
+                      online
+                        ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200'
+                        : 'border-border bg-secondary/40 text-muted-foreground'
+                    }`}>
+                      {online ? '在线' : '离线'}
                     </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={!channel.bound || !enabled}
-                      onClick={() => setTestResult(`测试消息已发送，请检查 ${channel.name}`)}
-                    >
-                      发送测试消息
-                    </Button>
                   </div>
                 </div>
               )
             })}
           </div>
-          {allOff && (
-            <div className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-3 text-xs text-amber-100">
-              当前所有渠道均已关闭，你将无法收到 Agent 的主动通知。
-            </div>
-          )}
         </section>
 
         <section className={`${panelClassName} p-5`}>
@@ -317,14 +277,9 @@ function CustomerChannels({ copy }: { copy: CustomerPanelCopy }) {
               <span>刚刚</span>
             </div>
             <p className="mt-2 text-sm text-foreground">
-              {customerChannels.find(channel => enabledChannels[channel.id])?.preview || '暂无消息记录'}
+              {customerChannels.find(channel => channel.bound && channel.defaultEnabled)?.preview || '暂无消息记录'}
             </p>
           </div>
-          {testResult && (
-            <div className="mt-3 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-3 text-xs text-emerald-100">
-              {testResult}
-            </div>
-          )}
         </section>
       </div>
       <CustomerWhatIsVisible copy={copy} />

@@ -68,7 +68,7 @@ import { clearOnboardingDismissedThisSession, clearOnboardingReplayFromStart, ge
 import { resolveCustomerTenantId, resolveEffectiveInterfaceMode } from '@/lib/mc-stable-mode'
 import { Button } from '@/components/ui/button'
 import { useMissionControl } from '@/store'
-import { canAccessPanel, isCustomerRole, readEffectiveRoleFromBrowser, type EffectiveRole } from '@/lib/rbac'
+import { canAccessPanel, isCustomerRole, isCustomerUserRole, readEffectiveRoleFromBrowser, type EffectiveRole } from '@/lib/rbac'
 
 interface GatewaySummary {
   id: number
@@ -527,10 +527,11 @@ function ContentRouter({ tab, effectiveRole }: { tab: string; effectiveRole: Eff
   const isLocal = dashboardMode === 'local'
   const panelName = tab.replace(/-/g, ' ')
   const isCustomerView = isCustomerRole(effectiveRole)
+  const isCustomerUserView = isCustomerUserRole(effectiveRole)
 
   if (isCustomerView) {
     if (!canAccessPanel(effectiveRole, tab)) return <CustomerViewOverrides panel="overview" />
-    return <CustomerViewOverrides panel={tab} />
+    if (isCustomerUserView && tab !== 'tasks') return <CustomerViewOverrides panel={tab} />
   }
 
   // Guard: show nudge for non-essential panels in essential mode
