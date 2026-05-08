@@ -25,7 +25,7 @@ describe('GET /api/langfuse/trace/[traceId]', () => {
   const originalEnv = { ...process.env }
   const fetchMock = vi.fn()
 
-  function user(role: 'admin' | 'customer', tenantId = 7) {
+  function user(role: 'admin' | 'customer-user', tenantId = 7) {
     return {
       id: 1,
       username: role,
@@ -56,7 +56,7 @@ describe('GET /api/langfuse/trace/[traceId]', () => {
   beforeEach(() => {
     vi.resetModules()
     authMock.requireRole.mockReset()
-    authMock.requireRole.mockReturnValue({ user: user('customer') })
+    authMock.requireRole.mockReturnValue({ user: user('customer-user') })
     dbMock.get.mockReset()
     dbMock.prepare.mockReset()
     dbMock.getDatabase.mockReset()
@@ -102,7 +102,7 @@ describe('GET /api/langfuse/trace/[traceId]', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'customer')
+    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'customer-user')
     expect(fetchMock).toHaveBeenCalledWith(
       'http://langfuse.local/api/public/traces/trace-1',
       expect.objectContaining({

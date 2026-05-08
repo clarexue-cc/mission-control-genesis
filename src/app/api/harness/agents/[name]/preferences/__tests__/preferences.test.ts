@@ -25,7 +25,7 @@ describe('Harness agent preferences route', () => {
   const originalEnv = { ...process.env }
   const fetchMock = vi.fn()
 
-  function user(role: 'admin' | 'operator' | 'viewer' | 'customer') {
+  function user(role: 'admin' | 'operator' | 'viewer' | 'customer-admin') {
     return {
       id: 1,
       username: role,
@@ -56,7 +56,7 @@ describe('Harness agent preferences route', () => {
   beforeEach(() => {
     vi.resetModules()
     authMock.requireRole.mockReset()
-    authMock.requireRole.mockReturnValue({ user: user('customer') })
+    authMock.requireRole.mockReturnValue({ user: user('customer-admin') })
     dbMock.get.mockReset()
     dbMock.prepare.mockReset()
     dbMock.getDatabase.mockReset()
@@ -99,7 +99,7 @@ describe('Harness agent preferences route', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'customer')
+    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'customer-admin')
     expect(fetchMock).toHaveBeenCalledWith(
       'http://harness.local:3088/api/console/agents/chief-of-staff/config',
       expect.objectContaining({ method: 'GET' }),

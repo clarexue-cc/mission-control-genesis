@@ -3,6 +3,7 @@ import 'server-only'
 import type { User } from '@/lib/auth'
 import { getDatabase } from '@/lib/db'
 import { normalizeConsoleTenantId } from '@/lib/harness-console-proxy'
+import { isCustomerRole } from '@/lib/rbac'
 
 type JsonRecord = Record<string, unknown>
 
@@ -110,7 +111,7 @@ export function resolveAuthenticatedTenantSlug(sessionTenantId: unknown): string
 }
 
 export function canAccessTenant(user: User, requestedTenantId: string): boolean {
-  if (user.role !== 'customer') return true
+  if (!isCustomerRole(user.role)) return true
 
   const allowedTenantIds = new Set<string>()
   try {

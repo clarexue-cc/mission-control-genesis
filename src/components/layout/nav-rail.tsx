@@ -318,7 +318,7 @@ export function NavRail({ effectiveRole = 'admin' }: { effectiveRole?: Effective
   function navigateNavItem(item: NavItem) {
     const panel = navPanel(item)
     const options = {
-      role: item.role ?? (isCustomer ? 'customer' : undefined),
+      role: item.role ?? (isCustomer ? effectiveRole : undefined),
       tenantScoped: item.tenantScoped ?? isCustomer,
     }
     if (isCustomer && typeof window !== 'undefined') {

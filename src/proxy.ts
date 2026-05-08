@@ -4,7 +4,9 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { buildMissionControlCsp, buildNonceRequestHeaders } from '@/lib/csp'
 import { MC_SESSION_COOKIE_NAME, LEGACY_MC_SESSION_COOKIE_NAME } from '@/lib/session-cookie'
-import { RBAC_ROLE_COOKIE, canAccessPanel, normalizePanelForPath, resolveEffectiveRole } from '@/lib/rbac'
+import { RBAC_ROLE_COOKIE, canAccessPanel, isCustomerRole, normalizeEffectiveRole, normalizePanelForPath, resolveEffectiveRole } from '@/lib/rbac'
+
+const RBAC_QUERY_ROLES = new Set(['customer', 'customer-admin', 'customer-user', 'admin'])
 
 /** Constant-time string comparison using Node.js crypto. */
 function safeCompare(a: string, b: string): boolean {
@@ -113,8 +115,8 @@ function addSecurityHeaders(response: NextResponse, _request: NextRequest, nonce
   response.headers.set('Content-Security-Policy', buildMissionControlCsp({ nonce: effectiveNonce, googleEnabled }))
 
   const queryRole = _request.nextUrl.searchParams?.get('role')
-  if (queryRole === 'customer' || queryRole === 'admin') {
-    response.cookies.set(RBAC_ROLE_COOKIE, queryRole, {
+  if (queryRole && RBAC_QUERY_ROLES.has(queryRole)) {
+    response.cookies.set(RBAC_ROLE_COOKIE, normalizeEffectiveRole(queryRole), {
       path: '/',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7,
@@ -193,7 +195,7 @@ export function proxy(request: NextRequest) {
     cookieString: request.headers.get('cookie'),
   })
 
-  if (effectiveRole === 'customer' && pathname.startsWith('/api/harness/')) {
+  if (effectiveRole === 'customer-user' && pathname.startsWith('/api/harness/')) {
     return addSecurityHeaders(NextResponse.json({ error: 'Forbidden in customer view' }, { status: 403 }), request)
   }
 
@@ -220,12 +222,12 @@ export function proxy(request: NextRequest) {
 
   // Page routes: redirect to login if no session
   if (sessionToken) {
-    if (effectiveRole === 'customer') {
+    if (isCustomerRole(effectiveRole)) {
       const panel = normalizePanelForPath(pathname)
       if (!canAccessPanel(effectiveRole, panel)) {
         const redirectUrl = request.nextUrl.clone()
         redirectUrl.pathname = '/'
-        redirectUrl.searchParams.set('role', 'customer')
+        redirectUrl.searchParams.set('role', effectiveRole)
         return addSecurityHeaders(NextResponse.redirect(redirectUrl), request)
       }
     }

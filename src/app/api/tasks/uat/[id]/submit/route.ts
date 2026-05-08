@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import { mutationLimiter } from '@/lib/rate-limit'
-import { resolveEffectiveRole } from '@/lib/rbac'
+import { isCustomerRole, resolveEffectiveRole } from '@/lib/rbac'
 import { submitUatTask } from '@/lib/uat-tasks'
 
 function authError(error: string, status: 401 | 403) {
@@ -16,14 +16,14 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = requireRole(request, 'viewer')
+  const auth = requireRole(request, 'customer-user')
   if ('error' in auth) return authError(auth.error || 'Authentication required', auth.status || 401)
 
   const effectiveRole = resolveEffectiveRole({
     queryRole: request.nextUrl.searchParams.get('role'),
     cookieString: request.headers.get('cookie'),
   })
-  if (effectiveRole !== 'customer') {
+  if (!isCustomerRole(effectiveRole)) {
     return authError('Requires customer view role', 403)
   }
 

@@ -19,7 +19,7 @@ function readLimit(request: NextRequest): number {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = requireRole(request, 'customer')
+  const auth = requireRole(request, 'customer-user')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   try {

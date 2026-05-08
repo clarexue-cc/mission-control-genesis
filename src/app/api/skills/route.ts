@@ -203,7 +203,7 @@ function getSkillsFromDB(): SkillSummary[] | null {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = requireRole(request, 'viewer')
+  const auth = requireRole(request, 'customer-user')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const roots = getSkillRoots()
@@ -318,7 +318,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = requireRole(request, 'operator')
+  const auth = requireRole(request, 'customer-admin')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const roots = getSkillRoots()
@@ -338,7 +338,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const auth = requireRole(request, 'operator')
+  const auth = requireRole(request, 'customer-admin')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const roots = getSkillRoots()
@@ -357,7 +357,7 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = requireRole(request, 'operator')
+  const auth = requireRole(request, 'customer-admin')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const { searchParams } = new URL(request.url)

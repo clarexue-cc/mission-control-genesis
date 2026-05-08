@@ -167,7 +167,7 @@ export const createUserSchema = z.object({
   username: z.string().min(1, 'Username is required'),
   password: z.string().min(12, 'Password must be at least 12 characters'),
   display_name: z.string().optional(),
-  role: z.enum(['admin', 'operator', 'viewer']).default('operator'),
+  role: z.enum(['admin', 'operator', 'viewer', 'customer-admin', 'customer-user']).default('operator'),
   provider: z.enum(['local', 'google']).default('local'),
   email: z.string().optional(),
 })
@@ -175,7 +175,7 @@ export const createUserSchema = z.object({
 export const accessRequestActionSchema = z.object({
   request_id: z.number(),
   action: z.enum(['approve', 'reject']),
-  role: z.enum(['admin', 'operator', 'viewer']).default('viewer'),
+  role: z.enum(['admin', 'operator', 'viewer', 'customer-admin', 'customer-user']).default('viewer'),
   note: z.string().optional(),
 })
 

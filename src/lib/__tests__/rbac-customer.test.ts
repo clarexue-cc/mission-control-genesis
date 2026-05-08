@@ -8,12 +8,12 @@ describe('customer RBAC panel access', () => {
     'agents',
     'tasks',
     'delivery',
+    'cost-tracker',
     'channels',
     'alerts',
-    'cron',
-    'cost-tracker',
     'settings',
     'integrations',
+    'cron',
     'skills',
   ] as const
 

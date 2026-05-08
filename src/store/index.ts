@@ -303,7 +303,7 @@ export interface CurrentUser {
   id: number
   username: string
   display_name: string
-  role: 'admin' | 'operator' | 'viewer'
+  role: 'admin' | 'operator' | 'viewer' | 'customer-admin' | 'customer-user'
   workspace_id?: number
   tenant_id?: number
   provider?: 'local' | 'google'

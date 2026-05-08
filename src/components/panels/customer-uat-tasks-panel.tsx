@@ -105,7 +105,7 @@ export function CustomerUatTasksPanel() {
   const fetchTasks = useCallback(async () => {
     try {
       setError(null)
-      const params = new URLSearchParams({ role: 'customer', tenant_id: tenantId })
+      const params = new URLSearchParams({ role: 'customer-user', tenant_id: tenantId })
       const response = await fetch(`/api/tasks/uat?${params}`, { cache: 'no-store' })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Failed to load UAT tasks')
@@ -139,7 +139,7 @@ export function CustomerUatTasksPanel() {
     setSubmittingId(task.id)
     setSubmittedMessage(null)
     try {
-      const response = await fetch(`/api/tasks/uat/${encodeURIComponent(task.id)}/submit?role=customer`, {
+      const response = await fetch(`/api/tasks/uat/${encodeURIComponent(task.id)}/submit?role=customer-user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

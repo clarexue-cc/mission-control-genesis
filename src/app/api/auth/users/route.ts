@@ -93,7 +93,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
     }
 
-    if (role && !['admin', 'operator', 'viewer'].includes(role)) {
+    if (role && !['admin', 'operator', 'viewer', 'customer-admin', 'customer-user'].includes(role)) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 

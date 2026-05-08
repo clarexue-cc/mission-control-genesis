@@ -15,7 +15,7 @@ type BillingRouteContext = {
 }
 
 export async function GET(request: NextRequest, context: BillingRouteContext) {
-  const auth = requireRole(request, 'admin')
+  const auth = requireRole(request, 'customer-admin')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   try {

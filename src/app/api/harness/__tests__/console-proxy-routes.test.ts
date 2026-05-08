@@ -94,7 +94,7 @@ describe('Harness console proxy routes', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'admin')
+    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'customer-admin')
     expect(fetchMock).toHaveBeenCalledWith(
       'http://harness.local:3088/api/console/budget/tenant-luo-001',
       expect.objectContaining({ method: 'GET' }),

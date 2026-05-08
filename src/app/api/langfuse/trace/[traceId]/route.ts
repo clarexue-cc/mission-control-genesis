@@ -6,6 +6,7 @@ import {
   mapTraceDetail,
   traceTenantId,
 } from '@/lib/langfuse-proxy'
+import { isCustomerRole } from '@/lib/rbac'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -15,7 +16,7 @@ type TraceRouteContext = {
 }
 
 export async function GET(request: NextRequest, context: TraceRouteContext) {
-  const auth = requireRole(request, 'customer')
+  const auth = requireRole(request, 'customer-user')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   try {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest, context: TraceRouteContext) {
     }
 
     const tenantId = traceTenantId(result.payload)
-    if (auth.user.role === 'customer' && (!tenantId || !canAccessTenant(auth.user, tenantId))) {
+    if (isCustomerRole(auth.user.role) && (!tenantId || !canAccessTenant(auth.user, tenantId))) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 

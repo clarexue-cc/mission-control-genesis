@@ -247,7 +247,7 @@ export interface CurrentUser {
   id: number
   username: string
   display_name: string
-  role: 'admin' | 'operator' | 'viewer'
+  role: 'admin' | 'operator' | 'viewer' | 'customer-admin' | 'customer-user'
   provider?: 'local' | 'google'
   email?: string | null
   avatar_url?: string | null
