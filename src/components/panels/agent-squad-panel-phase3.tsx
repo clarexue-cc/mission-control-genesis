@@ -24,7 +24,7 @@ import {
 import { formatModelName, buildTaskStatParts } from '@/lib/agent-card-helpers'
 import { resolveCustomerTenantId, resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 import { useMissionControl, type Agent } from '@/store'
-import { isCustomerRole, readEffectiveRoleFromBrowser } from '@/lib/rbac'
+import { isCustomerRole, isCustomerUserRole, readEffectiveRoleFromBrowser } from '@/lib/rbac'
 
 const log = createClientLogger('AgentSquadPhase3')
 
@@ -185,6 +185,8 @@ export function AgentSquadPanelPhase3() {
   const [agentStatsByName, setAgentStatsByName] = useState<Record<string, LangfuseAgentStatsEntry>>({})
   const hasHandledShowHiddenChange = useRef(false)
   const isCustomer = isCustomerRole(effectiveRole)
+  const isCustomerUser = isCustomerUserRole(effectiveRole)
+  const isLimitedCustomer = isCustomerUser
 
   // Sync agents from gateway config or local disk
   const syncFromConfig = async (source?: 'local') => {
@@ -223,7 +225,7 @@ export function AgentSquadPanelPhase3() {
       setError(null)
       if (agents.length === 0) setLoading(true)
 
-      const url = !isCustomer && showHidden ? '/api/agents?show_hidden=true' : '/api/agents'
+      const url = !isLimitedCustomer && showHidden ? '/api/agents?show_hidden=true' : '/api/agents'
       const response = await fetch(url)
       if (response.status === 401) {
         window.location.assign('/login?next=%2Fagents')
@@ -244,7 +246,7 @@ export function AgentSquadPanelPhase3() {
     } finally {
       setLoading(false)
     }
-  }, [agents.length, isCustomer, setAgents, showHidden])
+  }, [agents.length, isLimitedCustomer, setAgents, showHidden])
 
   const loadAgentStats = useCallback(async () => {
     if (!tenantId) {
@@ -446,7 +448,7 @@ export function AgentSquadPanelPhase3() {
           >
             {autoRefresh ? t('live') : t('manual')}
           </Button>
-          {!isCustomer && (
+          {!isLimitedCustomer && (
             <>
               <Button
                 onClick={() => syncFromConfig()}
@@ -536,8 +538,8 @@ export function AgentSquadPanelPhase3() {
               return (
                 <div
                   key={agent.id}
-                  className={`group relative overflow-hidden rounded-xl border border-border/70 bg-card p-4 transition-all duration-200 ease-out hover:border-border hover:shadow-lg ${isCustomer ? '' : 'cursor-pointer hover:-translate-y-0.5'}`}
-                  onClick={isCustomer ? undefined : () => setSelectedAgent(agent)}
+                  className={`group relative overflow-hidden rounded-xl border border-border/70 bg-card p-4 transition-all duration-200 ease-out hover:border-border hover:shadow-lg ${isLimitedCustomer ? '' : 'cursor-pointer hover:-translate-y-0.5'}`}
+                  onClick={isLimitedCustomer ? undefined : () => setSelectedAgent(agent)}
                 >
                   <div className={`pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${(statusCardStyles[agent.status] || defaultCardStyle).edge}`} />
                   {agent.hidden ? <div className="absolute top-2 right-2 text-2xs text-slate-500">hidden</div> : null}
@@ -591,7 +593,7 @@ export function AgentSquadPanelPhase3() {
                     </div>
                   )}
 
-                  {isCustomer && (
+                  {isLimitedCustomer && (
                     <div className="mb-2 rounded-lg border border-border/50 bg-secondary/20 p-2.5">
                       <div className="text-[11px] font-medium text-muted-foreground">Recent execution</div>
                       <div className="mt-1 text-xs text-foreground/85">
@@ -620,14 +622,13 @@ export function AgentSquadPanelPhase3() {
                   )}
 
                   {/* Footer: last seen + actions */}
-                  <div className={`${isCustomer ? 'block' : 'flex items-center justify-between'} mt-2 pt-2 border-t border-border/30`}>
-                    <span className="text-[11px] text-muted-foreground/70">
-                      Last seen {formatLastSeen(agent.last_seen)}
-                    </span>
-                    {isCustomer ? (
-                      <CustomerAgentPreferences agent={agent} />
-                    ) : (
-                      <div className="flex gap-1">
+                  <div className="mt-2 border-t border-border/30 pt-2">
+                    <div className={`${isLimitedCustomer ? 'block' : 'flex items-center justify-between'}`}>
+                      <span className="text-[11px] text-muted-foreground/70">
+                        Last seen {formatLastSeen(agent.last_seen)}
+                      </span>
+                      {!isLimitedCustomer && (
+                        <div className="flex gap-1">
                         {agent.session_key ? (
                           <Button
                             onClick={(e) => {
@@ -679,6 +680,10 @@ export function AgentSquadPanelPhase3() {
                           {agent.hidden ? 'Unhide' : 'Hide'}
                         </Button>
                       </div>
+                      )}
+                    </div>
+                    {isCustomer && !isCustomerUser && (
+                      <CustomerAgentPreferences agent={agent} />
                     )}
                   </div>
                 </div>
@@ -689,7 +694,7 @@ export function AgentSquadPanelPhase3() {
       </div>
 
       {/* Agent Detail Modal */}
-      {selectedAgent && !isCustomer && (
+      {selectedAgent && !isLimitedCustomer && (
         <AgentDetailModalPhase3
           agent={selectedAgent}
           onClose={() => setSelectedAgent(null)}
@@ -701,7 +706,7 @@ export function AgentSquadPanelPhase3() {
       )}
 
       {/* Create Agent Modal */}
-      {showCreateModal && !isCustomer && (
+      {showCreateModal && !isLimitedCustomer && (
         <CreateAgentModal
           onClose={() => setShowCreateModal(false)}
           onCreated={fetchAgents}
@@ -709,7 +714,7 @@ export function AgentSquadPanelPhase3() {
       )}
 
       {/* Quick Spawn Modal */}
-      {showQuickSpawnModal && selectedAgent && !isCustomer && (
+      {showQuickSpawnModal && selectedAgent && !isLimitedCustomer && (
         <QuickSpawnModal
           agent={selectedAgent}
           onClose={() => {

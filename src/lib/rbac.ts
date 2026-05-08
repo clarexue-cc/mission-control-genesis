@@ -1,5 +1,5 @@
 export type EffectiveRole = 'admin' | 'customer-admin' | 'customer-user'
-type LegacyEffectiveRole = 'customer'
+export type LegacyEffectiveRole = 'customer'
 
 export const RBAC_ROLE_COOKIE = 'mc-view-role'
 export const CUSTOMER_ADMIN_PANELS = [
@@ -49,6 +49,14 @@ export function normalizeEffectiveRole(value: unknown): EffectiveRole {
 
 export function isCustomerRole(role: EffectiveRole | LegacyEffectiveRole | string): boolean {
   return normalizeEffectiveRole(role) !== 'admin'
+}
+
+export function isCustomerUserRole(role: EffectiveRole | LegacyEffectiveRole | string): boolean {
+  return normalizeEffectiveRole(role) === 'customer-user'
+}
+
+export function isCustomerAdminRole(role: EffectiveRole | LegacyEffectiveRole | string): boolean {
+  return normalizeEffectiveRole(role) === 'customer-admin'
 }
 
 export function canAccessPanel(role: EffectiveRole | LegacyEffectiveRole, panel: string): boolean {

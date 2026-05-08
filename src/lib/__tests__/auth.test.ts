@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { safeCompare, requireRole } from '@/lib/auth'
+import { safeCompare, requireRole, registerAuthResolver, type User } from '@/lib/auth'
 
 // Mock dependencies that auth.ts imports
 vi.mock('@/lib/db', () => ({
@@ -53,6 +53,7 @@ describe('requireRole', () => {
 
   afterEach(() => {
     process.env = originalEnv
+    registerAuthResolver(() => null)
   })
 
   function makeRequest(headers: Record<string, string> = {}): Request {
@@ -123,5 +124,34 @@ describe('requireRole', () => {
     )
     expect(result.status).toBe(401)
     expect(result.user).toBeUndefined()
+  })
+
+  it('keeps customer-user below customer-admin in the role hierarchy', () => {
+    const user = (role: User['role']): User => ({
+      id: 99,
+      username: role,
+      display_name: role,
+      role,
+      workspace_id: 1,
+      tenant_id: 1,
+      created_at: 0,
+      updated_at: 0,
+      last_login_at: null,
+    })
+
+    registerAuthResolver((apiKey) => {
+      if (apiKey === 'customer-user-key') return user('customer-user')
+      if (apiKey === 'customer-admin-key') return user('customer-admin')
+      return null
+    })
+
+    expect(requireRole(makeRequest({ 'x-api-key': 'customer-user-key' }), 'customer-admin')).toMatchObject({
+      error: 'Requires customer-admin role or higher',
+      status: 403,
+    })
+
+    expect(requireRole(makeRequest({ 'x-api-key': 'customer-admin-key' }), 'customer-user')).toMatchObject({
+      user: expect.objectContaining({ role: 'customer-admin' }),
+    })
   })
 })

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useMissionControl } from '@/store'
 import { Button } from '@/components/ui/button'
 import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
+import { isCustomerUserRole, readEffectiveRoleFromBrowser } from '@/lib/rbac'
 
 interface TenantSkillInventoryItem {
   tenant_id: string
@@ -37,10 +38,13 @@ function onboardingHref(tenantId: string) {
 
 export function SkillsPanel() {
   const { activeTenant } = useMissionControl()
+  const [effectiveRole] = useState(() => readEffectiveRoleFromBrowser())
   const [skills, setSkills] = useState<TenantSkillInventoryItem[]>([])
+  const [enabledSkills, setEnabledSkills] = useState<Record<string, boolean>>({})
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const canToggleSkills = !isCustomerUserRole(effectiveRole)
 
   async function loadInventory() {
     setLoading(true)
@@ -50,6 +54,14 @@ export function SkillsPanel() {
       const body = await response.json() as TenantSkillInventoryResponse
       if (!response.ok) throw new Error(body.error || 'Failed to load tenant Skills')
       setSkills(body.skills || [])
+      setEnabledSkills(current => {
+        const next = { ...current }
+        for (const skill of body.skills || []) {
+          const key = `${skill.tenant_id}:${skill.skill_name}`
+          if (next[key] === undefined) next[key] = true
+        }
+        return next
+      })
       setTotal(body.total || 0)
     } catch (err: any) {
       setSkills([])
@@ -132,9 +144,30 @@ export function SkillsPanel() {
                     {skill.excerpt && <p className="mt-1 text-xs leading-5 text-muted-foreground">{skill.excerpt}</p>}
                     <p className="mt-2 break-all font-mono text-2xs text-muted-foreground">{skill.path}</p>
                   </div>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={onboardingHref(skill.tenant_id)}>打开该 tenant P9</Link>
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {canToggleSkills && (
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={enabledSkills[`${skill.tenant_id}:${skill.skill_name}`] ?? true}
+                        aria-label={`Toggle ${skill.title}`}
+                        onClick={() => {
+                          const key = `${skill.tenant_id}:${skill.skill_name}`
+                          setEnabledSkills(current => ({ ...current, [key]: !(current[key] ?? true) }))
+                        }}
+                        className={`inline-flex h-8 w-14 items-center rounded-full border px-1 transition ${
+                          (enabledSkills[`${skill.tenant_id}:${skill.skill_name}`] ?? true)
+                            ? 'justify-end border-primary/40 bg-primary/30'
+                            : 'justify-start border-border bg-secondary/60'
+                        }`}
+                      >
+                        <span className="h-6 w-6 rounded-full bg-foreground shadow-sm" />
+                      </button>
+                    )}
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={onboardingHref(skill.tenant_id)}>打开该 tenant P9</Link>
+                    </Button>
+                  </div>
                 </div>
               </article>
             ))}
