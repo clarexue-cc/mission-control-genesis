@@ -19,8 +19,8 @@ export const customerCheckpointNavItems: CustomerCheckpointNavItem[] = [
   { id: 'p10-tests', label: 'P10 Tests', panel: 'tests', tenantScoped: true },
   { id: 'p11-hermes', label: 'P11 Hermes', panel: 'hermes', tenantScoped: true },
   { id: 'p12-rts-checklist', label: 'P12 RTS Checklist', panel: 'delivery', tenantScoped: true },
-  { id: 'p13-customer-view', label: 'P13 Customer View', panel: 'overview', tenantScoped: true, role: 'customer' },
-  { id: 'p14-channels', label: 'P14 Channels', panel: 'channels', tenantScoped: true, role: 'customer' },
-  { id: 'p15-uat', label: 'P15 UAT', panel: 'tasks', tenantScoped: true, role: 'customer' },
-  { id: 'p16-delivery', label: 'P16 Delivery', panel: 'delivery', tenantScoped: true, role: 'customer' },
+  { id: 'p13-customer-view', label: 'P13 Customer View', panel: 'overview', tenantScoped: true, role: 'customer-user' },
+  { id: 'p14-channels', label: 'P14 Channels', panel: 'channels', tenantScoped: true, role: 'customer-user' },
+  { id: 'p15-uat', label: 'P15 UAT', panel: 'tasks', tenantScoped: true, role: 'customer-user' },
+  { id: 'p16-delivery', label: 'P16 Delivery', panel: 'delivery', tenantScoped: true, role: 'customer-admin' },
 ]

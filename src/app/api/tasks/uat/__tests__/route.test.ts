@@ -35,7 +35,7 @@ const customerUser = {
   ...adminUser,
   username: 'customer-operator',
   display_name: 'Customer Operator',
-  role: 'viewer',
+  role: 'customer-user',
 }
 
 function request(url: string, method = 'GET', body?: Record<string, unknown>) {
@@ -188,14 +188,14 @@ describe('/api/tasks/uat', () => {
     authMock.requireRole.mockReturnValue({ user: customerUser })
     const { uat } = await loadRoutes()
 
-    const response = await uat.GET(request('http://localhost/api/tasks/uat?role=customer&tenant_id=tenant-a'))
+    const response = await uat.GET(request('http://localhost/api/tasks/uat?role=customer-user&tenant_id=tenant-a'))
     const body = await response.json()
 
     expect(response.status).toBe(200)
     expect(body.tasks).toHaveLength(1)
     expect(body.tasks[0]).toMatchObject({ tenant_id: 'tenant-a', title: 'Tenant A task' })
     expect(JSON.stringify(body.tasks)).not.toContain('Tenant B task')
-    expect(authMock.requireRole).toHaveBeenLastCalledWith(expect.any(NextRequest), 'viewer')
+    expect(authMock.requireRole).toHaveBeenLastCalledWith(expect.any(NextRequest), 'customer-user')
   })
 
   it('materializes P4 UAT draft tasks when customer loads their task list', async () => {
@@ -203,7 +203,7 @@ describe('/api/tasks/uat', () => {
     authMock.requireRole.mockReturnValue({ user: customerUser })
     const { uat } = await loadRoutes()
 
-    const firstResponse = await uat.GET(request('http://localhost/api/tasks/uat?role=customer&tenant_id=tenant-a'))
+    const firstResponse = await uat.GET(request('http://localhost/api/tasks/uat?role=customer-user&tenant_id=tenant-a'))
     const firstBody = await firstResponse.json()
 
     expect(firstResponse.status).toBe(200)
@@ -215,7 +215,7 @@ describe('/api/tasks/uat', () => {
     ].sort())
     expect(firstBody.tasks.every((task: { created_by: string }) => task.created_by === 'p4-blueprint')).toBe(true)
 
-    const secondResponse = await uat.GET(request('http://localhost/api/tasks/uat?role=customer&tenant_id=tenant-a'))
+    const secondResponse = await uat.GET(request('http://localhost/api/tasks/uat?role=customer-user&tenant_id=tenant-a'))
     const secondBody = await secondResponse.json()
     const persisted = await readFile(path.join(harnessRoot, 'phase0', 'tenants', 'tenant-a', 'uat-tasks.jsonl'), 'utf8')
 
@@ -230,7 +230,7 @@ describe('/api/tasks/uat', () => {
     const { submit } = await loadRoutes()
 
     const response = await submit.POST(
-      request(`http://localhost/api/tasks/uat/${task.id}/submit?role=customer`, 'POST', {
+      request(`http://localhost/api/tasks/uat/${task.id}/submit?role=customer-user`, 'POST', {
         tenant_id: 'tenant-a',
         response_text: '简报内容准确，可以上线。',
         feedback_options: ['结果正确', '可以上线'],
@@ -275,7 +275,7 @@ describe('/api/tasks/uat', () => {
     authMock.requireRole.mockReturnValue({ user: customerUser })
     const { submit, submissions } = await loadRoutes()
     await submit.POST(
-      request(`http://localhost/api/tasks/uat/${task.id}/submit?role=customer`, 'POST', {
+      request(`http://localhost/api/tasks/uat/${task.id}/submit?role=customer-user`, 'POST', {
         tenant_id: 'tenant-a',
         response_text: '已验收。',
         feedback_options: ['内容有帮助'],
@@ -315,7 +315,7 @@ describe('/api/tasks/uat', () => {
     const { submit } = await loadRoutes()
 
     const response = await submit.POST(
-      request('http://localhost/api/tasks/uat/missing-task/submit?role=customer', 'POST', {
+      request('http://localhost/api/tasks/uat/missing-task/submit?role=customer-user', 'POST', {
         tenant_id: 'tenant-a',
         response_text: 'No task here',
         rating: 3,

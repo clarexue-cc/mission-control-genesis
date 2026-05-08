@@ -30,7 +30,7 @@ describe('GET /api/langfuse/agent-stats', () => {
       id: 1,
       username: 'customer',
       display_name: 'Customer',
-      role: 'customer',
+      role: 'customer-user',
       workspace_id: 1,
       tenant_id: 7,
       created_at: 0,
@@ -115,7 +115,7 @@ describe('GET /api/langfuse/agent-stats', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'customer')
+    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'customer-user')
     const upstreamUrl = new URL(String(fetchMock.mock.calls[0][0]))
     expect(upstreamUrl.searchParams.get('metadata.tenant')).toBe('tenant-owned-007')
     expect(upstreamUrl.searchParams.get('fromTimestamp')).toBe('2026-04-29T12:00:00.000Z')

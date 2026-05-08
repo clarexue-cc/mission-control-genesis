@@ -10,7 +10,7 @@ interface UserRecord {
   id: number
   username: string
   display_name: string
-  role: 'admin' | 'operator' | 'viewer'
+  role: 'admin' | 'operator' | 'viewer' | 'customer-admin' | 'customer-user'
   provider?: 'local' | 'google'
   email?: string | null
   avatar_url?: string | null
@@ -40,6 +40,8 @@ const roleColors: Record<string, string> = {
   admin: 'bg-red-500/20 text-red-400',
   operator: 'bg-blue-500/20 text-blue-400',
   viewer: 'bg-gray-500/20 text-gray-400',
+  'customer-admin': 'bg-emerald-500/20 text-emerald-400',
+  'customer-user': 'bg-cyan-500/20 text-cyan-400',
 }
 
 export function UserManagementPanel() {
@@ -55,13 +57,13 @@ export function UserManagementPanel() {
   const [creating, setCreating] = useState(false)
 
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [editForm, setEditForm] = useState({ display_name: '', role: '' as '' | 'admin' | 'operator' | 'viewer', password: '' })
+  const [editForm, setEditForm] = useState({ display_name: '', role: '' as '' | 'admin' | 'operator' | 'viewer' | 'customer-admin' | 'customer-user', password: '' })
   const [saving, setSaving] = useState(false)
 
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null)
   const [processingRequestId, setProcessingRequestId] = useState<number | null>(null)
   const [reviewingRequestId, setReviewingRequestId] = useState<number | null>(null)
-  const [reviewForm, setReviewForm] = useState<{ role: 'admin' | 'operator' | 'viewer'; note: string }>({ role: 'viewer', note: '' })
+  const [reviewForm, setReviewForm] = useState<{ role: 'admin' | 'operator' | 'viewer' | 'customer-admin' | 'customer-user'; note: string }>({ role: 'viewer', note: '' })
 
   const showFeedback = (ok: boolean, text: string) => {
     setFeedback({ ok, text })
@@ -302,6 +304,8 @@ export function UserManagementPanel() {
                             className="h-7 px-2 rounded bg-secondary border border-border text-xs text-foreground"
                           >
                             <option value="viewer">{t('roleViewer')}</option>
+                            <option value="customer-user">Customer User</option>
+                            <option value="customer-admin">Customer Admin</option>
                             <option value="operator">{t('roleOperator')}</option>
                             <option value="admin">{t('roleAdmin')}</option>
                           </select>
@@ -373,6 +377,8 @@ export function UserManagementPanel() {
             <input value={createForm.display_name} onChange={(e) => setCreateForm((f) => ({ ...f, display_name: e.target.value }))} placeholder={t('displayName')} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground" />
             <select value={createForm.role} onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value as any }))} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground">
               <option value="viewer">{t('roleViewer')}</option>
+              <option value="customer-user">Customer User</option>
+              <option value="customer-admin">Customer Admin</option>
               <option value="operator">{t('roleOperator')}</option>
               <option value="admin">{t('roleAdmin')}</option>
             </select>
@@ -408,6 +414,8 @@ export function UserManagementPanel() {
                     <td className="px-4 py-2.5">
                       <select value={editForm.role} onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value as any }))} className="h-8 px-2 rounded bg-secondary border border-border text-sm text-foreground" disabled={u.id === currentUser?.id}>
                         <option value="viewer">{t('roleViewer')}</option>
+                        <option value="customer-user">Customer User</option>
+                        <option value="customer-admin">Customer Admin</option>
                         <option value="operator">{t('roleOperator')}</option>
                         <option value="admin">{t('roleAdmin')}</option>
                       </select>

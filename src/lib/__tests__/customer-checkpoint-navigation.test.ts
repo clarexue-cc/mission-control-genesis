@@ -59,7 +59,7 @@ describe('customer checkpoint navigation', () => {
   it('uses customer role links for customer-facing checkpoints', () => {
     expect(
       customerCheckpointNavItems
-        .filter(item => item.role === 'customer')
+        .filter(item => item.role === 'customer-user' || item.role === 'customer-admin')
         .map(item => ({ label: item.label, panel: item.panel }))
     ).toEqual([
       { label: 'P13 Customer View', panel: 'overview' },

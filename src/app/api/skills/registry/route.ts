@@ -16,7 +16,7 @@ const VALID_TARGETS = ['user-agents', 'user-codex', 'project-agents', 'project-c
  * Proxied search — server-side only, rate-limited.
  */
 export async function GET(request: NextRequest) {
-  const auth = requireRole(request, 'viewer')
+  const auth = requireRole(request, 'customer-user')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const limited = heavyLimiter(request)
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
  * Useful for preview/audit before install.
  */
 export async function PUT(request: NextRequest) {
-  const auth = requireRole(request, 'viewer')
+  const auth = requireRole(request, 'customer-user')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const body = await request.json().catch(() => ({}))

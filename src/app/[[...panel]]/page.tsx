@@ -131,7 +131,7 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search)
     const customerParams = new URLSearchParams()
     customerParams.set('tenant', resolveCustomerTenantId(params))
-    customerParams.set('role', 'customer')
+    customerParams.set('role', nextRole)
     setEffectiveRole(nextRole)
     if (isCustomerRole(nextRole) && !canAccessPanel(nextRole, normalizedPanel)) {
       router.replace(`/?${customerParams.toString()}`)

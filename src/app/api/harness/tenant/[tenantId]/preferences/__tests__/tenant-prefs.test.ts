@@ -30,7 +30,7 @@ describe('/api/harness/tenant/[tenantId]/preferences', () => {
       id: 1,
       username: 'customer',
       display_name: 'Customer',
-      role: 'customer',
+      role: 'customer-admin',
       workspace_id: 1,
       tenant_id: 7,
       created_at: 0,
@@ -96,7 +96,7 @@ describe('/api/harness/tenant/[tenantId]/preferences', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'customer')
+    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'customer-admin')
     expect(fetchMock).toHaveBeenCalledWith(
       'http://harness.local:3088/api/console/tenant/tenant-owned-007/config',
       expect.objectContaining({ method: 'GET', cache: 'no-store' }),

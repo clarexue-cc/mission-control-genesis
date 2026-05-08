@@ -25,7 +25,7 @@ describe('DELETE /api/harness/providers/[name]', () => {
   const originalEnv = { ...process.env }
   const fetchMock = vi.fn()
 
-  function user(role: 'admin' | 'customer', tenantId = 7) {
+  function user(role: 'admin' | 'customer-admin', tenantId = 7) {
     return {
       id: 1,
       username: role,
@@ -56,7 +56,7 @@ describe('DELETE /api/harness/providers/[name]', () => {
   beforeEach(() => {
     vi.resetModules()
     authMock.requireRole.mockReset()
-    authMock.requireRole.mockReturnValue({ user: user('customer') })
+    authMock.requireRole.mockReturnValue({ user: user('customer-admin') })
     dbMock.get.mockReset()
     dbMock.prepare.mockReset()
     dbMock.getDatabase.mockReset()
@@ -94,7 +94,7 @@ describe('DELETE /api/harness/providers/[name]', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'customer')
+    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'customer-admin')
     expect(fetchMock).toHaveBeenCalledWith(
       'http://harness.local:3088/api/console/providers/openai?tenantId=tenant-owned-007',
       expect.objectContaining({ method: 'DELETE' }),
@@ -130,7 +130,7 @@ describe('DELETE /api/harness/providers/[name]', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'customer')
+    expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'customer-admin')
     expect(fetchMock).toHaveBeenCalledWith(
       'http://harness.local:3088/api/console/providers/anthropic?tenantId=tenant-other-001',
       expect.objectContaining({ method: 'DELETE' }),

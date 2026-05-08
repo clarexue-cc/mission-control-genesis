@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import { getDatabase } from '@/lib/db'
+import { isCustomerRole } from '@/lib/rbac'
 import {
   normalizeConsoleTenantId,
   normalizeProviderName,
@@ -27,7 +28,7 @@ function resolveSessionTenantSlug(sessionTenantId: number): string | null {
 }
 
 function canAccessRequestedTenant(role: string, sessionTenantId: number, requestedTenantId: string): boolean {
-  if (role !== 'customer') return true
+  if (!isCustomerRole(role)) return true
   const allowedTenantIds = new Set<string>([normalizeConsoleTenantId(String(sessionTenantId), 'tenantId')])
   const sessionTenantSlug = resolveSessionTenantSlug(sessionTenantId)
   if (sessionTenantSlug) allowedTenantIds.add(sessionTenantSlug)
@@ -35,7 +36,7 @@ function canAccessRequestedTenant(role: string, sessionTenantId: number, request
 }
 
 export async function DELETE(request: NextRequest, context: ProviderRouteContext) {
-  const auth = requireRole(request, 'customer')
+  const auth = requireRole(request, 'customer-admin')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   try {

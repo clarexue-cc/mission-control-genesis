@@ -15,7 +15,7 @@ export const runtime = 'nodejs'
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
 export async function GET(request: NextRequest) {
-  const auth = requireRole(request, 'customer')
+  const auth = requireRole(request, 'customer-user')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   try {

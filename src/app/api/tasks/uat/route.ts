@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import { mutationLimiter } from '@/lib/rate-limit'
-import { resolveEffectiveRole } from '@/lib/rbac'
+import { isCustomerRole, resolveEffectiveRole } from '@/lib/rbac'
 import { getDatabase } from '@/lib/db'
 import { createUatTask, listCustomerUatTasks } from '@/lib/uat-tasks'
 import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
@@ -43,7 +43,7 @@ function resolveTenantParam(request: NextRequest, auth: { user: { tenant_id?: nu
 
 export async function GET(request: NextRequest) {
   const effectiveRole = effectiveRoleFor(request)
-  const auth = requireRole(request, effectiveRole === 'customer' ? 'viewer' : 'admin')
+  const auth = requireRole(request, isCustomerRole(effectiveRole) ? 'customer-user' : 'admin')
   if ('error' in auth) return authError(auth.error || 'Authentication required', auth.status || 401)
 
   try {

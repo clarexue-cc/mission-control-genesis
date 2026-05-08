@@ -63,7 +63,7 @@ function hasAegisApproval(db: ReturnType<typeof getDatabase>, taskId: number, wo
  * Query params: status, assigned_to, priority, project_id, limit, offset
  */
 export async function GET(request: NextRequest) {
-  const auth = requireRole(request, 'viewer');
+  const auth = requireRole(request, 'customer-user');
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {

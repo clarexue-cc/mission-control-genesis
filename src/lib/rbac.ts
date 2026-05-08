@@ -1,35 +1,60 @@
-export type EffectiveRole = 'admin' | 'customer'
+export type EffectiveRole = 'admin' | 'customer-admin' | 'customer-user'
+type LegacyEffectiveRole = 'customer'
 
 export const RBAC_ROLE_COOKIE = 'mc-view-role'
-export const CUSTOMER_VISIBLE_PANELS = [
+export const CUSTOMER_ADMIN_PANELS = [
   'overview',
   'agents',
   'tasks',
   'delivery',
+  'cost-tracker',
   'channels',
   'alerts',
-  'cron',
-  'cost-tracker',
   'settings',
   'integrations',
+  'cron',
   'skills',
 ] as const
 
+export const CUSTOMER_USER_PANELS = [
+  'overview',
+  'agents',
+  'tasks',
+  'channels',
+  'alerts',
+  'skills',
+] as const
+
+export const PANEL_ACCESS_BY_ROLE = {
+  admin: ['*'],
+  'customer-admin': CUSTOMER_ADMIN_PANELS,
+  'customer-user': CUSTOMER_USER_PANELS,
+} as const
+
+export const CUSTOMER_VISIBLE_PANELS = CUSTOMER_ADMIN_PANELS
 export type CustomerVisiblePanel = typeof CUSTOMER_VISIBLE_PANELS[number]
 
-const CUSTOMER_PANEL_SET = new Set<string>(CUSTOMER_VISIBLE_PANELS)
+const PANEL_ACCESS_SETS: Record<Exclude<EffectiveRole, 'admin'>, Set<string>> = {
+  'customer-admin': new Set<string>(CUSTOMER_ADMIN_PANELS),
+  'customer-user': new Set<string>(CUSTOMER_USER_PANELS),
+}
+
+const QUERY_ROLE_VALUES = new Set(['admin', 'customer-admin', 'customer-user', 'customer'])
 
 export function normalizeEffectiveRole(value: unknown): EffectiveRole {
-  return value === 'customer' ? 'customer' : 'admin'
+  if (value === 'customer-user') return 'customer-user'
+  if (value === 'customer-admin' || value === 'customer') return 'customer-admin'
+  return 'admin'
 }
 
-export function isCustomerRole(role: EffectiveRole): boolean {
-  return role === 'customer'
+export function isCustomerRole(role: EffectiveRole | LegacyEffectiveRole | string): boolean {
+  return normalizeEffectiveRole(role) !== 'admin'
 }
 
-export function canAccessPanel(role: EffectiveRole, panel: string): boolean {
-  if (role !== 'customer') return true
-  return CUSTOMER_PANEL_SET.has(panel)
+export function canAccessPanel(role: EffectiveRole | LegacyEffectiveRole, panel: string): boolean {
+  const effectiveRole = normalizeEffectiveRole(role)
+  if (effectiveRole === 'admin') return true
+  return PANEL_ACCESS_SETS[effectiveRole].has(panel)
 }
 
 export function normalizePanelForPath(pathname: string): string {
@@ -50,7 +75,7 @@ export function resolveEffectiveRole(input: {
   queryRole?: string | null
   cookieString?: string | null
 }): EffectiveRole {
-  if (input.queryRole === 'customer' || input.queryRole === 'admin') {
+  if (input.queryRole && QUERY_ROLE_VALUES.has(input.queryRole)) {
     return normalizeEffectiveRole(input.queryRole)
   }
   return readRoleFromCookieString(input.cookieString)
@@ -66,6 +91,6 @@ export function readEffectiveRoleFromBrowser(search = typeof window !== 'undefin
   const params = new URLSearchParams(search)
   const queryRole = params.get('role')
   const role = resolveEffectiveRole({ queryRole, cookieString: document.cookie })
-  if (queryRole === 'customer' || queryRole === 'admin') writeRoleCookie(role)
+  if (queryRole && QUERY_ROLE_VALUES.has(queryRole)) writeRoleCookie(role)
   return role
 }
