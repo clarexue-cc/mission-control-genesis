@@ -34,6 +34,16 @@ import { HookLogsPanel } from '@/components/panels/hook-logs'
 import { OnboardingOverviewPanel } from '@/components/panels/onboarding-overview-panel'
 import { PlatformReadyPanel } from '@/components/panels/platform-ready-panel'
 import { BaseSelectionPanel } from '@/components/panels/base-selection-panel'
+import { HermesProfileSetupPanel } from '@/components/panels/hermes-profile-setup-panel'
+import { HermesBoundaryPanel } from '@/components/panels/hermes-boundary-panel'
+import { HermesSkillCuratorPanel } from '@/components/panels/hermes-skill-curator-panel'
+import { HermesMemoryPanel } from '@/components/panels/hermes-memory-panel'
+import { HermesOutputPanel } from '@/components/panels/hermes-output-panel'
+import { HermesGuardianPanel } from '@/components/panels/hermes-guardian-panel'
+import { HermesCronPanel } from '@/components/panels/hermes-cron-panel'
+import { GateTestingPanel } from '@/components/panels/gate-testing-panel'
+import { PreLaunchPanel } from '@/components/panels/pre-launch-panel'
+import { OnboardingDeliveryPanel } from '@/components/panels/onboarding-delivery-panel'
 import { LocalAgentsDocPanel } from '@/components/panels/local-agents-doc-panel'
 import { ChannelsPanel } from '@/components/panels/channels-panel'
 import { DebugPanel } from '@/components/panels/debug-panel'
@@ -465,6 +475,10 @@ export default function Home() {
 
 const ESSENTIAL_PANELS = new Set([
   'overview', 'onboarding/overview', 'onboarding/platform-ready', 'onboarding/base-selection',
+  'onboarding/hermes/profile', 'onboarding/hermes/boundary', 'onboarding/hermes/skills',
+  'onboarding/hermes/memory', 'onboarding/hermes/output', 'onboarding/hermes/guardian',
+  'onboarding/hermes/cron', 'onboarding/gate-testing', 'onboarding/pre-launch',
+  'onboarding/delivery',
   'customer-setup', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings',
 ])
 
@@ -578,6 +592,26 @@ function ContentRouter({ tab }: { tab: string }) {
       return <PlatformReadyPanel />
     case 'onboarding/base-selection':
       return <BaseSelectionPanel />
+    case 'onboarding/hermes/profile':
+      return <HermesProfileSetupPanel />
+    case 'onboarding/hermes/boundary':
+      return <HermesBoundaryPanel />
+    case 'onboarding/hermes/skills':
+      return <HermesSkillCuratorPanel />
+    case 'onboarding/hermes/memory':
+      return <HermesMemoryPanel />
+    case 'onboarding/hermes/output':
+      return <HermesOutputPanel />
+    case 'onboarding/hermes/guardian':
+      return <HermesGuardianPanel />
+    case 'onboarding/hermes/cron':
+      return <HermesCronPanel />
+    case 'onboarding/gate-testing':
+      return <GateTestingPanel />
+    case 'onboarding/pre-launch':
+      return <PreLaunchPanel />
+    case 'onboarding/delivery':
+      return <OnboardingDeliveryPanel />
     case 'customer-setup':
     case 'onboarding':
       return <OnboardingOverviewPanel />

@@ -1,14 +1,18 @@
 'use client'
 
 import Image from 'next/image'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { useMissionControl } from '@/store'
 import { useNavigateToPanel, usePrefetchPanel } from '@/lib/navigation'
 import { Button } from '@/components/ui/button'
 import { APP_VERSION } from '@/lib/version'
 import { getPluginNavItems } from '@/lib/plugins'
-import { getCustomerCheckpointNavItems } from '@/lib/customer-checkpoint-navigation'
+import {
+  getCustomerCheckpointNavItems,
+  type CustomerCheckpointAccess,
+  type CustomerCheckpointNavItem,
+} from '@/lib/customer-checkpoint-navigation'
 
 interface NavItem {
   id: string
@@ -19,6 +23,7 @@ interface NavItem {
   essential?: boolean // Visible in Essential interface mode (default false)
   tenantScoped?: boolean
   requiresPlatformReady?: boolean
+  access?: CustomerCheckpointAccess
   href?: string
   target?: string
   children?: NavItem[] // Nested sub-items (expandable parent)
@@ -36,6 +41,16 @@ function customerCheckpointIcon(panel: string) {
   if (panel === 'onboarding/overview') return <OverviewIcon />
   if (panel === 'onboarding/platform-ready') return <ShieldIcon />
   if (panel === 'onboarding/base-selection') return <GatewaysIcon />
+  if (panel === 'onboarding/hermes/profile') return <CronIcon />
+  if (panel === 'onboarding/hermes/boundary') return <ShieldIcon />
+  if (panel === 'onboarding/hermes/skills') return <SkillsIcon />
+  if (panel === 'onboarding/hermes/memory') return <MemoryIcon />
+  if (panel === 'onboarding/hermes/output') return <DebugIcon />
+  if (panel === 'onboarding/hermes/guardian') return <SecurityIcon />
+  if (panel === 'onboarding/hermes/cron') return <CronIcon />
+  if (panel === 'onboarding/gate-testing') return <DebugIcon />
+  if (panel === 'onboarding/pre-launch') return <ApprovalsIcon />
+  if (panel === 'onboarding/delivery') return <TasksIcon />
   if (panel === 'onboarding/customer/skills') return <SkillsIcon />
   if (panel === 'onboarding/customer/soul') return <AgentsIcon />
   if (panel === 'onboarding/customer/confirm') return <ApprovalsIcon />
@@ -48,16 +63,19 @@ function customerCheckpointIcon(panel: string) {
   return <TasksIcon />
 }
 
-const customerCheckpointChildren: NavItem[] = getCustomerCheckpointNavItems().map(item => ({
-  id: item.id,
-  targetPanel: item.panel,
-  label: item.label,
-  icon: customerCheckpointIcon(item.panel),
-  priority: false,
-  essential: true,
-  tenantScoped: item.tenantScoped,
-  requiresPlatformReady: item.requiresPlatformReady,
-}))
+function toCustomerCheckpointChildren(items: CustomerCheckpointNavItem[]): NavItem[] {
+  return items.map(item => ({
+    id: item.id,
+    targetPanel: item.panel,
+    label: item.label,
+    icon: customerCheckpointIcon(item.panel),
+    priority: false,
+    essential: true,
+    tenantScoped: item.tenantScoped,
+    requiresPlatformReady: item.requiresPlatformReady,
+    access: item.access || 'admin',
+  }))
+}
 
 const navGroups: NavGroup[] = [
   {
@@ -83,7 +101,7 @@ const navGroups: NavGroup[] = [
         icon: <CustomerSetupIcon />,
         priority: false,
         essential: true,
-        children: customerCheckpointChildren,
+        children: [],
       },
     ],
   },
@@ -177,8 +195,6 @@ const gatewayOnlyPanels = new Set([
 const adminOnlyPanels = new Set<string>([
   'boundary',
   'hook-logs',
-  'customer-onboarding',
-  ...customerCheckpointChildren.map(item => item.id),
 ])
 
 function navTarget(item: NavItem): string {
@@ -205,6 +221,25 @@ export function NavRail() {
   const isAdmin = currentUser?.role === 'admin'
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
   const [platformReady, setPlatformReady] = useState<boolean | undefined>(undefined)
+  const customerCheckpointChildren = useMemo(
+    () => toCustomerCheckpointChildren(getCustomerCheckpointNavItems({
+      platformReady,
+      selectedBase: activeTenant?.base,
+    })),
+    [platformReady, activeTenant?.base],
+  )
+
+  const runtimeNavGroups = useMemo(() => navGroups.map(group => {
+    if (group.id !== 'customer-setup') return group
+    return {
+      ...group,
+      items: group.items.map(item => (
+        item.id === 'customer-onboarding'
+          ? { ...item, children: customerCheckpointChildren }
+          : item
+      )),
+    }
+  }), [customerCheckpointChildren])
 
   function toggleParent(id: string) {
     setExpandedParents(prev => {
@@ -269,6 +304,7 @@ export function NavRail() {
         }
         if (isLocal && gatewayOnlyPanels.has(i.id)) return null
         if (!isAdmin && adminOnlyPanels.has(i.id)) return null
+        if (!isAdmin && i.access === 'admin') return null
         if (i.requiresPlatformReady && platformReady === false) return null
         if (isEssential && !i.essential) return null
         return i
@@ -283,7 +319,7 @@ export function NavRail() {
       children: item.children ? translateItems(item.children) : undefined,
     }))
   }
-  const mergedGroups = navGroups.map(g => {
+  const mergedGroups = runtimeNavGroups.map(g => {
     const pluginItems = getPluginNavItems()
       .filter(pi => pi.groupId === g.id)
       .map(pi => ({
@@ -398,7 +434,7 @@ export function NavRail() {
               {/* Group items */}
               <div
                 className={`overflow-hidden transition-all duration-150 ease-in-out ${
-                  sidebarExpanded && collapsedGroups.includes(group.id) ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'
+                  sidebarExpanded && collapsedGroups.includes(group.id) ? 'max-h-0 opacity-0' : 'max-h-[900px] opacity-100'
                 }`}
               >
                 <div className={`flex flex-col ${sidebarExpanded ? 'gap-0.5 px-2' : 'items-center gap-1'}`}>
@@ -463,7 +499,7 @@ export function NavRail() {
                           </div>
                           <div
                             className={`overflow-hidden transition-all duration-150 ease-in-out ${
-                              isParentExpanded ? 'max-h-[200px] opacity-100' : 'max-h-0 opacity-0'
+                              isParentExpanded ? 'max-h-[720px] opacity-100' : 'max-h-0 opacity-0'
                             }`}
                           >
                             <div className="flex flex-col gap-0.5 pl-4 mt-0.5">

@@ -14,7 +14,7 @@ describe('customer checkpoint navigation', () => {
     ])
   })
 
-  it('keeps the customer delivery checkpoints after the setup panels', () => {
+  it('defines the complete six-stage target navigation', () => {
     expect(customerCheckpointNavItems.map(item => item.label)).toEqual([
       '全景总览',
       '平台就绪',
@@ -26,17 +26,20 @@ describe('customer checkpoint navigation', () => {
       'P7 SOUL/AGENTS',
       'P8 Boundary',
       'P9 Skills 配置',
-      'P10 Tests',
-      'P11 Hermes',
-      'P12 RTS Checklist',
-      'P13 Customer View',
-      'P14 Channels',
-      'P15 UAT',
-      'P16 Delivery',
+      'H-01 Profile Setup',
+      'H-02 Boundary Watchdog',
+      'H-03 Skill Curator',
+      'H-04 Memory Curator',
+      'H-05 Output Checker',
+      'H-06 Guardian',
+      'H-07 Cron 治理',
+      '阶段 3：闸门测试',
+      '阶段 4：上线准备',
+      '阶段 5-6：验收交付',
     ])
   })
 
-  it('keeps monitoring support surfaces out of the customer P sequence', () => {
+  it('keeps old monitoring and flattened P10-P16 surfaces out of the customer sequence', () => {
     const labels = customerCheckpointNavItems.map(item => item.label)
 
     expect(labels).not.toContain('P11 Logs')
@@ -45,11 +48,65 @@ describe('customer checkpoint navigation', () => {
     expect(labels).not.toContain('P12 Stuck Alerts')
     expect(labels).not.toContain('P13 Cost / Approvals')
     expect(labels).not.toContain('P14 Alerts Feed')
+    expect(labels).not.toContain('P10 Tests')
+    expect(labels).not.toContain('P11 Hermes')
+    expect(labels).not.toContain('P12 RTS Checklist')
+    expect(labels).not.toContain('P16 Delivery')
   })
 
   it('hides base selection until platform readiness is satisfied', () => {
     expect(getCustomerCheckpointNavItems({ platformReady: false }).map(item => item.id)).not.toContain('base-selection')
     expect(getCustomerCheckpointNavItems({ platformReady: true }).map(item => item.id)).toContain('base-selection')
+  })
+
+  it('hides base-specific build paths before a base is selected', () => {
+    const ids = getCustomerCheckpointNavItems({ platformReady: true }).map(item => item.id)
+
+    expect(ids).toContain('onboarding-overview')
+    expect(ids).toContain('base-selection')
+    expect(ids).toContain('gate-testing')
+    expect(ids).toContain('pre-launch')
+    expect(ids).toContain('onboarding-delivery')
+    expect(ids).not.toContain('p3-intake')
+    expect(ids).not.toContain('h01-profile-setup')
+  })
+
+  it('shows only the OC build path for OC tenants', () => {
+    const ids = getCustomerCheckpointNavItems({
+      platformReady: true,
+      selectedBase: 'oc',
+    }).map(item => item.id)
+
+    expect(ids).toContain('p3-intake')
+    expect(ids).toContain('p9-skills')
+    expect(ids).not.toContain('h01-profile-setup')
+    expect(ids).toContain('gate-testing')
+    expect(ids).toContain('onboarding-delivery')
+  })
+
+  it('shows only the Hermes build path for Hermes tenants', () => {
+    const ids = getCustomerCheckpointNavItems({
+      platformReady: true,
+      selectedBase: 'hermes',
+    }).map(item => item.id)
+
+    expect(ids).toContain('h01-profile-setup')
+    expect(ids).toContain('h07-cron-governance')
+    expect(ids).not.toContain('p3-intake')
+    expect(ids).toContain('gate-testing')
+    expect(ids).toContain('onboarding-delivery')
+  })
+
+  it('shows both build paths for dual-base tenants', () => {
+    const ids = getCustomerCheckpointNavItems({
+      platformReady: true,
+      selectedBase: 'both',
+    }).map(item => item.id)
+
+    expect(ids).toContain('p3-intake')
+    expect(ids).toContain('p9-skills')
+    expect(ids).toContain('h01-profile-setup')
+    expect(ids).toContain('h07-cron-governance')
   })
 
   it('marks every tenant delivery checkpoint as tenant scoped', () => {
@@ -67,13 +124,16 @@ describe('customer checkpoint navigation', () => {
       'onboarding/customer/soul',
       'boundary',
       'onboarding/customer/skills',
-      'tests',
-      'hermes',
-      'delivery',
-      'overview',
-      'channels',
-      'tasks',
-      'delivery',
+      'onboarding/hermes/profile',
+      'onboarding/hermes/boundary',
+      'onboarding/hermes/skills',
+      'onboarding/hermes/memory',
+      'onboarding/hermes/output',
+      'onboarding/hermes/guardian',
+      'onboarding/hermes/cron',
+      'onboarding/gate-testing',
+      'onboarding/pre-launch',
+      'onboarding/delivery',
     ])
   })
 })

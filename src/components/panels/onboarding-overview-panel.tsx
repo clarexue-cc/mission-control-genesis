@@ -69,8 +69,11 @@ export function OnboardingOverviewPanel() {
   const checkpoints = useMemo(() => data?.checkpoints || customerCheckpointNavItems, [data?.checkpoints])
   const grouped = useMemo(() => ({
     setup: checkpoints.filter(item => item.phase === 'setup'),
-    admin: checkpoints.filter(item => item.phase === 'delivery-admin'),
-    customer: checkpoints.filter(item => item.phase === 'delivery-customer'),
+    ocBuild: checkpoints.filter(item => item.phase === 'oc-build'),
+    hermesBuild: checkpoints.filter(item => item.phase === 'hermes-build'),
+    gateTesting: checkpoints.filter(item => item.phase === 'gate-testing'),
+    preLaunch: checkpoints.filter(item => item.phase === 'pre-launch'),
+    delivery: checkpoints.filter(item => item.phase === 'delivery'),
   }), [checkpoints])
 
   return (
@@ -81,7 +84,7 @@ export function OnboardingOverviewPanel() {
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Customer Onboarding</div>
             <h1 className="text-2xl font-semibold text-foreground">全景总览</h1>
             <p className="max-w-3xl text-sm text-muted-foreground">
-              从平台就绪、底座选型到 P3-P16 客户交付链的统一入口。
+              从平台就绪、底座选型、双底座构建、三道闸门到 UAT 交付的统一入口。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -151,9 +154,12 @@ export function OnboardingOverviewPanel() {
           </div>
           <div className="divide-y divide-border">
             {[
-              ['前置', grouped.setup],
-              ['交付', grouped.admin],
-              ['客户验收', grouped.customer],
+              ['阶段 0-1', grouped.setup],
+              ['OC 构建路径', grouped.ocBuild],
+              ['Hermes 构建路径', grouped.hermesBuild],
+              ['阶段 3', grouped.gateTesting],
+              ['阶段 4', grouped.preLaunch],
+              ['阶段 5-6', grouped.delivery],
             ].map(([label, items]) => (
               <div key={label as string} className="p-4">
                 <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label as string}</div>

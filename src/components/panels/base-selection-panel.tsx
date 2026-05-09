@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useNavigateToPanel } from '@/lib/navigation'
+import { useMissionControl } from '@/store'
 
 interface BaseOption {
-  id: string
+  id: 'oc' | 'hermes' | 'both'
   label: string
   status: 'recommended' | 'available' | 'blocked'
   isolation: string
@@ -18,7 +19,7 @@ interface BaseSelectionResponse {
   platform_ready: boolean
   phase0_dir: string | null
   templates: string[]
-  selected: string | null
+  selected: BaseOption['id'] | null
   options: BaseOption[]
 }
 
@@ -38,8 +39,9 @@ function statusLabel(status: BaseOption['status']) {
 
 export function BaseSelectionPanel() {
   const navigateToPanel = useNavigateToPanel()
+  const { activeTenant, setActiveTenant } = useMissionControl()
   const [data, setData] = useState<BaseSelectionResponse | null>(null)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<BaseOption['id'] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -54,7 +56,7 @@ export function BaseSelectionPanel() {
         if (!response.ok) throw new Error(body?.error || 'Failed to load base selection')
         if (!cancelled) {
           setData(body)
-          setSelected(body?.selected || null)
+          setSelected((body?.selected || activeTenant?.base || null) as BaseOption['id'] | null)
         }
       } catch (loadError) {
         if (!cancelled) setError(loadError instanceof Error ? loadError.message : String(loadError))
@@ -64,9 +66,16 @@ export function BaseSelectionPanel() {
     }
     loadBaseSelection().catch(() => {})
     return () => { cancelled = true }
-  }, [])
+  }, [activeTenant?.base])
 
   const selectedOption = data?.options.find(option => option.id === selected) || null
+  const confirmSelection = () => {
+    if (!selectedOption || selectedOption.status === 'blocked') return
+    if (activeTenant) {
+      setActiveTenant({ ...activeTenant, base: selectedOption.id })
+    }
+    navigateToPanel(selectedOption.id === 'hermes' ? 'onboarding/hermes/profile' : 'onboarding/customer')
+  }
 
   return (
     <div className="flex h-full flex-col gap-4 px-1 pb-6">
@@ -83,8 +92,8 @@ export function BaseSelectionPanel() {
             <Button variant="ghost" onClick={() => navigateToPanel('onboarding/platform-ready')}>
               平台就绪
             </Button>
-            <Button onClick={() => navigateToPanel('onboarding/customer')} disabled={!selectedOption || selectedOption.status === 'blocked'}>
-              进入 P3
+            <Button onClick={confirmSelection} disabled={!selectedOption || selectedOption.status === 'blocked'}>
+              确认底座
             </Button>
           </div>
         </div>

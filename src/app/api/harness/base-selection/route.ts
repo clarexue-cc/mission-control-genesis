@@ -7,7 +7,7 @@ import { requireRole } from '@/lib/auth'
 export const dynamic = 'force-dynamic'
 
 interface BaseOption {
-  id: string
+  id: 'oc' | 'hermes' | 'both'
   label: string
   status: 'recommended' | 'available' | 'blocked'
   isolation: string
@@ -67,31 +67,31 @@ function buildOptions(platformReady: boolean, templates: string[]): BaseOption[]
 
   return [
     {
-      id: 'phase0-tenant-container',
-      label: 'Phase0 Tenant Container',
+      id: 'oc',
+      label: 'OC / OpenClaw',
       status: platformReady ? 'recommended' : 'blocked',
-      isolation: '1 客户 = 1 tenant 工作区',
+      isolation: '业务 agent 底座，1 客户 = 1 tenant 工作区',
       channels: ['Telegram', 'Lark', 'WeChat', 'OpenClaw Gateway'],
-      evidence: ['phase0/tenants 可读', ...templateEvidence],
+      evidence: ['适合多渠道、SOP、审批网关、硬边界交付', 'phase0/tenants 可读', ...templateEvidence],
       blockers: platformReady ? [] : ['平台就绪检查未全部通过'],
     },
     {
-      id: 'dedicated-openclaw-stack',
-      label: 'Dedicated OpenClaw Stack',
+      id: 'hermes',
+      label: 'Hermes',
       status: platformReady ? 'available' : 'blocked',
-      isolation: '专属 OpenClaw 配置与运行目录',
-      channels: ['Telegram', 'Lark', 'WeChat'],
-      evidence: ['适合强隔离客户', ...templateEvidence],
-      blockers: platformReady ? ['需要单独分配端口、密钥和运行进程'] : ['平台就绪检查未全部通过'],
+      isolation: '个人/搜索/守护 agent profile 隔离',
+      channels: ['Gateway', 'Cron', 'Vault', 'Search'],
+      evidence: ['适合搜索整理、定时巡检、个人助理、持续学习', ...templateEvidence],
+      blockers: platformReady ? [] : ['平台就绪检查未全部通过'],
     },
     {
-      id: 'template-only-draft',
-      label: 'Template-only Draft',
-      status: templates.length > 0 ? 'available' : 'blocked',
-      isolation: '只生成方案和文件，不启动运行底座',
-      channels: ['Docs', 'Vault'],
-      evidence: templateEvidence,
-      blockers: templates.length > 0 ? ['不提供实时通道验证'] : ['未发现可用模板'],
+      id: 'both',
+      label: '双底座',
+      status: platformReady ? 'available' : 'blocked',
+      isolation: 'OC 负责业务交付，Hermes 负责守护、巡检和研究',
+      channels: ['OpenClaw Gateway', 'Hermes Gateway', 'Cron', 'Vault'],
+      evidence: ['适合既要客户业务 agent，又要后台守护/投研/巡检的交付', ...templateEvidence],
+      blockers: platformReady ? [] : ['平台就绪检查未全部通过'],
     },
   ]
 }

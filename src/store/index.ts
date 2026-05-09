@@ -309,6 +309,7 @@ export interface Tenant {
   display_name: string
   status: string
   linux_user: string
+  base?: 'oc' | 'hermes' | 'both'
   gateway_port?: number | null
   owner_gateway?: string
 }
