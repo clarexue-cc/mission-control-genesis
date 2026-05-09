@@ -14,6 +14,7 @@ export interface CustomerCheckpointNavItem {
   id: string
   label: string
   panel: string
+  href?: string
   tenantScoped: boolean
   phase: CustomerCheckpointPhase
   description: string
@@ -61,6 +62,7 @@ export const customerCheckpointNavItems: CustomerCheckpointNavItem[] = [
     id: 'p3-intake',
     label: 'P3 Intake',
     panel: 'onboarding/customer',
+    href: '/onboarding/customer',
     tenantScoped: true,
     phase: 'oc-build',
     description: '收集客户访谈、原始需求和业务上下文。',
@@ -71,6 +73,7 @@ export const customerCheckpointNavItems: CustomerCheckpointNavItem[] = [
     id: 'p4-blueprint',
     label: 'P4 Blueprint',
     panel: 'onboarding/customer/analyze',
+    href: '/onboarding/customer/analyze',
     tenantScoped: true,
     phase: 'oc-build',
     description: '生成客户方案蓝图、约束和验收口径。',
@@ -81,6 +84,7 @@ export const customerCheckpointNavItems: CustomerCheckpointNavItem[] = [
     id: 'p5-approval',
     label: 'P5 Approval',
     panel: 'onboarding/customer/confirm',
+    href: '/onboarding/customer/confirm',
     tenantScoped: true,
     phase: 'oc-build',
     description: '让 Clare 审阅确认方案，保存批准或退回意见。',
@@ -91,6 +95,7 @@ export const customerCheckpointNavItems: CustomerCheckpointNavItem[] = [
     id: 'p6-deploy',
     label: 'P6 Deploy',
     panel: 'onboarding/customer/deploy',
+    href: '/onboarding/customer/deploy',
     tenantScoped: true,
     phase: 'oc-build',
     description: '创建 workspace、tenant 目录和基础运行配置。',
@@ -101,6 +106,7 @@ export const customerCheckpointNavItems: CustomerCheckpointNavItem[] = [
     id: 'p7-soul-agents',
     label: 'P7 SOUL/AGENTS',
     panel: 'onboarding/customer/soul',
+    href: '/onboarding/customer/soul',
     tenantScoped: true,
     phase: 'oc-build',
     description: '生成 SOUL、AGENTS 和客户专属工作标准。',
@@ -121,6 +127,7 @@ export const customerCheckpointNavItems: CustomerCheckpointNavItem[] = [
     id: 'p9-skills',
     label: 'P9 Skills 配置',
     panel: 'onboarding/customer/skills',
+    href: '/onboarding/customer/skills',
     tenantScoped: true,
     phase: 'oc-build',
     description: '绑定客户交付所需技能、运行手册和工具入口。',

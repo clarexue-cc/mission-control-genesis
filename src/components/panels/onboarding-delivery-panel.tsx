@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { customerBaseLabel, parseCustomerBase, type CustomerBase } from '@/lib/onboarding-base'
+import { useMissionControl } from '@/store'
 
 type SectionStatus = 'pass' | 'warn' | 'fail' | 'pending'
 
@@ -16,6 +18,7 @@ interface DeliveryEvidence {
 interface DeliverySection {
   id: string
   label: string
+  base?: 'oc' | 'hermes' | 'shared'
   status: SectionStatus
   evidence: DeliveryEvidence[]
   summary: string
@@ -25,6 +28,7 @@ interface DeliverySection {
 interface DeliveryResponse {
   available: boolean
   tenants: string[]
+  base: CustomerBase
   tenant: {
     tenant_id: string
     tenant_name: string | null
@@ -41,6 +45,7 @@ interface DeliveryResponse {
     pending: number
     fail: number
     total: number
+    summary: string
   }
   sections: DeliverySection[]
   error?: string
@@ -136,17 +141,21 @@ function Stat({ label, value }: { label: string; value: number }) {
 }
 
 export function OnboardingDeliveryPanel() {
+  const { activeTenant } = useMissionControl()
+  const activeBase = parseCustomerBase(activeTenant?.base)
+  const activeTenantSlug = activeTenant?.slug || ''
   const [data, setData] = useState<DeliveryResponse | null>(null)
-  const [tenantId, setTenantId] = useState('')
+  const [tenantId, setTenantId] = useState(activeTenantSlug)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async (tenant: string) => {
+  const load = useCallback(async (tenant: string, base: CustomerBase) => {
     setLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams()
       if (tenant) params.set('tenant', tenant)
+      params.set('base', base)
       const response = await fetch(`/api/harness/delivery-report?${params.toString()}`, { cache: 'no-store' })
       const body = await response.json()
       if (!response.ok) throw new Error(body?.error || 'Failed to load delivery report')
@@ -160,8 +169,12 @@ export function OnboardingDeliveryPanel() {
   }, [])
 
   useEffect(() => {
-    load(tenantId).catch(() => {})
-  }, [load, tenantId])
+    if (activeTenantSlug) setTenantId(activeTenantSlug)
+  }, [activeTenantSlug])
+
+  useEffect(() => {
+    load(tenantId || activeTenantSlug, activeBase).catch(() => {})
+  }, [load, tenantId, activeTenantSlug, activeBase])
 
   const completion = useMemo(() => {
     if (!data?.report.total) return 0
@@ -176,7 +189,7 @@ export function OnboardingDeliveryPanel() {
             <div className="text-xs font-semibold text-cyan-300">{data?.phase?.id || 'P16'}</div>
             <h1 className="mt-1 text-2xl font-semibold text-foreground">验收交付</h1>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-              汇总需求、构建、闸门、上线准备、UAT 与交接证据。
+              汇总 {customerBaseLabel(data?.base || activeBase)} 底座步骤、交付证据与验收摘要。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -190,7 +203,7 @@ export function OnboardingDeliveryPanel() {
                 <option key={tenant} value={tenant}>{tenant}</option>
               ))}
             </select>
-            <Button variant="ghost" onClick={() => load(tenantId)} disabled={loading}>
+            <Button variant="ghost" onClick={() => load(tenantId || activeTenantSlug, activeBase)} disabled={loading}>
               刷新
             </Button>
           </div>
@@ -211,6 +224,7 @@ export function OnboardingDeliveryPanel() {
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-background">
                 <div className="h-full rounded-full bg-cyan-400" style={{ width: `${completion}%` }} />
               </div>
+              <div className="mt-2 text-xs text-muted-foreground">{customerBaseLabel(data.base)}</div>
             </div>
             <Stat label="完成" value={data.report.pass} />
             <Stat label="复核" value={data.report.warn} />
@@ -221,6 +235,7 @@ export function OnboardingDeliveryPanel() {
           <section className={`${cardClass} p-4`}>
             <div className="text-sm font-semibold text-foreground">{data.tenant.tenant_id}</div>
             <div className="mt-1 text-xs text-muted-foreground">{data.tenant.tenant_name || '未命名 tenant'}</div>
+            <div className="mt-2 text-xs text-muted-foreground">{data.report.summary}</div>
           </section>
 
           <section className="grid gap-3 xl:grid-cols-2">

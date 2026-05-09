@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { customerBaseLabel, parseCustomerBase, type CustomerBase } from '@/lib/onboarding-base'
+import { useMissionControl } from '@/store'
 
 type GateStatus = 'pass' | 'warn' | 'fail' | 'pending'
 
 interface GateCheck {
   id: string
   label: string
+  base?: 'oc' | 'hermes' | 'shared'
   status: GateStatus
   severity: 'critical' | 'high' | 'medium'
   evidence_path: string | null
@@ -18,6 +21,7 @@ interface GateCheck {
 interface GateResponse {
   available: boolean
   tenants: string[]
+  base: CustomerBase
   tenant: {
     tenant_id: string
     tenant_name: string | null
@@ -90,17 +94,21 @@ function CheckRow({ check }: { check: GateCheck }) {
 }
 
 export function GateTestingPanel() {
+  const { activeTenant } = useMissionControl()
+  const activeBase = parseCustomerBase(activeTenant?.base)
+  const activeTenantSlug = activeTenant?.slug || ''
   const [data, setData] = useState<GateResponse | null>(null)
-  const [tenantId, setTenantId] = useState('')
+  const [tenantId, setTenantId] = useState(activeTenantSlug)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async (tenant: string) => {
+  const load = useCallback(async (tenant: string, base: CustomerBase) => {
     setLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams()
       if (tenant) params.set('tenant', tenant)
+      params.set('base', base)
       const response = await fetch(`/api/harness/gates?${params.toString()}`, { cache: 'no-store' })
       const body = await response.json()
       if (!response.ok) throw new Error(body?.error || 'Failed to load gate testing')
@@ -114,8 +122,12 @@ export function GateTestingPanel() {
   }, [])
 
   useEffect(() => {
-    load(tenantId).catch(() => {})
-  }, [load, tenantId])
+    if (activeTenantSlug) setTenantId(activeTenantSlug)
+  }, [activeTenantSlug])
+
+  useEffect(() => {
+    load(tenantId || activeTenantSlug, activeBase).catch(() => {})
+  }, [load, tenantId, activeTenantSlug, activeBase])
 
   const summary = data?.summary
   const blocked = useMemo(() => (summary?.blocking || 0) > 0, [summary])
@@ -128,7 +140,7 @@ export function GateTestingPanel() {
             <div className="text-xs font-semibold text-cyan-300">{data?.phase?.id || 'P10'}</div>
             <h1 className="mt-1 text-2xl font-semibold text-foreground">闸门测试</h1>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-              Golden、Adversarial、跨 session、drift 与 boundary 交付证据。
+              按 {customerBaseLabel(data?.base || activeBase)} 底座汇总 OC、Hermes 与共享闸门证据。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -142,7 +154,7 @@ export function GateTestingPanel() {
                 <option key={tenant} value={tenant}>{tenant}</option>
               ))}
             </select>
-            <Button variant="ghost" onClick={() => load(tenantId)} disabled={loading}>
+            <Button variant="ghost" onClick={() => load(tenantId || activeTenantSlug, activeBase)} disabled={loading}>
               刷新
             </Button>
           </div>
@@ -165,6 +177,7 @@ export function GateTestingPanel() {
               <div className={`mt-2 inline-flex rounded-full border px-2 py-1 text-xs ${blocked ? statusClass.fail : statusClass.pass}`}>
                 {blocked ? 'Blocked' : 'Gate Ready'}
               </div>
+              <div className="mt-2 text-xs text-muted-foreground">{customerBaseLabel(data.base)}</div>
             </div>
           </section>
 

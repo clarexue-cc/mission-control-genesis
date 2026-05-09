@@ -3,6 +3,7 @@ import path from 'node:path'
 import { access, readdir, readFile, stat } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { requireRole } from '@/lib/auth'
+import { customerBaseIncludes, parseCustomerBase, type CustomerBase, type CustomerBaseScope } from '@/lib/onboarding-base'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +12,7 @@ type GateStatus = 'pass' | 'warn' | 'fail' | 'pending'
 interface GateCheck {
   id: string
   label: string
+  base: CustomerBaseScope
   status: GateStatus
   severity: 'critical' | 'high' | 'medium'
   evidence_path: string | null
@@ -120,16 +122,31 @@ function summarize(checks: GateCheck[]) {
   }
 }
 
+function matchesBase(check: GateCheck, base: CustomerBase): boolean {
+  if (check.base === 'shared') return true
+  return customerBaseIncludes(base, check.base)
+}
+
+function statusFromMetrics(value: unknown, passAtOrBelow: number, warnAtOrBelow: number): GateStatus {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric) || numeric < 0) return 'pending'
+  if (numeric <= passAtOrBelow) return 'pass'
+  if (numeric <= warnAtOrBelow) return 'warn'
+  return 'fail'
+}
+
 export async function GET(request: NextRequest) {
   const auth = requireRole(request, 'admin')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
+  const base = parseCustomerBase(request.nextUrl.searchParams.get('base'))
   const phase0Dir = await resolvePhase0Dir()
   if (!phase0Dir) {
     return NextResponse.json({
       phase0_dir: null,
       available: false,
       tenants: [],
+      base,
       checks: [],
       summary: summarize([]),
       error: 'phase0 directory not found',
@@ -179,11 +196,152 @@ export async function GET(request: NextRequest) {
     path.join(tenantDir, 'confirmation-cc.md'),
   ])
   const boundaryCounts = await readBoundaryCounts(boundaryPath)
+  const deployStatus = await readJson(path.join(tenantDir, 'deploy-status.json'))
+  const gatewayPath = await firstExisting([
+    path.join(tenantDir, 'config', 'gateway.json'),
+    path.join(tenantDir, 'gateway.json'),
+    path.join(tenantDir, 'deploy-status.json'),
+  ])
+  const soulPath = await firstExisting([
+    path.join(tenantDir, 'vault', 'Agent-Main', 'SOUL.md'),
+    path.join(tenantDir, 'SOUL.md'),
+  ])
+  const metrics = await readJson(path.join(tenantDir, 'state', 'api-metrics.json'))
+  const logsPath = await firstExisting([
+    path.join(tenantDir, 'logs'),
+    path.join(tenantDir, 'hook-events.jsonl'),
+    path.join(tenantDir, 'logs', 'events.ndjson'),
+  ])
+  const haltSignalPath = await firstExisting([
+    path.join(tenantDir, 'state', 'halt-signal.json'),
+    path.join(tenantDir, 'hermes', 'halt-signal.json'),
+    path.join(tenantDir, 'halt-signal.json'),
+  ])
+  const budgetGatePath = await firstExisting([
+    path.join(tenantDir, 'hermes', 'budget-gate.json'),
+    path.join(tenantDir, 'state', 'budget-gate.json'),
+  ])
+  const skillCuratorPath = await firstExisting([
+    path.join(tenantDir, 'hermes', 'skill-curator.json'),
+    path.join(tenantDir, 'vault', 'Agent-Main', 'skills.json'),
+  ])
+  const memoryAuditPath = await firstExisting([
+    path.join(tenantDir, 'hermes', 'memory-audit.json'),
+    path.join(tenantDir, 'vault', 'Agent-Shared', 'memory-audit.json'),
+  ])
+  const budgetGate = budgetGatePath ? await readJson(budgetGatePath) : null
+  const gatewayReady = ['success', 'healthy', 'ok', 'pass'].includes(String(deployStatus?.status || '').toLowerCase()) || Boolean(gatewayPath)
+  const budgetLimit = Number(budgetGate?.limit_usd ?? budgetGate?.limit ?? 0)
+  const budgetUsed = Number(budgetGate?.used_usd ?? budgetGate?.used ?? 0)
+  const budgetOverLimit = Number.isFinite(budgetLimit) && budgetLimit > 0 && Number.isFinite(budgetUsed) && budgetUsed > budgetLimit
 
   const checks: GateCheck[] = [
     {
+      id: 'oc-openclaw-gateway',
+      label: 'OpenClaw gateway 连通性',
+      base: 'oc',
+      status: gatewayReady ? 'pass' : 'fail',
+      severity: 'critical',
+      evidence_path: relativeOrNull(phase0Dir, gatewayPath),
+      detail: deployStatus ? `deploy-status.json status=${String(deployStatus.status || 'unknown')}` : await fileSummary(gatewayPath),
+      next_action: gatewayReady ? '保留当前 gateway 连通性证据' : '补齐 gateway 配置或重新执行 P6 deploy',
+    },
+    {
+      id: 'oc-boundary-reload',
+      label: 'Boundary reload',
+      base: 'oc',
+      status: boundaryPath && (boundaryPath.endsWith('.yaml') || (boundaryCounts.forbidden >= 5 && boundaryCounts.drift >= 3)) ? 'pass' : 'fail',
+      severity: 'critical',
+      evidence_path: relativeOrNull(phase0Dir, boundaryPath),
+      detail: boundaryPath?.endsWith('.json')
+        ? `forbidden ${boundaryCounts.forbidden} / drift ${boundaryCounts.drift}`
+        : await fileSummary(boundaryPath),
+      next_action: boundaryPath ? '在 Boundary 面板 reload 并确认规则生效' : '补齐 config/boundary-rules.json',
+    },
+    {
+      id: 'oc-soul-load',
+      label: 'soul.md 加载',
+      base: 'oc',
+      status: soulPath ? 'pass' : 'fail',
+      severity: 'critical',
+      evidence_path: relativeOrNull(phase0Dir, soulPath),
+      detail: await fileSummary(soulPath),
+      next_action: soulPath ? '确认 SOUL.md 与当前客户版本一致' : '补齐 vault/Agent-Main/SOUL.md',
+    },
+    {
+      id: 'hermes-halt-reader',
+      label: 'halt-reader',
+      base: 'hermes',
+      status: haltSignalPath ? 'fail' : 'pass',
+      severity: 'critical',
+      evidence_path: relativeOrNull(phase0Dir, haltSignalPath),
+      detail: haltSignalPath ? '发现 halt signal，Hermes 不可上线' : '未发现 halt signal',
+      next_action: haltSignalPath ? '处理 halt signal 后重新检查' : '保留 halt-reader 绿灯状态',
+    },
+    {
+      id: 'hermes-budget-gate',
+      label: 'budget-gate',
+      base: 'hermes',
+      status: budgetOverLimit || String(budgetGate?.status || '').toLowerCase() === 'fail' ? 'fail' : budgetGatePath ? 'pass' : 'warn',
+      severity: 'critical',
+      evidence_path: relativeOrNull(phase0Dir, budgetGatePath),
+      detail: budgetGatePath ? `used=${Number.isFinite(budgetUsed) ? budgetUsed : 'unknown'} limit=${Number.isFinite(budgetLimit) ? budgetLimit : 'unknown'}` : 'budget gate evidence missing',
+      next_action: budgetGatePath ? '确认 budget-gate 阈值与客户预算一致' : '补齐 hermes/budget-gate.json',
+    },
+    {
+      id: 'hermes-skill-curator',
+      label: 'skill-curator',
+      base: 'hermes',
+      status: skillCuratorPath ? 'pass' : 'warn',
+      severity: 'high',
+      evidence_path: relativeOrNull(phase0Dir, skillCuratorPath),
+      detail: await fileSummary(skillCuratorPath),
+      next_action: skillCuratorPath ? '确认技能白名单、pin 和快照已落盘' : '补齐 Hermes skill-curator 证据',
+    },
+    {
+      id: 'hermes-memory-audit',
+      label: 'memory-audit',
+      base: 'hermes',
+      status: memoryAuditPath ? 'pass' : 'warn',
+      severity: 'high',
+      evidence_path: relativeOrNull(phase0Dir, memoryAuditPath),
+      detail: await fileSummary(memoryAuditPath),
+      next_action: memoryAuditPath ? '确认 memory audit 无跨 profile 泄漏' : '补齐 Hermes memory-audit 证据',
+    },
+    {
+      id: 'shared-api-latency',
+      label: 'API 响应时间',
+      base: 'shared',
+      status: statusFromMetrics(metrics?.p95_ms ?? metrics?.latency_ms, 1000, 2000),
+      severity: 'high',
+      evidence_path: relativeOrNull(phase0Dir, metrics ? path.join(tenantDir, 'state', 'api-metrics.json') : null),
+      detail: metrics ? `p95=${String(metrics.p95_ms ?? metrics.latency_ms ?? 'unknown')}ms` : 'api metrics missing',
+      next_action: metrics ? '确认 P95 响应时间满足上线阈值' : '补齐 state/api-metrics.json',
+    },
+    {
+      id: 'shared-error-rate',
+      label: '错误率',
+      base: 'shared',
+      status: statusFromMetrics(metrics?.error_rate, 0.02, 0.05),
+      severity: 'high',
+      evidence_path: relativeOrNull(phase0Dir, metrics ? path.join(tenantDir, 'state', 'api-metrics.json') : null),
+      detail: metrics ? `error_rate=${String(metrics.error_rate ?? 'unknown')}` : 'api metrics missing',
+      next_action: metrics ? '确认错误率低于上线阈值' : '补齐 state/api-metrics.json',
+    },
+    {
+      id: 'shared-log-integrity',
+      label: '日志完整性',
+      base: 'shared',
+      status: logsPath ? 'pass' : 'warn',
+      severity: 'medium',
+      evidence_path: relativeOrNull(phase0Dir, logsPath),
+      detail: await fileSummary(logsPath),
+      next_action: logsPath ? '确认日志覆盖闸门、上线准备和交付阶段' : '补齐 logs 目录或 hook-events.jsonl',
+    },
+    {
       id: 'gate-golden',
       label: 'Golden 测试话术',
+      base: 'oc',
       status: goldenPath ? 'pass' : 'fail',
       severity: 'critical',
       evidence_path: relativeOrNull(phase0Dir, goldenPath),
@@ -193,6 +351,7 @@ export async function GET(request: NextRequest) {
     {
       id: 'gate-adversarial',
       label: 'Adversarial 对抗测试',
+      base: 'oc',
       status: adversarialPath ? 'pass' : 'fail',
       severity: 'critical',
       evidence_path: relativeOrNull(phase0Dir, adversarialPath),
@@ -202,6 +361,7 @@ export async function GET(request: NextRequest) {
     {
       id: 'gate-cross-session',
       label: '跨 Session 记忆测试',
+      base: 'oc',
       status: crossSessionPath ? 'pass' : 'warn',
       severity: 'high',
       evidence_path: relativeOrNull(phase0Dir, crossSessionPath),
@@ -211,6 +371,7 @@ export async function GET(request: NextRequest) {
     {
       id: 'gate-drift',
       label: 'Drift 边界漂移测试',
+      base: 'oc',
       status: driftPath ? 'pass' : 'warn',
       severity: 'high',
       evidence_path: relativeOrNull(phase0Dir, driftPath),
@@ -220,6 +381,7 @@ export async function GET(request: NextRequest) {
     {
       id: 'gate-boundary',
       label: 'Boundary 规则可读',
+      base: 'oc',
       status: boundaryPath && (boundaryPath.endsWith('.yaml') || (boundaryCounts.forbidden >= 5 && boundaryCounts.drift >= 3)) ? 'pass' : 'fail',
       severity: 'critical',
       evidence_path: relativeOrNull(phase0Dir, boundaryPath),
@@ -231,6 +393,7 @@ export async function GET(request: NextRequest) {
     {
       id: 'gate-approval',
       label: 'Clare 确认单',
+      base: 'oc',
       status: confirmationPath ? 'pass' : 'pending',
       severity: 'medium',
       evidence_path: relativeOrNull(phase0Dir, confirmationPath),
@@ -239,10 +402,13 @@ export async function GET(request: NextRequest) {
     },
   ]
 
+  const visibleChecks = checks.filter(check => matchesBase(check, base))
+
   return NextResponse.json({
     phase0_dir: phase0Dir,
     available: true,
     tenants,
+    base,
     tenant: {
       tenant_id: tenantId,
       tenant_name: tenantDir ? await readTenantName(tenantDir) : null,
@@ -250,10 +416,10 @@ export async function GET(request: NextRequest) {
     phase: {
       id: 'P10',
       label: '闸门测试',
-      description: 'Golden、Adversarial、跨 session、drift 与 boundary 证据汇总。',
+      description: '按 OC / Hermes / 共享维度汇总闸门测试证据。',
     },
-    summary: summarize(checks),
-    checks,
+    summary: summarize(visibleChecks),
+    checks: visibleChecks,
   }, {
     headers: { 'Cache-Control': 'no-store' },
   })

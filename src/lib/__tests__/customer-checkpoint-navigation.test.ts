@@ -84,6 +84,23 @@ describe('customer checkpoint navigation', () => {
     expect(ids).toContain('onboarding-delivery')
   })
 
+  it('points OC page-route checkpoints at the real /onboarding/customer routes', () => {
+    const hrefById = new Map(
+      customerCheckpointNavItems
+        .filter(item => item.base === 'oc' && item.panel.startsWith('onboarding/customer'))
+        .map(item => [item.id, item.href]),
+    )
+
+    expect(Object.fromEntries(hrefById)).toEqual({
+      'p3-intake': '/onboarding/customer',
+      'p4-blueprint': '/onboarding/customer/analyze',
+      'p5-approval': '/onboarding/customer/confirm',
+      'p6-deploy': '/onboarding/customer/deploy',
+      'p7-soul-agents': '/onboarding/customer/soul',
+      'p9-skills': '/onboarding/customer/skills',
+    })
+  })
+
   it('shows only the Hermes build path for Hermes tenants', () => {
     const ids = getCustomerCheckpointNavItems({
       platformReady: true,
