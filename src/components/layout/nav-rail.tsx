@@ -1,14 +1,20 @@
 'use client'
 
 import Image from 'next/image'
-import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useState, useEffect, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { useMissionControl } from '@/store'
 import { useNavigateToPanel, usePrefetchPanel } from '@/lib/navigation'
 import { Button } from '@/components/ui/button'
 import { APP_VERSION } from '@/lib/version'
 import { getPluginNavItems } from '@/lib/plugins'
-import { getCustomerCheckpointNavItems } from '@/lib/customer-checkpoint-navigation'
+import {
+  getCustomerCheckpointNavItems,
+  type CustomerCheckpointAccess,
+  type CustomerCheckpointNavItem,
+} from '@/lib/customer-checkpoint-navigation'
 
 interface NavItem {
   id: string
@@ -19,6 +25,7 @@ interface NavItem {
   essential?: boolean // Visible in Essential interface mode (default false)
   tenantScoped?: boolean
   requiresPlatformReady?: boolean
+  access?: CustomerCheckpointAccess
   href?: string
   target?: string
   children?: NavItem[] // Nested sub-items (expandable parent)
@@ -36,6 +43,16 @@ function customerCheckpointIcon(panel: string) {
   if (panel === 'onboarding/overview') return <OverviewIcon />
   if (panel === 'onboarding/platform-ready') return <ShieldIcon />
   if (panel === 'onboarding/base-selection') return <GatewaysIcon />
+  if (panel === 'onboarding/hermes/profile') return <CronIcon />
+  if (panel === 'onboarding/hermes/boundary') return <ShieldIcon />
+  if (panel === 'onboarding/hermes/skills') return <SkillsIcon />
+  if (panel === 'onboarding/hermes/memory') return <MemoryIcon />
+  if (panel === 'onboarding/hermes/output') return <DebugIcon />
+  if (panel === 'onboarding/hermes/guardian') return <SecurityIcon />
+  if (panel === 'onboarding/hermes/cron') return <CronIcon />
+  if (panel === 'onboarding/gate-testing') return <DebugIcon />
+  if (panel === 'onboarding/pre-launch') return <ApprovalsIcon />
+  if (panel === 'onboarding/delivery') return <TasksIcon />
   if (panel === 'onboarding/customer/skills') return <SkillsIcon />
   if (panel === 'onboarding/customer/soul') return <AgentsIcon />
   if (panel === 'onboarding/customer/confirm') return <ApprovalsIcon />
@@ -48,16 +65,20 @@ function customerCheckpointIcon(panel: string) {
   return <TasksIcon />
 }
 
-const customerCheckpointChildren: NavItem[] = getCustomerCheckpointNavItems().map(item => ({
-  id: item.id,
-  targetPanel: item.panel,
-  label: item.label,
-  icon: customerCheckpointIcon(item.panel),
-  priority: false,
-  essential: true,
-  tenantScoped: item.tenantScoped,
-  requiresPlatformReady: item.requiresPlatformReady,
-}))
+function toCustomerCheckpointChildren(items: CustomerCheckpointNavItem[]): NavItem[] {
+  return items.map(item => ({
+    id: item.id,
+    targetPanel: item.panel,
+    href: item.href,
+    label: item.label,
+    icon: customerCheckpointIcon(item.panel),
+    priority: false,
+    essential: true,
+    tenantScoped: item.tenantScoped,
+    requiresPlatformReady: item.requiresPlatformReady,
+    access: item.access || 'admin',
+  }))
+}
 
 const navGroups: NavGroup[] = [
   {
@@ -83,7 +104,7 @@ const navGroups: NavGroup[] = [
         icon: <CustomerSetupIcon />,
         priority: false,
         essential: true,
-        children: customerCheckpointChildren,
+        children: [],
       },
     ],
   },
@@ -177,18 +198,26 @@ const gatewayOnlyPanels = new Set([
 const adminOnlyPanels = new Set<string>([
   'boundary',
   'hook-logs',
-  'customer-onboarding',
-  ...customerCheckpointChildren.map(item => item.id),
 ])
 
 function navTarget(item: NavItem): string {
   return item.targetPanel || item.id
 }
 
+function isExternalHref(href: string): boolean {
+  return /^(https?:)?\/\//.test(href)
+}
+
+function isNavActive(item: NavItem, activeTab: string, pathname: string): boolean {
+  if (item.href && !isExternalHref(item.href)) return pathname === item.href
+  return activeTab === navTarget(item)
+}
+
 export function NavRail() {
   const { activeTab, connection, dashboardMode, currentUser, activeTenant, tenants, osUsers, setActiveTenant, fetchTenants, fetchOsUsers, activeProject, projects, setActiveProject, fetchProjects, sidebarExpanded, collapsedGroups, toggleSidebar, toggleGroup, defaultOrgName, interfaceMode, setInterfaceMode } = useMissionControl()
   const navigateToPanel = useNavigateToPanel()
   const prefetchPanel = usePrefetchPanel()
+  const pathname = usePathname()
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
 
@@ -205,6 +234,25 @@ export function NavRail() {
   const isAdmin = currentUser?.role === 'admin'
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
   const [platformReady, setPlatformReady] = useState<boolean | undefined>(undefined)
+  const customerCheckpointChildren = useMemo(
+    () => toCustomerCheckpointChildren(getCustomerCheckpointNavItems({
+      platformReady,
+      selectedBase: activeTenant?.base,
+    })),
+    [platformReady, activeTenant?.base],
+  )
+
+  const runtimeNavGroups = useMemo(() => navGroups.map(group => {
+    if (group.id !== 'customer-setup') return group
+    return {
+      ...group,
+      items: group.items.map(item => (
+        item.id === 'customer-onboarding'
+          ? { ...item, children: customerCheckpointChildren }
+          : item
+      )),
+    }
+  }), [customerCheckpointChildren])
 
   function toggleParent(id: string) {
     setExpandedParents(prev => {
@@ -269,6 +317,7 @@ export function NavRail() {
         }
         if (isLocal && gatewayOnlyPanels.has(i.id)) return null
         if (!isAdmin && adminOnlyPanels.has(i.id)) return null
+        if (!isAdmin && i.access === 'admin') return null
         if (i.requiresPlatformReady && platformReady === false) return null
         if (isEssential && !i.essential) return null
         return i
@@ -283,7 +332,7 @@ export function NavRail() {
       children: item.children ? translateItems(item.children) : undefined,
     }))
   }
-  const mergedGroups = navGroups.map(g => {
+  const mergedGroups = runtimeNavGroups.map(g => {
     const pluginItems = getPluginNavItems()
       .filter(pi => pi.groupId === g.id)
       .map(pi => ({
@@ -398,7 +447,7 @@ export function NavRail() {
               {/* Group items */}
               <div
                 className={`overflow-hidden transition-all duration-150 ease-in-out ${
-                  sidebarExpanded && collapsedGroups.includes(group.id) ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'
+                  sidebarExpanded && collapsedGroups.includes(group.id) ? 'max-h-0 opacity-0' : 'max-h-[900px] opacity-100'
                 }`}
               >
                 <div className={`flex flex-col ${sidebarExpanded ? 'gap-0.5 px-2' : 'items-center gap-1'}`}>
@@ -406,7 +455,7 @@ export function NavRail() {
                     if (item.children) {
                       const isParentExpanded = expandedParents.has(item.id)
                       const itemPanel = navTarget(item)
-                      const childActive = item.children.some(c => activeTab === navTarget(c))
+                      const childActive = item.children.some(c => isNavActive(c, activeTab, pathname))
                       if (!sidebarExpanded) {
                         // Collapsed mode: clicking parent navigates to first child
                         return (
@@ -463,7 +512,7 @@ export function NavRail() {
                           </div>
                           <div
                             className={`overflow-hidden transition-all duration-150 ease-in-out ${
-                              isParentExpanded ? 'max-h-[200px] opacity-100' : 'max-h-0 opacity-0'
+                              isParentExpanded ? 'max-h-[720px] opacity-100' : 'max-h-0 opacity-0'
                             }`}
                           >
                             <div className="flex flex-col gap-0.5 pl-4 mt-0.5">
@@ -471,7 +520,7 @@ export function NavRail() {
                                 <NavButton
                                   key={child.id}
                                   item={child}
-                                  active={activeTab === navTarget(child)}
+                                  active={isNavActive(child, activeTab, pathname)}
                                   expanded={true}
                                   onClick={() => navigateToPanel(navTarget(child))}
                                   onPrefetch={() => prefetchPanel(navTarget(child))}
@@ -487,7 +536,7 @@ export function NavRail() {
                       <NavButton
                         key={item.id}
                         item={item}
-                        active={activeTab === navTarget(item)}
+                        active={isNavActive(item, activeTab, pathname)}
                         expanded={sidebarExpanded}
                         onClick={() => navigateToPanel(navTarget(item))}
                         onPrefetch={() => prefetchPanel(navTarget(item))}
@@ -555,7 +604,7 @@ export function NavRail() {
       </nav>
 
       {/* Mobile: Bottom tab bar */}
-      <MobileBottomBar activeTab={activeTab} navigateToPanel={navigateToPanel} groups={filteredGroups} items={filteredAllNavItems} />
+      <MobileBottomBar activeTab={activeTab} pathname={pathname} navigateToPanel={navigateToPanel} groups={filteredGroups} items={filteredAllNavItems} />
     </>
   )
 }
@@ -599,6 +648,7 @@ function NavButton({ item, active, expanded, onClick, onPrefetch, nested }: {
 
   if (expanded) {
     if (item.href) {
+      const external = isExternalHref(item.href)
       return (
         <Button
           asChild
@@ -608,9 +658,15 @@ function NavButton({ item, active, expanded, onClick, onPrefetch, nested }: {
           aria-current={active ? 'page' : undefined}
           className={buttonClassName}
         >
-          <a href={item.href} target={item.target || '_blank'} rel="noopener noreferrer">
-            {buttonContents}
-          </a>
+          {external ? (
+            <a href={item.href} target={item.target || '_blank'} rel="noopener noreferrer">
+              {buttonContents}
+            </a>
+          ) : (
+            <Link href={item.href}>
+              {buttonContents}
+            </Link>
+          )}
         </Button>
       )
     }
@@ -630,6 +686,7 @@ function NavButton({ item, active, expanded, onClick, onPrefetch, nested }: {
   }
 
   if (item.href) {
+    const external = isExternalHref(item.href)
     return (
       <Button
         asChild
@@ -641,9 +698,15 @@ function NavButton({ item, active, expanded, onClick, onPrefetch, nested }: {
         aria-current={active ? 'page' : undefined}
         className={buttonClassName}
       >
-        <a href={item.href} target={item.target || '_blank'} rel="noopener noreferrer">
-          {buttonContents}
-        </a>
+        {external ? (
+          <a href={item.href} target={item.target || '_blank'} rel="noopener noreferrer">
+            {buttonContents}
+          </a>
+        ) : (
+          <Link href={item.href}>
+            {buttonContents}
+          </Link>
+        )}
       </Button>
     )
   }
@@ -664,8 +727,9 @@ function NavButton({ item, active, expanded, onClick, onPrefetch, nested }: {
   )
 }
 
-function MobileBottomBar({ activeTab, navigateToPanel, groups, items }: {
+function MobileBottomBar({ activeTab, pathname, navigateToPanel, groups, items }: {
   activeTab: string
+  pathname: string
   navigateToPanel: (tab: string) => void
   groups: NavGroup[]
   items: NavItem[]
@@ -673,8 +737,7 @@ function MobileBottomBar({ activeTab, navigateToPanel, groups, items }: {
   const tn = useTranslations('nav')
   const [sheetOpen, setSheetOpen] = useState(false)
   const priorityItems = items.filter(i => i.priority)
-  const nonPriorityIds = new Set(items.filter(i => !i.priority).map(i => navTarget(i)))
-  const moreIsActive = nonPriorityIds.has(activeTab)
+  const moreIsActive = items.filter(i => !i.priority).some(item => isNavActive(item, activeTab, pathname))
 
   return (
     <>
@@ -687,15 +750,22 @@ function MobileBottomBar({ activeTab, navigateToPanel, groups, items }: {
                 asChild
                 variant="ghost"
                   className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg min-w-[48px] min-h-[48px] h-auto ${
-                  activeTab === navTarget(item)
+                  isNavActive(item, activeTab, pathname)
                     ? 'text-primary hover:text-primary'
                     : ''
                 }`}
               >
-                <a href={item.href} target={item.target || '_blank'} rel="noopener noreferrer">
-                  <div className="w-5 h-5">{item.icon}</div>
-                  <span className="text-[10px] font-medium truncate">{item.label}</span>
-                </a>
+                {isExternalHref(item.href) ? (
+                  <a href={item.href} target={item.target || '_blank'} rel="noopener noreferrer">
+                    <div className="w-5 h-5">{item.icon}</div>
+                    <span className="text-[10px] font-medium truncate">{item.label}</span>
+                  </a>
+                ) : (
+                  <Link href={item.href}>
+                    <div className="w-5 h-5">{item.icon}</div>
+                    <span className="text-[10px] font-medium truncate">{item.label}</span>
+                  </Link>
+                )}
               </Button>
             ) : (
               <Button
@@ -703,7 +773,7 @@ function MobileBottomBar({ activeTab, navigateToPanel, groups, items }: {
                 variant="ghost"
                 onClick={() => navigateToPanel(navTarget(item))}
                 className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg min-w-[48px] min-h-[48px] h-auto ${
-                  activeTab === navTarget(item)
+                  isNavActive(item, activeTab, pathname)
                     ? 'text-primary hover:text-primary'
                     : ''
                 }`}
@@ -741,6 +811,7 @@ function MobileBottomBar({ activeTab, navigateToPanel, groups, items }: {
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         activeTab={activeTab}
+        pathname={pathname}
         navigateToPanel={navigateToPanel}
         groups={groups}
       />
@@ -748,10 +819,11 @@ function MobileBottomBar({ activeTab, navigateToPanel, groups, items }: {
   )
 }
 
-function MobileBottomSheet({ open, onClose, activeTab, navigateToPanel, groups }: {
+function MobileBottomSheet({ open, onClose, activeTab, pathname, navigateToPanel, groups }: {
   open: boolean
   onClose: () => void
   activeTab: string
+  pathname: string
   navigateToPanel: (tab: string) => void
   groups: NavGroup[]
 }) {
@@ -820,20 +892,27 @@ function MobileBottomSheet({ open, onClose, activeTab, navigateToPanel, groups }
                       asChild
                       variant="ghost"
                       className={`flex items-center gap-2.5 px-3 min-h-[48px] h-auto rounded-lg justify-start ${
-                        activeTab === navTarget(item)
+                        isNavActive(item, activeTab, pathname)
                           ? 'bg-primary/15 text-primary hover:bg-primary/20'
                           : 'text-foreground'
                       }`}
                     >
-                      <a
-                        href={item.href}
-                        target={item.target || '_blank'}
-                        rel="noopener noreferrer"
-                        onClick={handleClose}
-                      >
-                        <div className="w-5 h-5 shrink-0">{item.icon}</div>
-                        <span className="text-xs font-medium truncate">{item.label}</span>
-                      </a>
+                      {isExternalHref(item.href) ? (
+                        <a
+                          href={item.href}
+                          target={item.target || '_blank'}
+                          rel="noopener noreferrer"
+                          onClick={handleClose}
+                        >
+                          <div className="w-5 h-5 shrink-0">{item.icon}</div>
+                          <span className="text-xs font-medium truncate">{item.label}</span>
+                        </a>
+                      ) : (
+                        <Link href={item.href} onClick={handleClose}>
+                          <div className="w-5 h-5 shrink-0">{item.icon}</div>
+                          <span className="text-xs font-medium truncate">{item.label}</span>
+                        </Link>
+                      )}
                     </Button>
                   ) : (
                     <Button
@@ -844,7 +923,7 @@ function MobileBottomSheet({ open, onClose, activeTab, navigateToPanel, groups }
                         handleClose()
                       }}
                       className={`flex items-center gap-2.5 px-3 min-h-[48px] h-auto rounded-lg justify-start ${
-                        activeTab === navTarget(item)
+                        isNavActive(item, activeTab, pathname)
                           ? 'bg-primary/15 text-primary hover:bg-primary/20'
                           : 'text-foreground'
                       }`}

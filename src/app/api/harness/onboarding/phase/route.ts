@@ -96,14 +96,14 @@ export async function GET(request: NextRequest) {
       label: '底座选型',
       status: !platformReady ? 'blocked' : baseSelected ? 'done' : 'current',
       panel: 'onboarding/base-selection',
-      detail: platformReady ? '默认推荐 Phase0 Tenant Container' : '需先完成平台就绪',
+      detail: platformReady ? '可选择 OC、Hermes 或双底座' : '需先完成平台就绪',
     },
     {
-      id: 'delivery-checkpoints',
-      label: 'P3-P16 交付链',
+      id: 'build-and-delivery',
+      label: '双底座构建 + 验收交付',
       status: platformReady && baseSelected ? 'current' : 'pending',
       panel: 'onboarding/customer',
-      detail: '客户接入、蓝图、审批、部署、测试、UAT、交付',
+      detail: 'OC/Hermes 构建、三道闸门、上线准备、UAT、交付',
     },
   ]
 

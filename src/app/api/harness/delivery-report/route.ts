@@ -3,6 +3,7 @@ import path from 'node:path'
 import { access, readdir, readFile, stat } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { requireRole } from '@/lib/auth'
+import { customerBaseIncludes, customerBaseLabel, parseCustomerBase, type CustomerBase, type CustomerBaseScope } from '@/lib/onboarding-base'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +12,7 @@ type SectionStatus = 'pass' | 'warn' | 'fail' | 'pending'
 interface DeliverySection {
   id: string
   label: string
+  base: CustomerBaseScope
   status: SectionStatus
   evidence: Array<{
     label: string
@@ -107,7 +109,7 @@ function statusFromEvidence(items: DeliverySection['evidence'], minimum: number,
   return 'pending'
 }
 
-function buildReportStatus(sections: DeliverySection[]) {
+function buildReportStatus(sections: DeliverySection[], tenantName: string, base: CustomerBase) {
   const fail = sections.filter(section => section.status === 'fail').length
   const pending = sections.filter(section => section.status === 'pending').length
   const warn = sections.filter(section => section.status === 'warn').length
@@ -121,7 +123,13 @@ function buildReportStatus(sections: DeliverySection[]) {
     pending,
     fail,
     total: sections.length,
+    summary: `${tenantName} · ${customerBaseLabel(base)} · ${pass}/${sections.length} sections complete`,
   }
+}
+
+function matchesBase(section: DeliverySection, base: CustomerBase): boolean {
+  if (section.base === 'shared') return true
+  return customerBaseIncludes(base, section.base)
 }
 
 async function containsUatSignal(filePath: string | null) {
@@ -134,14 +142,16 @@ export async function GET(request: NextRequest) {
   const auth = requireRole(request, 'admin')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
+  const base = parseCustomerBase(request.nextUrl.searchParams.get('base'))
   const phase0Dir = await resolvePhase0Dir()
   if (!phase0Dir) {
     return NextResponse.json({
       phase0_dir: null,
       available: false,
       tenants: [],
+      base,
       sections: [],
-      report: { status: 'pending', total: 0, pass: 0, warn: 0, pending: 0, fail: 0 },
+      report: { status: 'pending', total: 0, pass: 0, warn: 0, pending: 0, fail: 0, summary: `No phase0 · ${customerBaseLabel(base)} · 0/0 sections complete` },
       error: 'phase0 directory not found',
     }, { headers: { 'Cache-Control': 'no-store' } })
   }
@@ -176,6 +186,36 @@ export async function GET(request: NextRequest) {
     path.join(tenantDir, 'handoff-cc.md'),
     path.join(tenantDir, 'vault', 'delivery-report.md'),
   ])
+  const boundaryPath = await firstExisting([
+    path.join(tenantDir, 'config', 'boundary-rules.json'),
+    path.join(tenantDir, 'boundary.yaml'),
+  ])
+  const boundaryFinalizedPath = await firstExisting([
+    path.join(tenantDir, 'config', 'boundary-finalized.json'),
+    path.join(tenantDir, 'config', 'boundary-rules.finalized.json'),
+    path.join(tenantDir, 'config', 'boundary-rules.json'),
+  ])
+  const modulesPath = await firstExisting([
+    path.join(tenantDir, 'hermes', 'modules.json'),
+    path.join(tenantDir, 'hermes', 'module-status.json'),
+  ])
+  const budgetGatePath = await firstExisting([
+    path.join(tenantDir, 'hermes', 'budget-gate.json'),
+    path.join(tenantDir, 'state', 'budget-gate.json'),
+  ])
+  const haltSignalPath = await firstExisting([
+    path.join(tenantDir, 'state', 'halt-signal.json'),
+    path.join(tenantDir, 'hermes', 'halt-signal.json'),
+    path.join(tenantDir, 'halt-signal.json'),
+  ])
+  const skillCuratorPath = await firstExisting([
+    path.join(tenantDir, 'hermes', 'skill-curator.json'),
+    path.join(tenantDir, 'vault', 'Agent-Main', 'skills.json'),
+  ])
+  const memoryAuditPath = await firstExisting([
+    path.join(tenantDir, 'hermes', 'memory-audit.json'),
+    path.join(tenantDir, 'vault', 'Agent-Shared', 'memory-audit.json'),
+  ])
 
   const intakeEvidence = [
     await evidence(phase0Dir, '访谈记录', intakeRawPath),
@@ -204,12 +244,43 @@ export async function GET(request: NextRequest) {
     await evidence(phase0Dir, 'Delivery report', handoffPath),
     await evidence(phase0Dir, 'Confirmation', confirmationPath),
   ]
+  const ocWorkspaceEvidence = [
+    await evidence(phase0Dir, 'Tenant vars', varsPath),
+    await evidence(phase0Dir, 'Deploy status', deployPath),
+    await evidence(phase0Dir, 'AGENTS', agentsPath),
+  ]
+  const ocBoundaryEvidence = [
+    await evidence(phase0Dir, 'Boundary rules', boundaryPath),
+    await evidence(phase0Dir, 'Boundary finalized', boundaryFinalizedPath),
+  ]
+  const ocSoulEvidence = [
+    await evidence(phase0Dir, 'SOUL.md', soulPath),
+    await evidence(phase0Dir, 'AGENTS', agentsPath),
+  ]
+  const hermesModuleEvidence = [
+    await evidence(phase0Dir, 'Hermes modules', modulesPath),
+  ]
+  const hermesGuardrailEvidence = [
+    await evidence(phase0Dir, 'Budget gate', budgetGatePath),
+    {
+      label: 'Halt signal clear',
+      path: haltSignalPath ? path.relative(phase0Dir, haltSignalPath) : 'state/halt-signal.json',
+      exists: !haltSignalPath,
+      bytes: null,
+      updated_at: null,
+    },
+    await evidence(phase0Dir, 'Skill curator', skillCuratorPath),
+  ]
+  const hermesMemoryEvidence = [
+    await evidence(phase0Dir, 'Memory audit', memoryAuditPath),
+  ]
 
   const uatSignal = await containsUatSignal(intakeAnalysisPath)
   const sections: DeliverySection[] = [
     {
       id: 'intake',
       label: '需求与确认',
+      base: 'shared',
       status: statusFromEvidence(intakeEvidence, 2),
       evidence: intakeEvidence,
       summary: '客户输入、AI 分析与 Clare 确认链路。',
@@ -218,6 +289,7 @@ export async function GET(request: NextRequest) {
     {
       id: 'build',
       label: '构建产物',
+      base: 'shared',
       status: statusFromEvidence(buildEvidence, 3),
       evidence: buildEvidence,
       summary: 'Tenant vars、SOUL、AGENTS 与部署状态。',
@@ -226,6 +298,7 @@ export async function GET(request: NextRequest) {
     {
       id: 'gates',
       label: '闸门测试',
+      base: 'shared',
       status: statusFromEvidence(gateEvidence, 3),
       evidence: gateEvidence,
       summary: 'Golden / Adversarial / 跨 session 交付前测试证据。',
@@ -234,6 +307,7 @@ export async function GET(request: NextRequest) {
     {
       id: 'pre_launch',
       label: '上线准备',
+      base: 'shared',
       status: statusFromEvidence(preLaunchEvidence, 1),
       evidence: preLaunchEvidence,
       summary: 'Ready-to-Ship 规则与出货检查清单。',
@@ -242,6 +316,7 @@ export async function GET(request: NextRequest) {
     {
       id: 'uat',
       label: '客户 UAT',
+      base: 'shared',
       status: uatPath || uatSignal ? 'pass' : 'warn',
       evidence: uatEvidence,
       summary: '客户验收标准、任务或提交记录。',
@@ -250,28 +325,87 @@ export async function GET(request: NextRequest) {
     {
       id: 'handoff',
       label: '交付交接',
+      base: 'shared',
       status: handoffPath || confirmationPath ? 'pass' : 'pending',
       evidence: handoffEvidence,
       summary: '交付报告、确认单与最终交接材料。',
       next_action: '生成最终 delivery-report 并交付客户可读版本',
     },
+    {
+      id: 'oc-workspace',
+      label: 'OC workspace',
+      base: 'oc',
+      status: statusFromEvidence(ocWorkspaceEvidence, 2),
+      evidence: ocWorkspaceEvidence,
+      summary: 'OC tenant workspace、部署状态和运行手册。',
+      next_action: '补齐 tenant vars、deploy-status 或 AGENTS',
+    },
+    {
+      id: 'oc-boundary',
+      label: 'OC Boundary',
+      base: 'oc',
+      status: statusFromEvidence(ocBoundaryEvidence, 1),
+      evidence: ocBoundaryEvidence,
+      summary: 'Boundary 规则和 finalized 标记。',
+      next_action: '完成 P8 Boundary finalize',
+    },
+    {
+      id: 'oc-soul-agents',
+      label: 'OC SOUL/AGENTS',
+      base: 'oc',
+      status: statusFromEvidence(ocSoulEvidence, 2),
+      evidence: ocSoulEvidence,
+      summary: '客户专属 SOUL、AGENTS 和操作标准。',
+      next_action: '补齐 SOUL.md 与 AGENTS',
+    },
+    {
+      id: 'hermes-modules',
+      label: 'Hermes modules',
+      base: 'hermes',
+      status: statusFromEvidence(hermesModuleEvidence, 1),
+      evidence: hermesModuleEvidence,
+      summary: 'H-01 至 H-07 模块状态证据。',
+      next_action: '补齐 hermes/modules.json',
+    },
+    {
+      id: 'hermes-guardrails',
+      label: 'Hermes guardrails',
+      base: 'hermes',
+      status: statusFromEvidence(hermesGuardrailEvidence, 2),
+      evidence: hermesGuardrailEvidence,
+      summary: 'halt-reader、budget-gate 和 skill-curator 交付前守护。',
+      next_action: '清理 halt signal 并补齐 budget/skill 证据',
+    },
+    {
+      id: 'hermes-memory',
+      label: 'Hermes memory',
+      base: 'hermes',
+      status: statusFromEvidence(hermesMemoryEvidence, 1),
+      evidence: hermesMemoryEvidence,
+      summary: 'memory-audit 和跨 profile 隔离证据。',
+      next_action: '补齐 Hermes memory-audit 结果',
+    },
   ]
+
+  const visibleSections = sections.filter(section => matchesBase(section, base))
+  const tenantName = tenantDir ? await readTenantName(tenantDir) : null
 
   return NextResponse.json({
     phase0_dir: phase0Dir,
     available: true,
     tenants,
+    base,
     tenant: {
       tenant_id: tenantId,
-      tenant_name: tenantDir ? await readTenantName(tenantDir) : null,
+      tenant_name: tenantName,
     },
     phase: {
       id: 'P16',
       label: '验收交付',
-      description: '汇总需求、构建、闸门、上线准备、UAT 与交接证据。',
+      description: '按 OC / Hermes / 共享维度汇总需求、构建、闸门、上线准备、UAT 与交接证据。',
     },
-    report: buildReportStatus(sections),
-    sections,
+    report: buildReportStatus(visibleSections, tenantName || tenantId || 'No tenant', base),
+    sections: visibleSections,
   }, {
     headers: { 'Cache-Control': 'no-store' },
   })

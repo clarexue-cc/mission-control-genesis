@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { customerBaseLabel, parseCustomerBase, type CustomerBase } from '@/lib/onboarding-base'
+import { useMissionControl } from '@/store'
 
 type CheckStatus = 'pass' | 'warn' | 'fail' | 'pending'
 
 interface PreLaunchCheck {
   id: string
   label: string
+  base?: 'oc' | 'hermes' | 'shared'
   severity: 'critical' | 'high' | 'medium' | 'low'
   category: string
   status: CheckStatus
@@ -19,6 +22,7 @@ interface PreLaunchCheck {
 interface PreLaunchResponse {
   available: boolean
   tenants: string[]
+  base: CustomerBase
   tenant: {
     tenant_id: string
     tenant_name: string | null
@@ -113,17 +117,21 @@ function CheckCard({ check }: { check: PreLaunchCheck }) {
 }
 
 export function PreLaunchPanel() {
+  const { activeTenant } = useMissionControl()
+  const activeBase = parseCustomerBase(activeTenant?.base)
+  const activeTenantSlug = activeTenant?.slug || ''
   const [data, setData] = useState<PreLaunchResponse | null>(null)
-  const [tenantId, setTenantId] = useState('')
+  const [tenantId, setTenantId] = useState(activeTenantSlug)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async (tenant: string) => {
+  const load = useCallback(async (tenant: string, base: CustomerBase) => {
     setLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams()
       if (tenant) params.set('tenant', tenant)
+      params.set('base', base)
       const response = await fetch(`/api/harness/pre-launch?${params.toString()}`, { cache: 'no-store' })
       const body = await response.json()
       if (!response.ok) throw new Error(body?.error || 'Failed to load pre-launch checks')
@@ -137,8 +145,12 @@ export function PreLaunchPanel() {
   }, [])
 
   useEffect(() => {
-    load(tenantId).catch(() => {})
-  }, [load, tenantId])
+    if (activeTenantSlug) setTenantId(activeTenantSlug)
+  }, [activeTenantSlug])
+
+  useEffect(() => {
+    load(tenantId || activeTenantSlug, activeBase).catch(() => {})
+  }, [load, tenantId, activeTenantSlug, activeBase])
 
   const statusCounts = useMemo(() => {
     const checks = data?.checks || []
@@ -158,7 +170,7 @@ export function PreLaunchPanel() {
             <div className="text-xs font-semibold text-cyan-300">{data?.phase?.id || 'P12'}</div>
             <h1 className="mt-1 text-2xl font-semibold text-foreground">上线准备</h1>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-              Ready-to-Ship 检查清单与出货判定。
+              按 {customerBaseLabel(data?.base || activeBase)} 底座执行 Ready-to-Ship 检查与出货判定。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -172,7 +184,7 @@ export function PreLaunchPanel() {
                 <option key={tenant} value={tenant}>{tenant}</option>
               ))}
             </select>
-            <Button variant="ghost" onClick={() => load(tenantId)} disabled={loading}>
+            <Button variant="ghost" onClick={() => load(tenantId || activeTenantSlug, activeBase)} disabled={loading}>
               刷新
             </Button>
           </div>
@@ -191,6 +203,7 @@ export function PreLaunchPanel() {
                 {data.readiness.label}
               </div>
               <div className="mt-2 truncate text-xs text-muted-foreground">{data.tenant.tenant_id}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{customerBaseLabel(data.base)}</div>
             </div>
             <Stat label="通过" value={statusCounts.pass} />
             <Stat label="复核" value={statusCounts.warn} />
