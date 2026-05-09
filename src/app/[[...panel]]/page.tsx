@@ -1,6 +1,7 @@
 'use client'
 
 import { createElement, useEffect, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { usePathname, useRouter } from 'next/navigation'
 import { NavRail } from '@/components/layout/nav-rail'
 import { HeaderBar } from '@/components/layout/header-bar'
@@ -29,8 +30,10 @@ import { SuperAdminPanel } from '@/components/panels/super-admin-panel'
 import { OfficePanel } from '@/components/panels/office-panel'
 import { GitHubSyncPanel } from '@/components/panels/github-sync-panel'
 import { SkillsPanel } from '@/components/panels/skills-panel'
-import { BoundaryEditorPanel } from '@/components/panels/boundary-editor'
 import { HookLogsPanel } from '@/components/panels/hook-logs'
+import { OnboardingOverviewPanel } from '@/components/panels/onboarding-overview-panel'
+import { PlatformReadyPanel } from '@/components/panels/platform-ready-panel'
+import { BaseSelectionPanel } from '@/components/panels/base-selection-panel'
 import { LocalAgentsDocPanel } from '@/components/panels/local-agents-doc-panel'
 import { ChannelsPanel } from '@/components/panels/channels-panel'
 import { DebugPanel } from '@/components/panels/debug-panel'
@@ -82,6 +85,11 @@ function renderPluginPanel(panelId: string) {
   const pluginPanel = getPluginPanel(panelId)
   return pluginPanel ? createElement(pluginPanel) : <Dashboard />
 }
+
+const BoundaryEditorPanel = dynamic(
+  () => import('@/components/panels/boundary-editor').then(mod => mod.BoundaryEditorPanel),
+  { ssr: false },
+)
 
 export default function Home() {
   const router = useRouter()
@@ -456,7 +464,8 @@ export default function Home() {
 }
 
 const ESSENTIAL_PANELS = new Set([
-  'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings',
+  'overview', 'onboarding/overview', 'onboarding/platform-ready', 'onboarding/base-selection',
+  'customer-setup', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
@@ -563,6 +572,15 @@ function ContentRouter({ tab }: { tab: string }) {
       return <OfficePanel />
     case 'skills':
       return <SkillsPanel />
+    case 'onboarding/overview':
+      return <OnboardingOverviewPanel />
+    case 'onboarding/platform-ready':
+      return <PlatformReadyPanel />
+    case 'onboarding/base-selection':
+      return <BaseSelectionPanel />
+    case 'customer-setup':
+    case 'onboarding':
+      return <OnboardingOverviewPanel />
     case 'boundary':
       return <BoundaryEditorPanel />
     case 'hook-logs':

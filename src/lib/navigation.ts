@@ -13,6 +13,8 @@ export function panelHref(panel: string): string {
 const PREFETCHED_ROUTES = new Set<string>()
 const DEFAULT_PREFETCH_PANELS = [
   'overview',
+  'onboarding/overview',
+  'onboarding/platform-ready',
   'chat',
   'tasks',
   'agents',

@@ -8,13 +8,17 @@ import { useNavigateToPanel, usePrefetchPanel } from '@/lib/navigation'
 import { Button } from '@/components/ui/button'
 import { APP_VERSION } from '@/lib/version'
 import { getPluginNavItems } from '@/lib/plugins'
+import { getCustomerCheckpointNavItems } from '@/lib/customer-checkpoint-navigation'
 
 interface NavItem {
   id: string
+  targetPanel?: string
   label: string
   icon: React.ReactNode
   priority: boolean // Show in mobile bottom bar
   essential?: boolean // Visible in Essential interface mode (default false)
+  tenantScoped?: boolean
+  requiresPlatformReady?: boolean
   href?: string
   target?: string
   children?: NavItem[] // Nested sub-items (expandable parent)
@@ -28,6 +32,33 @@ interface NavGroup {
 
 const tracesUrl = process.env.NEXT_PUBLIC_LANGFUSE_URL || 'http://192.168.1.116:3001'
 
+function customerCheckpointIcon(panel: string) {
+  if (panel === 'onboarding/overview') return <OverviewIcon />
+  if (panel === 'onboarding/platform-ready') return <ShieldIcon />
+  if (panel === 'onboarding/base-selection') return <GatewaysIcon />
+  if (panel === 'onboarding/customer/skills') return <SkillsIcon />
+  if (panel === 'onboarding/customer/soul') return <AgentsIcon />
+  if (panel === 'onboarding/customer/confirm') return <ApprovalsIcon />
+  if (panel === 'onboarding/customer/deploy') return <OrganizationsIcon />
+  if (panel === 'boundary') return <ShieldIcon />
+  if (panel === 'tests') return <DebugIcon />
+  if (panel === 'hermes') return <CronIcon />
+  if (panel === 'delivery') return <TasksIcon />
+  if (panel === 'channels') return <ChannelsIcon />
+  return <TasksIcon />
+}
+
+const customerCheckpointChildren: NavItem[] = getCustomerCheckpointNavItems().map(item => ({
+  id: item.id,
+  targetPanel: item.panel,
+  label: item.label,
+  icon: customerCheckpointIcon(item.panel),
+  priority: false,
+  essential: true,
+  tenantScoped: item.tenantScoped,
+  requiresPlatformReady: item.requiresPlatformReady,
+}))
+
 const navGroups: NavGroup[] = [
   {
     id: 'core',
@@ -39,6 +70,21 @@ const navGroups: NavGroup[] = [
       { id: 'channels', label: 'Channels', icon: <ChannelsIcon />, priority: false },
       { id: 'skills', label: 'Skills', icon: <SkillsIcon />, priority: false },
       { id: 'memory', label: 'Memory', icon: <MemoryIcon />, priority: false },
+    ],
+  },
+  {
+    id: 'customer-setup',
+    label: 'CUSTOMER SETUP',
+    items: [
+      {
+        id: 'customer-onboarding',
+        targetPanel: 'onboarding/overview',
+        label: 'Customer Onboarding',
+        icon: <CustomerSetupIcon />,
+        priority: false,
+        essential: true,
+        children: customerCheckpointChildren,
+      },
     ],
   },
   {
@@ -128,7 +174,16 @@ const gatewayOnlyPanels = new Set([
   'gateways', 'gateway-config', 'channels', 'nodes', 'exec-approvals',
   ...getPluginNavItems().filter(pi => pi.gatewayOnly).map(pi => pi.id),
 ])
-const adminOnlyPanels = new Set<string>(['boundary', 'hook-logs'])
+const adminOnlyPanels = new Set<string>([
+  'boundary',
+  'hook-logs',
+  'customer-onboarding',
+  ...customerCheckpointChildren.map(item => item.id),
+])
+
+function navTarget(item: NavItem): string {
+  return item.targetPanel || item.id
+}
 
 export function NavRail() {
   const { activeTab, connection, dashboardMode, currentUser, activeTenant, tenants, osUsers, setActiveTenant, fetchTenants, fetchOsUsers, activeProject, projects, setActiveProject, fetchProjects, sidebarExpanded, collapsedGroups, toggleSidebar, toggleGroup, defaultOrgName, interfaceMode, setInterfaceMode } = useMissionControl()
@@ -149,6 +204,7 @@ export function NavRail() {
   const isLocal = dashboardMode === 'local'
   const isAdmin = currentUser?.role === 'admin'
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
+  const [platformReady, setPlatformReady] = useState<boolean | undefined>(undefined)
 
   function toggleParent(id: string) {
     setExpandedParents(prev => {
@@ -167,6 +223,29 @@ export function NavRail() {
       fetchProjects()
     }
   }, [isAdmin, fetchTenants, fetchOsUsers, fetchProjects])
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setPlatformReady(undefined)
+      return
+    }
+
+    let cancelled = false
+    async function loadPlatformReadiness() {
+      try {
+        const response = await fetch('/api/harness/platform-readiness', { cache: 'no-store' })
+        const body = await response.json()
+        if (!cancelled && response.ok && typeof body?.ready === 'boolean') {
+          setPlatformReady(body.ready)
+        }
+      } catch {
+        if (!cancelled) setPlatformReady(undefined)
+      }
+    }
+
+    loadPlatformReadiness().catch(() => {})
+    return () => { cancelled = true }
+  }, [isAdmin])
 
   // Re-fetch projects and clear active project when tenant changes
   useEffect(() => {
@@ -190,6 +269,7 @@ export function NavRail() {
         }
         if (isLocal && gatewayOnlyPanels.has(i.id)) return null
         if (!isAdmin && adminOnlyPanels.has(i.id)) return null
+        if (i.requiresPlatformReady && platformReady === false) return null
         if (isEssential && !i.essential) return null
         return i
       })
@@ -325,17 +405,18 @@ export function NavRail() {
                   {group.items.map((item) => {
                     if (item.children) {
                       const isParentExpanded = expandedParents.has(item.id)
-                      const childActive = item.children.some(c => activeTab === c.id)
+                      const itemPanel = navTarget(item)
+                      const childActive = item.children.some(c => activeTab === navTarget(c))
                       if (!sidebarExpanded) {
                         // Collapsed mode: clicking parent navigates to first child
                         return (
                           <NavButton
                             key={item.id}
                             item={item}
-                            active={childActive}
+                            active={activeTab === itemPanel || childActive}
                             expanded={false}
-                            onClick={() => navigateToPanel(item.children![0].id)}
-                            onPrefetch={() => item.children?.forEach(child => prefetchPanel(child.id))}
+                            onClick={() => navigateToPanel(navTarget(item.children![0]))}
+                            onPrefetch={() => item.children?.forEach(child => prefetchPanel(navTarget(child)))}
                           />
                         )
                       }
@@ -344,18 +425,18 @@ export function NavRail() {
                           <div className="flex items-center w-full">
                             <Button
                               variant="ghost"
-                              onClick={() => { navigateToPanel(item.id); if (!isParentExpanded) toggleParent(item.id) }}
-                              onMouseEnter={() => { prefetchPanel(item.id); item.children?.forEach(child => prefetchPanel(child.id)) }}
-                              onFocus={() => item.children?.forEach(child => prefetchPanel(child.id))}
+                              onClick={() => { navigateToPanel(itemPanel); if (!isParentExpanded) toggleParent(item.id) }}
+                              onMouseEnter={() => { prefetchPanel(itemPanel); item.children?.forEach(child => prefetchPanel(navTarget(child))) }}
+                              onFocus={() => item.children?.forEach(child => prefetchPanel(navTarget(child)))}
                               className={`flex-1 flex items-center gap-2 px-2 py-1.5 h-auto rounded-lg rounded-r-none text-left justify-start relative ${
-                                activeTab === item.id
+                                activeTab === itemPanel
                                   ? 'bg-primary/15 text-primary hover:bg-primary/20'
                                   : childActive && !isParentExpanded
                                     ? 'bg-primary/10 text-primary/80 hover:bg-primary/15'
                                     : ''
                               }`}
                             >
-                              {activeTab === item.id && (
+                              {activeTab === itemPanel && (
                                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-primary rounded-r-full" />
                               )}
                               <div className="w-5 h-5 shrink-0">{item.icon}</div>
@@ -390,10 +471,10 @@ export function NavRail() {
                                 <NavButton
                                   key={child.id}
                                   item={child}
-                                  active={activeTab === child.id}
+                                  active={activeTab === navTarget(child)}
                                   expanded={true}
-                                  onClick={() => navigateToPanel(child.id)}
-                                  onPrefetch={() => prefetchPanel(child.id)}
+                                  onClick={() => navigateToPanel(navTarget(child))}
+                                  onPrefetch={() => prefetchPanel(navTarget(child))}
                                   nested
                                 />
                               ))}
@@ -406,10 +487,10 @@ export function NavRail() {
                       <NavButton
                         key={item.id}
                         item={item}
-                        active={activeTab === item.id}
+                        active={activeTab === navTarget(item)}
                         expanded={sidebarExpanded}
-                        onClick={() => navigateToPanel(item.id)}
-                        onPrefetch={() => prefetchPanel(item.id)}
+                        onClick={() => navigateToPanel(navTarget(item))}
+                        onPrefetch={() => prefetchPanel(navTarget(item))}
                       />
                     )
                   })}
@@ -592,7 +673,7 @@ function MobileBottomBar({ activeTab, navigateToPanel, groups, items }: {
   const tn = useTranslations('nav')
   const [sheetOpen, setSheetOpen] = useState(false)
   const priorityItems = items.filter(i => i.priority)
-  const nonPriorityIds = new Set(items.filter(i => !i.priority).map(i => i.id))
+  const nonPriorityIds = new Set(items.filter(i => !i.priority).map(i => navTarget(i)))
   const moreIsActive = nonPriorityIds.has(activeTab)
 
   return (
@@ -605,8 +686,8 @@ function MobileBottomBar({ activeTab, navigateToPanel, groups, items }: {
                 key={item.id}
                 asChild
                 variant="ghost"
-                className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg min-w-[48px] min-h-[48px] h-auto ${
-                  activeTab === item.id
+                  className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg min-w-[48px] min-h-[48px] h-auto ${
+                  activeTab === navTarget(item)
                     ? 'text-primary hover:text-primary'
                     : ''
                 }`}
@@ -620,9 +701,9 @@ function MobileBottomBar({ activeTab, navigateToPanel, groups, items }: {
               <Button
                 key={item.id}
                 variant="ghost"
-                onClick={() => navigateToPanel(item.id)}
+                onClick={() => navigateToPanel(navTarget(item))}
                 className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg min-w-[48px] min-h-[48px] h-auto ${
-                  activeTab === item.id
+                  activeTab === navTarget(item)
                     ? 'text-primary hover:text-primary'
                     : ''
                 }`}
@@ -739,7 +820,7 @@ function MobileBottomSheet({ open, onClose, activeTab, navigateToPanel, groups }
                       asChild
                       variant="ghost"
                       className={`flex items-center gap-2.5 px-3 min-h-[48px] h-auto rounded-lg justify-start ${
-                        activeTab === item.id
+                        activeTab === navTarget(item)
                           ? 'bg-primary/15 text-primary hover:bg-primary/20'
                           : 'text-foreground'
                       }`}
@@ -759,11 +840,11 @@ function MobileBottomSheet({ open, onClose, activeTab, navigateToPanel, groups }
                       key={item.id}
                       variant="ghost"
                       onClick={() => {
-                        navigateToPanel(item.id)
+                        navigateToPanel(navTarget(item))
                         handleClose()
                       }}
                       className={`flex items-center gap-2.5 px-3 min-h-[48px] h-auto rounded-lg justify-start ${
-                        activeTab === item.id
+                        activeTab === navTarget(item)
                           ? 'bg-primary/15 text-primary hover:bg-primary/20'
                           : 'text-foreground'
                       }`}
@@ -1374,6 +1455,16 @@ function MemoryIcon() {
       <ellipse cx="8" cy="8" rx="6" ry="3" />
       <path d="M2 8v3c0 1.7 2.7 3 6 3s6-1.3 6-3V8" />
       <path d="M2 5v3c0 1.7 2.7 3 6 3s6-1.3 6-3V5" />
+    </svg>
+  )
+}
+
+function CustomerSetupIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="6" cy="5" r="2.5" />
+      <path d="M1.5 14c0-2.5 2-4.5 4.5-4.5 1.4 0 2.7.7 3.5 1.7" />
+      <path d="M12 7v6M9 10h6" />
     </svg>
   )
 }
