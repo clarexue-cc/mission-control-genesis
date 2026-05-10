@@ -232,7 +232,7 @@ export function NavRail() {
   }
   const isLocal = dashboardMode === 'local'
   const isAdmin = currentUser?.role === 'admin'
-  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set(['customer-onboarding']))
   const [platformReady, setPlatformReady] = useState<boolean | undefined>(undefined)
   const customerCheckpointChildren = useMemo(
     () => toCustomerCheckpointChildren(getCustomerCheckpointNavItems({
@@ -318,7 +318,7 @@ export function NavRail() {
         if (isLocal && gatewayOnlyPanels.has(i.id)) return null
         if (!isAdmin && adminOnlyPanels.has(i.id)) return null
         if (!isAdmin && i.access === 'admin') return null
-        if (i.requiresPlatformReady && platformReady === false) return null
+        // Show all items regardless of platform readiness
         if (isEssential && !i.essential) return null
         return i
       })

@@ -214,12 +214,23 @@ export const customerCheckpointNavItems: CustomerCheckpointNavItem[] = [
     access: 'admin',
   },
   {
-    id: 'pre-launch',
-    label: '阶段 4：上线准备',
+    id: 'pre-launch-oc',
+    label: '阶段 4：OC 上线准备',
     panel: 'onboarding/pre-launch',
     tenantScoped: true,
     phase: 'pre-launch',
-    description: '整合 RTS、客户视图、Hermes 守护和渠道上线检查。',
+    description: '整合 RTS、客户视图和 OC 渠道上线检查。',
+    base: 'oc',
+    access: 'admin',
+  },
+  {
+    id: 'pre-launch-hermes',
+    label: '阶段 4：Hermes 上线准备',
+    panel: 'onboarding/pre-launch',
+    tenantScoped: true,
+    phase: 'pre-launch',
+    description: '整合 Hermes 守护、渠道和上线检查。',
+    base: 'hermes',
     access: 'admin',
   },
   {
@@ -235,14 +246,8 @@ export const customerCheckpointNavItems: CustomerCheckpointNavItem[] = [
 ]
 
 export function getCustomerCheckpointNavItems(
-  options: CustomerCheckpointNavOptions = {},
+  _options: CustomerCheckpointNavOptions = {},
 ): CustomerCheckpointNavItem[] {
-  return customerCheckpointNavItems.filter(item => {
-    if (item.requiresPlatformReady && options.platformReady === false) return false
-    if (!item.base) return true
-    if (!options.selectedBase) return false
-    if (options.selectedBase === 'both') return true
-    if (item.base !== options.selectedBase) return false
-    return true
-  })
+  // Always show all items — filtering by base/platform is deferred to panel content
+  return customerCheckpointNavItems
 }
