@@ -1,8 +1,10 @@
 import 'server-only'
 
+import fs from 'node:fs'
 import { constants } from 'node:fs'
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
+import os from 'node:os'
 import path from 'node:path'
 import { config } from '@/lib/config'
 import { resolveWithin } from '@/lib/paths'
@@ -171,4 +173,28 @@ export async function finalizeBoundaryRulesUpdate(): Promise<BoundaryFinalizeRes
     latency_ms: Date.now() - startedAt,
     note: 'Live-read hook detected; no explicit reload required',
   }
+}
+
+export async function resolveHarnessRoot(): Promise<string> {
+  const candidates = [
+    process.env.MC_HARNESS_ROOT,
+    process.env.GENESIS_HARNESS_ROOT,
+    path.join(os.homedir(), 'Desktop', 'Claude', 'genesis-harness'),
+    path.join(os.homedir(), 'Desktop', 'genesis-harness'),
+    path.join(os.homedir(), 'genesis-harness'),
+  ].filter((c): c is string => Boolean(c))
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, 'phase0'))) return candidate
+  }
+
+  return candidates[0] || process.cwd()
+}
+
+export type BoundaryTenant = string
+
+export const BOUNDARY_TENANTS: BoundaryTenant[] = []
+
+export function normalizeBoundaryTemplateTenant(value: string): BoundaryTenant {
+  return value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
 }
