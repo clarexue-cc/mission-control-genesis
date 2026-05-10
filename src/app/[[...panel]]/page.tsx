@@ -1,6 +1,7 @@
 'use client'
 
 import { createElement, useEffect, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { usePathname, useRouter } from 'next/navigation'
 import { NavRail } from '@/components/layout/nav-rail'
 import { HeaderBar } from '@/components/layout/header-bar'
@@ -9,7 +10,6 @@ import { Dashboard } from '@/components/dashboard/dashboard'
 import { LogViewerPanel } from '@/components/panels/log-viewer-panel'
 import { CronManagementPanel } from '@/components/panels/cron-management-panel'
 import { MemoryBrowserPanel } from '@/components/panels/memory-browser-panel'
-import { VaultBrowserPanel } from '@/components/panels/vault-browser-panel'
 import { CostTrackerPanel } from '@/components/panels/cost-tracker-panel'
 import { TaskBoardPanel } from '@/components/panels/task-board-panel'
 import { ActivityFeedPanel } from '@/components/panels/activity-feed-panel'
@@ -26,28 +26,32 @@ import { GatewayConfigPanel } from '@/components/panels/gateway-config-panel'
 import { IntegrationsPanel } from '@/components/panels/integrations-panel'
 import { AlertRulesPanel } from '@/components/panels/alert-rules-panel'
 import { MultiGatewayPanel } from '@/components/panels/multi-gateway-panel'
-import { GatewayControlPanel } from '@/components/panels/gateway-control-panel'
 import { SuperAdminPanel } from '@/components/panels/super-admin-panel'
 import { OfficePanel } from '@/components/panels/office-panel'
 import { GitHubSyncPanel } from '@/components/panels/github-sync-panel'
 import { SkillsPanel } from '@/components/panels/skills-panel'
-import { TestConsolePanel } from '@/components/panels/test-console'
-import { HarnessPanel } from '@/components/panels/harness-panel'
-import { BoundaryEditorPanel } from '@/components/panels/boundary-editor'
-import { DeliveryChecklistPanel } from '@/components/panels/delivery-checklist'
-import { CustomerHeaderBar, CustomerViewOverrides } from '@/components/panels/customer-view-overrides'
+import { HookLogsPanel } from '@/components/panels/hook-logs'
+import { OnboardingOverviewPanel } from '@/components/panels/onboarding-overview-panel'
+import { PlatformReadyPanel } from '@/components/panels/platform-ready-panel'
+import { BaseSelectionPanel } from '@/components/panels/base-selection-panel'
+import { HermesProfileSetupPanel } from '@/components/panels/hermes-profile-setup-panel'
+import { HermesBoundaryPanel } from '@/components/panels/hermes-boundary-panel'
+import { HermesSkillCuratorPanel } from '@/components/panels/hermes-skill-curator-panel'
+import { HermesMemoryPanel } from '@/components/panels/hermes-memory-panel'
+import { HermesOutputPanel } from '@/components/panels/hermes-output-panel'
+import { HermesGuardianPanel } from '@/components/panels/hermes-guardian-panel'
+import { HermesCronPanel } from '@/components/panels/hermes-cron-panel'
+import { GateTestingPanel } from '@/components/panels/gate-testing-panel'
+import { PreLaunchPanel } from '@/components/panels/pre-launch-panel'
+import { OnboardingDeliveryPanel } from '@/components/panels/onboarding-delivery-panel'
 import { LocalAgentsDocPanel } from '@/components/panels/local-agents-doc-panel'
 import { ChannelsPanel } from '@/components/panels/channels-panel'
 import { DebugPanel } from '@/components/panels/debug-panel'
 import { SecurityAuditPanel } from '@/components/panels/security-audit-panel'
 import { NodesPanel } from '@/components/panels/nodes-panel'
 import { ExecApprovalPanel } from '@/components/panels/exec-approval-panel'
-import { SystemMonitorPanel } from '@/components/panels/system-monitor-panel'
-import { HermesControlPanel } from '@/components/panels/hermes-control-panel'
-import { HermesSetupPanel } from '@/components/panels/hermes-setup-panel'
 import { ChatPagePanel } from '@/components/panels/chat-page-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
-import { STORAGE_GATEWAY_URL } from '@/lib/device-identity'
 import { getPluginPanel } from '@/lib/plugins'
 import { shouldRedirectDashboardToHttps } from '@/lib/browser-security'
 import { useTranslations } from 'next-intl'
@@ -65,10 +69,8 @@ import { useServerEvents } from '@/lib/use-server-events'
 import { completeNavigationTiming } from '@/lib/navigation-metrics'
 import { panelHref, useNavigateToPanel } from '@/lib/navigation'
 import { clearOnboardingDismissedThisSession, clearOnboardingReplayFromStart, getOnboardingSessionDecision, markOnboardingReplayFromStart, readOnboardingDismissedThisSession } from '@/lib/onboarding-session'
-import { resolveCustomerTenantId, resolveEffectiveInterfaceMode } from '@/lib/mc-stable-mode'
 import { Button } from '@/components/ui/button'
 import { useMissionControl } from '@/store'
-import { canAccessPanel, isCustomerRole, isCustomerUserRole, readEffectiveRoleFromBrowser, type EffectiveRole } from '@/lib/rbac'
 
 interface GatewaySummary {
   id: number
@@ -94,6 +96,11 @@ function renderPluginPanel(panelId: string) {
   return pluginPanel ? createElement(pluginPanel) : <Dashboard />
 }
 
+const BoundaryEditorPanel = dynamic(
+  () => import('@/components/panels/boundary-editor').then(mod => mod.BoundaryEditorPanel),
+  { ssr: false },
+)
+
 export default function Home() {
   const router = useRouter()
   const { connect } = useWebSocket()
@@ -104,7 +111,11 @@ export default function Home() {
 
   // Sync URL → Zustand activeTab
   const pathname = usePathname()
-  const panelFromUrl = pathname === '/' ? 'overview' : pathname.slice(1)
+  const panelFromUrl = pathname === '/'
+    ? 'overview'
+    : pathname.startsWith('/panels/')
+      ? pathname.slice('/panels/'.length)
+      : pathname.slice(1)
   const normalizedPanel = panelFromUrl === 'sessions' ? 'chat' : panelFromUrl
 
   useEffect(() => {
@@ -125,27 +136,9 @@ export default function Home() {
     }
   }, [panelFromUrl, normalizedPanel, router, setActiveTab, setChatPanelOpen])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const nextRole = readEffectiveRoleFromBrowser(window.location.search)
-    const params = new URLSearchParams(window.location.search)
-    const customerParams = new URLSearchParams()
-    customerParams.set('tenant', resolveCustomerTenantId(params))
-    customerParams.set('role', nextRole)
-    setEffectiveRole(nextRole)
-    if (isCustomerRole(nextRole) && !canAccessPanel(nextRole, normalizedPanel)) {
-      router.replace(`/?${customerParams.toString()}`)
-      return
-    }
-    if (isCustomerRole(nextRole) && panelFromUrl === 'tasks' && !params.has('role')) {
-      router.replace(`/tasks?${customerParams.toString()}`)
-    }
-  }, [normalizedPanel, panelFromUrl, router])
-
   // Connect to SSE for real-time local DB events (tasks, agents, chat, etc.)
   useServerEvents()
   const [isClient, setIsClient] = useState(false)
-  const [effectiveRole, setEffectiveRole] = useState<EffectiveRole>('admin')
   const [stepStatuses, setStepStatuses] = useState<Record<string, 'pending' | 'done'>>(
     () => Object.fromEntries(STEP_KEYS.map(k => [k, 'pending']))
   )
@@ -165,7 +158,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!bootComplete && initSteps.every(s => s.status === 'done')) {
-      setBootComplete()
+      const t = setTimeout(() => setBootComplete(), 400)
+      return () => clearTimeout(t)
     }
   }, [initSteps, bootComplete, setBootComplete])
 
@@ -205,19 +199,14 @@ export default function Home() {
       return
     }
 
-    const connectWithEnvFallback = (localGatewayUrl: string | null) => {
-      // localStorage user choice takes priority over env vars
-      const explicitWsUrl = localGatewayUrl || process.env.NEXT_PUBLIC_GATEWAY_URL || ''
-      if (explicitWsUrl) {
-        connect(explicitWsUrl)
-        return
-      }
+    const connectWithEnvFallback = () => {
+      const explicitWsUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || ''
       const gatewayPort = process.env.NEXT_PUBLIC_GATEWAY_PORT || '18789'
       const gatewayHost = process.env.NEXT_PUBLIC_GATEWAY_HOST || window.location.hostname
       const gatewayProto =
         process.env.NEXT_PUBLIC_GATEWAY_PROTOCOL ||
         (window.location.protocol === 'https:' ? 'wss' : 'ws')
-      const wsUrl = `${gatewayProto}://${gatewayHost}:${gatewayPort}`
+      const wsUrl = explicitWsUrl || `${gatewayProto}://${gatewayHost}:${gatewayPort}`
       connect(wsUrl)
     }
 
@@ -299,8 +288,6 @@ export default function Home() {
     fetch('/api/status?action=capabilities')
       .then(res => res.ok ? res.json() : null)
       .then(async data => {
-        const localGatewayUrl = localStorage.getItem(STORAGE_GATEWAY_URL)
-
         if (data?.subscription) {
           setSubscription(data.subscription)
         }
@@ -310,24 +297,6 @@ export default function Home() {
         if (data?.interfaceMode === 'essential' || data?.interfaceMode === 'full') {
           setInterfaceMode(data.interfaceMode)
         }
-
-        // User's explicit gateway URL choice (localStorage) takes PRIORITY over server's gateway flag.
-        // If user chose a URL from login page, always connect to it.
-        if (localGatewayUrl) {
-          // User explicitly chose a gateway URL — always set full mode
-          setDashboardMode('full')
-          setGatewayAvailable(true)
-          if (data?.claudeHome) {
-            setLocalSessionsAvailable(true)
-          }
-          setCapabilitiesChecked(true)
-          markStep('capabilities')
-          connect(localGatewayUrl)
-          markStep('connect')
-          return
-        }
-
-        // No user-chosen URL — use server's gateway flag to decide
         if (data && data.gateway === false) {
           setDashboardMode('local')
           setGatewayAvailable(false)
@@ -347,10 +316,9 @@ export default function Home() {
         setCapabilitiesChecked(true)
         markStep('capabilities')
 
-        // No user choice + server gateway flag false → try primary gateway / env fallback
         const primaryConnect = await connectWithPrimaryGateway()
         if (!primaryConnect.connected && !primaryConnect.attempted) {
-          connectWithEnvFallback(null)
+          connectWithEnvFallback()
         }
         markStep('connect')
       })
@@ -359,7 +327,7 @@ export default function Home() {
         setCapabilitiesChecked(true)
         markStep('capabilities')
         markStep('connect')
-        connectWithEnvFallback(null)
+        connectWithEnvFallback()
       })
 
     // Check onboarding state
@@ -394,30 +362,24 @@ export default function Home() {
           if (agentsData?.agents) setAgents(agentsData.agents)
         })
         .finally(() => { markStep('agents') }),
-      // Sessions can be slow with many JSONL files — don't block boot
-      (() => {
-        markStep('sessions')
-        return fetch('/api/sessions')
-          .then(r => r.ok ? r.json() : null)
-          .then((sessionsData) => {
-            if (sessionsData?.sessions) setSessions(sessionsData.sessions)
-          })
-      })(),
+      fetch('/api/sessions')
+        .then(r => r.ok ? r.json() : null)
+        .then((sessionsData) => {
+          if (sessionsData?.sessions) setSessions(sessionsData.sessions)
+        })
+        .finally(() => { markStep('sessions') }),
       fetch('/api/projects')
         .then(r => r.ok ? r.json() : null)
         .then((projectsData) => {
           if (projectsData?.projects) setProjects(projectsData.projects)
         })
         .finally(() => { markStep('projects') }),
-      // Memory graph can be slow — don't block boot
-      (() => {
-        markStep('memory')
-        return fetch('/api/memory/graph?agent=all')
-          .then(r => r.ok ? r.json() : null)
-          .then((graphData) => {
-            if (graphData?.agents) setMemoryGraphAgents(graphData.agents)
-          })
-      })(),
+      fetch('/api/memory/graph?agent=all')
+        .then(r => r.ok ? r.json() : null)
+        .then((graphData) => {
+          if (graphData?.agents) setMemoryGraphAgents(graphData.agents)
+        })
+        .finally(() => { markStep('memory') }),
       fetch('/api/skills')
         .then(r => r.ok ? r.json() : null)
         .then((skillsData) => {
@@ -433,9 +395,6 @@ export default function Home() {
     return <Loader variant="page" steps={isClient ? initSteps : undefined} />
   }
 
-  const isCustomerView = isCustomerRole(effectiveRole)
-  const onboardingActive = showOnboarding && !isCustomerView
-
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:text-sm focus:font-medium">
@@ -443,49 +402,47 @@ export default function Home() {
       </a>
 
       {/* Left: Icon rail navigation (hidden on mobile, shown as bottom bar instead) */}
-      {!onboardingActive && <NavRail effectiveRole={effectiveRole} />}
+      {!showOnboarding && <NavRail />}
 
       {/* Center: Header + Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {!onboardingActive && (
+        {!showOnboarding && (
           <>
-            {isCustomerView ? (
-              <CustomerHeaderBar panel={activeTab} />
-            ) : (
-              <>
-                <HeaderBar />
-                <LocalModeBanner />
-                <UpdateBanner />
-                <OpenClawUpdateBanner />
-                <OpenClawDoctorBanner />
-              </>
-            )}
+            <HeaderBar />
+            <LocalModeBanner />
+            <UpdateBanner />
+            <OpenClawUpdateBanner />
+            <OpenClawDoctorBanner />
           </>
         )}
         <main
           id="main-content"
-          className={`flex-1 overflow-auto pb-16 md:pb-0 ${onboardingActive ? 'pointer-events-none select-none blur-[2px] opacity-30' : ''}`}
+          className={`flex-1 overflow-auto pb-16 md:pb-0 ${showOnboarding ? 'pointer-events-none select-none blur-[2px] opacity-30' : ''}`}
           role="main"
-          aria-hidden={onboardingActive}
+          aria-hidden={showOnboarding}
         >
           <div aria-live="polite" className="flex flex-col min-h-full">
             <ErrorBoundary key={activeTab}>
-              <ContentRouter tab={activeTab} effectiveRole={effectiveRole} />
+              <ContentRouter tab={activeTab} />
             </ErrorBoundary>
           </div>
-{/* Footer removed — attribution moved to nav sidebar */}
+          <footer className="px-4 pb-4 pt-2">
+            <p className="text-2xs text-muted-foreground/50 text-center">
+              {tc('builtWithCareBy')} <a href="https://x.com/nyk_builderz" target="_blank" rel="noopener noreferrer" className="text-muted-foreground/70 hover:text-primary transition-colors duration-200">nyk</a>.
+            </p>
+          </footer>
         </main>
       </div>
 
       {/* Right: Live feed (hidden on mobile) */}
-      {!onboardingActive && !isCustomerView && liveFeedOpen && (
+      {!showOnboarding && liveFeedOpen && (
         <div className="hidden lg:flex h-full">
           <LiveFeed />
         </div>
       )}
 
       {/* Floating button to reopen LiveFeed when closed */}
-      {!onboardingActive && !isCustomerView && !liveFeedOpen && (
+      {!showOnboarding && !liveFeedOpen && (
         <button
           onClick={toggleLiveFeed}
           className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-30 w-6 h-12 items-center justify-center bg-card border border-r-0 border-border rounded-l-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200"
@@ -498,44 +455,42 @@ export default function Home() {
       )}
 
       {/* Chat panel overlay */}
-      {!onboardingActive && !isCustomerView && <ChatPanel />}
+      {!showOnboarding && <ChatPanel />}
 
       {/* Global exec approval overlay (shown regardless of active panel) */}
-      {!onboardingActive && !isCustomerView && <ExecApprovalOverlay />}
+      {!showOnboarding && <ExecApprovalOverlay />}
 
       {/* Global Project Manager Modal */}
-      {!onboardingActive && !isCustomerView && showProjectManagerModal && (
+      {!showOnboarding && showProjectManagerModal && (
         <ProjectManagerModal
           onClose={() => setShowProjectManagerModal(false)}
           onChanged={async () => { await fetchProjects() }}
         />
       )}
 
-      {!isCustomerView && <OnboardingWizard />}
+      <OnboardingWizard />
     </div>
   )
 }
 
 const ESSENTIAL_PANELS = new Set([
-  'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings', 'boundary', 'skills', 'delivery',
+  'overview', 'onboarding/overview', 'onboarding/platform-ready', 'onboarding/base-selection',
+  'onboarding/hermes/profile', 'onboarding/hermes/boundary', 'onboarding/hermes/skills',
+  'onboarding/hermes/memory', 'onboarding/hermes/output', 'onboarding/hermes/guardian',
+  'onboarding/hermes/cron', 'onboarding/gate-testing', 'onboarding/pre-launch',
+  'onboarding/delivery',
+  'customer-setup', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings',
 ])
 
-function ContentRouter({ tab, effectiveRole }: { tab: string; effectiveRole: EffectiveRole }) {
+function ContentRouter({ tab }: { tab: string }) {
   const tp = useTranslations('page')
   const { dashboardMode, interfaceMode, setInterfaceMode } = useMissionControl()
   const navigateToPanel = useNavigateToPanel()
   const isLocal = dashboardMode === 'local'
   const panelName = tab.replace(/-/g, ' ')
-  const isCustomerView = isCustomerRole(effectiveRole)
-  const isCustomerUserView = isCustomerUserRole(effectiveRole)
-
-  if (isCustomerView) {
-    if (!canAccessPanel(effectiveRole, tab)) return <CustomerViewOverrides panel="overview" />
-    if (isCustomerUserView && tab !== 'tasks') return <CustomerViewOverrides panel={tab} />
-  }
 
   // Guard: show nudge for non-essential panels in essential mode
-  if (resolveEffectiveInterfaceMode(interfaceMode) === 'essential' && !ESSENTIAL_PANELS.has(tab)) {
+  if (interfaceMode === 'essential' && !ESSENTIAL_PANELS.has(tab)) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
         <p className="text-sm text-muted-foreground">
@@ -594,16 +549,8 @@ function ContentRouter({ tab, effectiveRole }: { tab: string; effectiveRole: Eff
       return <ChatPagePanel />
     case 'logs':
       return <LogViewerPanel />
-    case 'tests':
-      return <TestConsolePanel />
-    case 'boundary':
-      return <BoundaryEditorPanel />
-    case 'delivery':
-      return <DeliveryChecklistPanel />
     case 'cron':
       return <CronManagementPanel />
-    case 'vault':
-      return <VaultBrowserPanel />
     case 'memory':
       return <MemoryBrowserPanel />
     case 'cost-tracker':
@@ -622,7 +569,7 @@ function ContentRouter({ tab, effectiveRole }: { tab: string; effectiveRole: Eff
     case 'alerts':
       return <AlertRulesPanel />
     case 'gateways':
-      if (isLocal) return <GatewayControlPanel />
+      if (isLocal) return <LocalModeUnavailable panel={tab} />
       return <MultiGatewayPanel />
     case 'gateway-config':
       if (isLocal) return <LocalModeUnavailable panel={tab} />
@@ -637,16 +584,41 @@ function ContentRouter({ tab, effectiveRole }: { tab: string; effectiveRole: Eff
       return <GitHubSyncPanel />
     case 'office':
       return <OfficePanel />
-    case 'monitor':
-      return <SystemMonitorPanel />
-    case 'harness':
-      return <HarnessPanel />
-    case 'hermes':
-      return <HermesControlPanel />
-    case 'hermes-setup':
-      return <HermesSetupPanel />
     case 'skills':
       return <SkillsPanel />
+    case 'onboarding/overview':
+      return <OnboardingOverviewPanel />
+    case 'onboarding/platform-ready':
+      return <PlatformReadyPanel />
+    case 'onboarding/base-selection':
+      return <BaseSelectionPanel />
+    case 'onboarding/hermes/profile':
+      return <HermesProfileSetupPanel />
+    case 'onboarding/hermes/boundary':
+      return <HermesBoundaryPanel />
+    case 'onboarding/hermes/skills':
+      return <HermesSkillCuratorPanel />
+    case 'onboarding/hermes/memory':
+      return <HermesMemoryPanel />
+    case 'onboarding/hermes/output':
+      return <HermesOutputPanel />
+    case 'onboarding/hermes/guardian':
+      return <HermesGuardianPanel />
+    case 'onboarding/hermes/cron':
+      return <HermesCronPanel />
+    case 'onboarding/gate-testing':
+      return <GateTestingPanel />
+    case 'onboarding/pre-launch':
+      return <PreLaunchPanel />
+    case 'onboarding/delivery':
+      return <OnboardingDeliveryPanel />
+    case 'customer-setup':
+    case 'onboarding':
+      return <OnboardingOverviewPanel />
+    case 'boundary':
+      return <BoundaryEditorPanel />
+    case 'hook-logs':
+      return <HookLogsPanel />
     case 'channels':
       if (isLocal) return <LocalModeUnavailable panel={tab} />
       return <ChannelsPanel />

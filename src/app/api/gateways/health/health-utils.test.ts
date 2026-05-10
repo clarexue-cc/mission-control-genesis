@@ -62,7 +62,9 @@ function isBlockedUrl(urlStr: string, userConfiguredHosts: Set<string>): boolean
   }
 }
 
-function buildGatewayProbeUrl(host: string, port: number): string | null {
+const GATEWAY_HEALTH_PATHS = ['/healthz', '/api/health']
+
+function buildGatewayProbeUrlWithPath(host: string, port: number, path: string): string | null {
   const rawHost = String(host || '').trim()
   if (!rawHost) return null
 
@@ -80,7 +82,7 @@ function buildGatewayProbeUrl(host: string, port: number): string | null {
       if (!parsed.port && Number.isFinite(port) && port > 0) {
         parsed.port = String(port)
       }
-      parsed.pathname = parsed.pathname.replace(/\/+$/, '') + '/api/health'
+      parsed.pathname = parsed.pathname.replace(/\/+$/, '') + path
       return parsed.toString()
     } catch {
       return null
@@ -88,7 +90,17 @@ function buildGatewayProbeUrl(host: string, port: number): string | null {
   }
 
   if (!Number.isFinite(port) || port <= 0) return null
-  return `http://${rawHost}:${port}/api/health`
+  return `http://${rawHost}:${port}${path}`
+}
+
+function buildGatewayProbeUrls(host: string, port: number): string[] {
+  return GATEWAY_HEALTH_PATHS
+    .map((path) => buildGatewayProbeUrlWithPath(host, port, path))
+    .filter((url): url is string => Boolean(url))
+}
+
+function buildGatewayProbeUrl(host: string, port: number): string | null {
+  return buildGatewayProbeUrls(host, port)[0] || null
 }
 
 function parseGatewayVersion(headers: Record<string, string | null>): string | null {
@@ -180,7 +192,14 @@ describe('isBlockedUrl', () => {
 
 describe('buildGatewayProbeUrl', () => {
   it('builds URL from bare host + port', () => {
-    expect(buildGatewayProbeUrl('example.com', 8080)).toBe('http://example.com:8080/api/health')
+    expect(buildGatewayProbeUrl('example.com', 8080)).toBe('http://example.com:8080/healthz')
+  })
+
+  it('builds a legacy /api/health fallback URL', () => {
+    expect(buildGatewayProbeUrls('example.com', 8080)).toEqual([
+      'http://example.com:8080/healthz',
+      'http://example.com:8080/api/health',
+    ])
   })
 
   it('preserves https:// protocol', () => {
@@ -220,6 +239,7 @@ describe('buildGatewayProbeUrl', () => {
 
   it('handles URL with query string token', () => {
     const result = buildGatewayProbeUrl('https://gw.example.com/sessions?token=abc', 0)
+    expect(result).toContain('/sessions/healthz')
     expect(result).toContain('token=abc')
   })
 })

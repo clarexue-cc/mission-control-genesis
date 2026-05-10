@@ -6,7 +6,6 @@ import {
   computeBoundaryRulesHash,
   deleteBoundaryRulesFile,
   finalizeBoundaryRulesUpdate,
-  normalizeBoundaryTenant,
   readBoundaryRulesFile,
   readBoundaryRulesState,
   writeBoundaryRulesFile,
@@ -14,13 +13,9 @@ import {
 import { parseBoundaryRulesRaw, stringifyBoundaryRules } from '@/lib/harness-boundary-schema'
 import { mutationLimiter } from '@/lib/rate-limit'
 
-export const dynamic = 'force-dynamic'
-export const runtime = 'nodejs'
-
 const requestSchema = z.object({
-  tenant: z.string().min(1),
-  content: z.string().min(1, 'content is required'),
-  hash: z.string().min(1).nullable().optional(),
+  raw: z.string().min(1, 'raw is required'),
+  hash: z.string().min(1).optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -37,21 +32,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error?.message || 'Invalid request body' }, { status: 400 })
   }
 
-  let tenant
-  try {
-    tenant = normalizeBoundaryTenant(body.tenant)
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || 'Invalid tenant' }, { status: 400 })
-  }
-
   let normalizedRaw: string
   try {
-    normalizedRaw = stringifyBoundaryRules(parseBoundaryRulesRaw(body.content))
+    normalizedRaw = stringifyBoundaryRules(parseBoundaryRulesRaw(body.raw))
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Boundary rules validation failed' }, { status: 400 })
   }
 
-  const currentState = await readBoundaryRulesState(tenant)
+  const currentState = await readBoundaryRulesState()
   if (body.hash && currentState.hash && body.hash !== currentState.hash) {
     return NextResponse.json(
       { error: 'Boundary rules changed on disk. Refresh the panel and try again.' },
@@ -61,15 +49,15 @@ export async function POST(request: NextRequest) {
 
   if (!currentState.writable) {
     return NextResponse.json(
-      { error: 'Mission Control cannot write this boundary-rules.json file.' },
+      { error: 'Mission Control cannot write /workspace. Remount /workspace as read-write first.' },
       { status: 409 },
     )
   }
 
-  const previousRaw = await readBoundaryRulesFile(tenant, currentState.mode)
+  const previousRaw = await readBoundaryRulesFile()
   try {
-    await writeBoundaryRulesFile(tenant, normalizedRaw, currentState.mode)
-    const finalize = await finalizeBoundaryRulesUpdate(tenant, normalizedRaw, currentState.mode)
+    await writeBoundaryRulesFile(normalizedRaw)
+    const finalize = await finalizeBoundaryRulesUpdate()
     const hash = computeBoundaryRulesHash(normalizedRaw)
 
     try {
@@ -77,7 +65,7 @@ export async function POST(request: NextRequest) {
       db.prepare('INSERT INTO audit_log (action, actor, detail) VALUES (?, ?, ?)').run(
         'harness_boundary_rules_update',
         auth.user?.username || 'system',
-        `Updated ${tenant} boundary-rules.json (${finalize.method}) hash=${hash}`,
+        `Updated boundary-rules.json (${finalize.method}) hash=${hash}`,
       )
     } catch {
       // Non-critical: keep update flow working even if audit logging is unavailable.
@@ -85,18 +73,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      tenant,
       method: finalize.method,
-      mode: currentState.mode,
       latency_ms: finalize.latency_ms,
       hash,
       note: finalize.note,
     })
   } catch (error: any) {
     if (previousRaw !== null) {
-      await writeBoundaryRulesFile(tenant, previousRaw, currentState.mode).catch(() => {})
+      await writeBoundaryRulesFile(previousRaw).catch(() => {})
     } else {
-      await deleteBoundaryRulesFile(tenant, currentState.mode).catch(() => {})
+      await deleteBoundaryRulesFile().catch(() => {})
     }
     return NextResponse.json(
       { error: error?.message || 'Failed to apply boundary rules update' },

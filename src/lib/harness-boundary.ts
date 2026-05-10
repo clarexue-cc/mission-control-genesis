@@ -1,12 +1,12 @@
 import 'server-only'
 
-import { createHash } from 'node:crypto'
 import { constants } from 'node:fs'
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import path from 'node:path'
-import { runCommand } from '@/lib/command'
+import { config } from '@/lib/config'
 import { resolveWithin } from '@/lib/paths'
-import { normalizeTenantId } from '@/lib/tenant-id'
+import { runCommand } from '@/lib/command'
 import {
   createEmptyBoundaryRules,
   parseBoundaryRulesRaw,
@@ -14,223 +14,109 @@ import {
   type BoundaryRules,
 } from '@/lib/harness-boundary-schema'
 
-export const BOUNDARY_TENANTS = ['ceo-assistant-v1', 'media-intel-v1', 'web3-research-v1'] as const
-
-export type BoundaryTenant = typeof BOUNDARY_TENANTS[number]
-export type BoundaryMode = 'full' | 'mock-fallback'
-export type BoundaryReloadStrategy = 'reload' | 'restart' | 'mock-fallback'
-
 export interface BoundaryRulesState {
-  tenant: string
-  tenants: string[]
   path: string
   exists: boolean
   hash: string | null
-  content: string
+  raw: string
   rules: BoundaryRules | null
   parse_error: string | null
+  source: 'workspace' | 'generated'
   writable: boolean
-  reload_strategy: BoundaryReloadStrategy
-  mode: BoundaryMode
-  note: string
+  reload_strategy: 'reload' | 'restart'
 }
 
 export interface BoundaryFinalizeResult {
-  method: BoundaryReloadStrategy
+  method: 'reload' | 'restart'
   latency_ms: number
   note: string
 }
 
-export function isBoundaryFullModeConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
-  return Boolean(
-    env.OPENCLAW_GATEWAY_HOST?.trim()
-    && env.OPENCLAW_GATEWAY_PORT?.trim()
-    && env.OPENCLAW_CONFIG_PATH?.trim()
-    && env.OPENCLAW_WORKSPACE_DIR?.trim(),
-  )
-}
-
-export function getBoundaryMode(env: NodeJS.ProcessEnv = process.env): BoundaryMode {
-  return isBoundaryFullModeConfigured(env) ? 'full' : 'mock-fallback'
-}
-
-export function normalizeBoundaryTenant(value: unknown, mode: BoundaryMode = getBoundaryMode()): string {
-  if (mode === 'mock-fallback') return normalizeTenantId(value)
-  if (typeof value === 'string' && BOUNDARY_TENANTS.includes(value as BoundaryTenant)) {
-    return value as BoundaryTenant
-  }
-  throw new Error(`tenant must be one of: ${BOUNDARY_TENANTS.join(', ')}`)
-}
-
-export function normalizeBoundaryTemplateTenant(value: unknown): BoundaryTenant {
-  return normalizeBoundaryTenant(value, 'full') as BoundaryTenant
-}
-
-function getDefaultReloadStrategy(mode = getBoundaryMode()): BoundaryReloadStrategy {
-  if (mode === 'mock-fallback') return 'mock-fallback'
+function getDefaultReloadStrategy(): 'reload' | 'restart' {
   return process.env.MC_HARNESS_RESTART_COMMAND ? 'restart' : 'reload'
 }
 
-async function exists(filePath: string): Promise<boolean> {
-  try {
-    await access(filePath, constants.R_OK)
-    return true
-  } catch {
-    return false
+export function getBoundaryRulesPath(): string {
+  if (!config.openclawWorkspaceDir) {
+    throw new Error('OPENCLAW_WORKSPACE_DIR not configured')
   }
-}
-
-async function isHarnessRootCandidate(root: string): Promise<boolean> {
-  return (await exists(resolveWithin(root, 'package.json'))) && (await exists(resolveWithin(root, 'phase0')))
-}
-
-export async function resolveHarnessRoot(): Promise<string> {
-  const candidates = [
-    process.env.MC_HARNESS_ROOT,
-    process.env.GENESIS_HARNESS_ROOT,
-    process.cwd(),
-    path.resolve(process.cwd(), '..', 'genesis-harness'),
-    path.resolve(process.cwd(), 'genesis-harness'),
-    '/Users/clare/Desktop/genesis-harness',
-  ].filter((value): value is string => Boolean(value))
-
-  for (const candidate of candidates) {
-    const root = path.resolve(candidate)
-    if (await isHarnessRootCandidate(root)) return root
-  }
-  throw new Error('Genesis harness root not found')
-}
-
-function uniqueTenants(currentTenant: string): string[] {
-  return Array.from(new Set([...BOUNDARY_TENANTS, currentTenant]))
-}
-
-function boundaryModeNote(mode: BoundaryMode): string {
-  if (mode === 'mock-fallback') {
-    return '真 full mode 未配置 OPENCLAW_GATEWAY_HOST/PORT/CONFIG_PATH/WORKSPACE_DIR；使用 dev mock fallback，本地写 phase0/tenants/<tenant>/boundary.yaml。'
-  }
-  return 'OpenClaw full mode env 已配置；使用 template boundary-rules.json 与现有 reload/restart 逻辑。'
-}
-
-export async function getBoundaryRulesPath(tenant: string, mode = getBoundaryMode()): Promise<string> {
-  const normalizedTenant = normalizeBoundaryTenant(tenant, mode)
-  const root = await resolveHarnessRoot()
-  if (mode === 'mock-fallback') {
-    return resolveWithin(root, `phase0/tenants/${normalizedTenant}/boundary.yaml`)
-  }
-  return resolveWithin(root, `phase0/templates/${normalizedTenant}/config/boundary-rules.json`)
+  return resolveWithin(config.openclawWorkspaceDir, 'config/boundary-rules.json')
 }
 
 export function computeBoundaryRulesHash(raw: string): string {
   return createHash('sha256').update(raw).digest('hex').slice(0, 16)
 }
 
-export async function canWriteBoundaryRules(tenant: string, mode = getBoundaryMode()): Promise<boolean> {
+export async function canWriteBoundaryRules(): Promise<boolean> {
+  if (!config.openclawWorkspaceDir) return false
   try {
-    if (mode === 'mock-fallback') {
-      await access(await resolveHarnessRoot(), constants.W_OK)
-      return true
-    }
-    const filePath = await getBoundaryRulesPath(tenant, mode)
-    await access(path.dirname(filePath), constants.W_OK)
+    await access(config.openclawWorkspaceDir, constants.W_OK)
     return true
   } catch {
     return false
   }
 }
 
-export async function readBoundaryRulesFile(tenant: string, mode = getBoundaryMode()): Promise<string | null> {
+export async function readBoundaryRulesFile(): Promise<string | null> {
   try {
-    return await readFile(await getBoundaryRulesPath(tenant, mode), 'utf8')
+    return await readFile(getBoundaryRulesPath(), 'utf8')
   } catch (error: any) {
-    if (error?.code === 'ENOENT' || error?.code === 'ENOTDIR') return null
+    if (error?.code === 'ENOENT') return null
     throw error
   }
 }
 
-async function readMockBoundaryTemplate(root: string): Promise<string | null> {
-  try {
-    return await readFile(resolveWithin(root, 'phase0/templates/boundary-template.yaml'), 'utf8')
-  } catch (error: any) {
-    if (error?.code === 'ENOENT' || error?.code === 'ENOTDIR') return null
-    throw error
-  }
-}
-
-export async function readBoundaryRulesState(tenantInput: string): Promise<BoundaryRulesState> {
-  const mode = getBoundaryMode()
-  const tenant = normalizeBoundaryTenant(tenantInput, mode)
-  const root = await resolveHarnessRoot()
-  const filePath = await getBoundaryRulesPath(tenant, mode)
-  const writable = await canWriteBoundaryRules(tenant, mode)
-  const raw = await readBoundaryRulesFile(tenant, mode)
-  const reloadStrategy = getDefaultReloadStrategy(mode)
-  const note = boundaryModeNote(mode)
+export async function readBoundaryRulesState(): Promise<BoundaryRulesState> {
+  const filePath = getBoundaryRulesPath()
+  const writable = await canWriteBoundaryRules()
+  const raw = await readBoundaryRulesFile()
 
   if (raw === null) {
-    const generated = createEmptyBoundaryRules()
-    const content = mode === 'mock-fallback'
-      ? (await readMockBoundaryTemplate(root)) || stringifyBoundaryRules(generated)
-      : stringifyBoundaryRules(generated)
-    let rules = generated
-    let parseError: string | null = null
-    try {
-      rules = parseBoundaryRulesRaw(content)
-    } catch (error: any) {
-      parseError = error?.message || 'Failed to parse boundary template'
-    }
+    const generatedRules = createEmptyBoundaryRules()
+    const generatedRaw = stringifyBoundaryRules(generatedRules)
     return {
-      tenant,
-      tenants: uniqueTenants(tenant),
       path: filePath,
       exists: false,
       hash: null,
-      content,
-      rules,
-      parse_error: parseError,
+      raw: generatedRaw,
+      rules: generatedRules,
+      parse_error: null,
+      source: 'generated',
       writable,
-      reload_strategy: reloadStrategy,
-      mode,
-      note,
+      reload_strategy: getDefaultReloadStrategy(),
     }
   }
 
   try {
     const parsed = parseBoundaryRulesRaw(raw)
     return {
-      tenant,
-      tenants: uniqueTenants(tenant),
       path: filePath,
       exists: true,
       hash: computeBoundaryRulesHash(raw),
-      content: raw,
+      raw: stringifyBoundaryRules(parsed),
       rules: parsed,
       parse_error: null,
+      source: 'workspace',
       writable,
-      reload_strategy: reloadStrategy,
-      mode,
-      note,
+      reload_strategy: getDefaultReloadStrategy(),
     }
   } catch (error: any) {
     return {
-      tenant,
-      tenants: uniqueTenants(tenant),
       path: filePath,
       exists: true,
       hash: computeBoundaryRulesHash(raw),
-      content: raw,
+      raw,
       rules: null,
       parse_error: error?.message || 'Failed to parse boundary-rules.json',
+      source: 'workspace',
       writable,
-      reload_strategy: reloadStrategy,
-      mode,
-      note,
+      reload_strategy: getDefaultReloadStrategy(),
     }
   }
 }
 
-export async function writeBoundaryRulesFile(tenant: string, raw: string, mode = getBoundaryMode()) {
-  const filePath = await getBoundaryRulesPath(tenant, mode)
+export async function writeBoundaryRulesFile(raw: string) {
+  const filePath = getBoundaryRulesPath()
   const dirPath = path.dirname(filePath)
   const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`
 
@@ -244,19 +130,12 @@ export async function writeBoundaryRulesFile(tenant: string, raw: string, mode =
   }
 }
 
-export async function deleteBoundaryRulesFile(tenant: string, mode = getBoundaryMode()) {
-  await rm(await getBoundaryRulesPath(tenant, mode), { force: true })
+export async function deleteBoundaryRulesFile() {
+  await rm(getBoundaryRulesPath(), { force: true })
 }
 
-export async function finalizeBoundaryRulesUpdate(tenant: string, raw: string, mode = getBoundaryMode()): Promise<BoundaryFinalizeResult> {
+export async function finalizeBoundaryRulesUpdate(): Promise<BoundaryFinalizeResult> {
   const startedAt = Date.now()
-  if (mode === 'mock-fallback') {
-    return {
-      method: 'mock-fallback',
-      latency_ms: Date.now() - startedAt,
-      note: '已 reload (mock-fallback)：本地 boundary.yaml 已写入；真 full mode 需配置 OPENCLAW_GATEWAY_HOST/PORT/CONFIG_PATH/WORKSPACE_DIR。',
-    }
-  }
   const reloadUrl = process.env.MC_HARNESS_BOUNDARY_RELOAD_URL?.trim()
   const restartCommand = process.env.MC_HARNESS_RESTART_COMMAND?.trim()
 
@@ -264,7 +143,7 @@ export async function finalizeBoundaryRulesUpdate(tenant: string, raw: string, m
     const response = await fetch(reloadUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tenant, path: `phase0/templates/${tenant}/config/boundary-rules.json`, content: raw }),
+      body: JSON.stringify({ path: '/workspace/config/boundary-rules.json' }),
     })
     if (!response.ok) {
       throw new Error(`Reload failed (${response.status}): ${await response.text()}`)
@@ -285,9 +164,11 @@ export async function finalizeBoundaryRulesUpdate(tenant: string, raw: string, m
     }
   }
 
+  // Genesis Harness boundary hook re-reads /workspace/config/boundary-rules.json
+  // for each outgoing assistant message, so a file write is enough here.
   return {
     method: 'reload',
     latency_ms: Date.now() - startedAt,
-    note: 'Saved template file; harness hot-reload endpoint not configured',
+    note: 'Live-read hook detected; no explicit reload required',
   }
 }

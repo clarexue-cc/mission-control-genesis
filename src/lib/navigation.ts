@@ -7,6 +7,7 @@ import { useMissionControl } from '@/store'
 import { resolveCustomerTenantId } from '@/lib/mc-stable-mode'
 
 export function panelHref(panel: string): string {
+  if (panel === 'boundary') return '/panels/boundary'
   return panel === 'overview' ? '/' : `/${panel}`
 }
 
@@ -58,6 +59,12 @@ const TENANT_CONTEXT_PANELS = new Set([
 const PREFETCHED_ROUTES = new Set<string>()
 const DEFAULT_PREFETCH_PANELS = [
   'overview',
+  'onboarding/overview',
+  'onboarding/platform-ready',
+  'onboarding/base-selection',
+  'onboarding/gate-testing',
+  'onboarding/pre-launch',
+  'onboarding/delivery',
   'chat',
   'tasks',
   'agents',

@@ -7,7 +7,7 @@ export const forbiddenRuleSchema = z.object({
   category: requiredText,
   patterns: z.array(z.string()).default([]),
   pattern: requiredText,
-  label: requiredText.default('Boundary rule'),
+  label: requiredText,
   severity: requiredText,
   action: requiredText,
   response_template: requiredText,
@@ -66,7 +66,7 @@ export function stringifyBoundaryRules(rules: BoundaryRules): string {
 
 export function createEmptyBoundaryRules(): BoundaryRules {
   return {
-    version: '1.0',
+    version: '2.0',
     last_updated: new Date().toISOString().slice(0, 10),
     forbidden_patterns: [],
     drift_patterns: [],
@@ -75,7 +75,7 @@ export function createEmptyBoundaryRules(): BoundaryRules {
 
 export function createBlankForbiddenRule(): ForbiddenRule {
   return {
-    id: `RULE-${Date.now()}`,
+    id: `forbidden_${Date.now()}`,
     category: 'custom',
     patterns: ['example trigger'],
     pattern: 'example trigger',
@@ -88,7 +88,7 @@ export function createBlankForbiddenRule(): ForbiddenRule {
 
 export function createBlankDriftRule(): DriftRule {
   return {
-    id: `DRIFT-${Date.now()}`,
+    id: `drift_${Date.now()}`,
     category: 'custom',
     pattern: 'example drift trigger',
   }
