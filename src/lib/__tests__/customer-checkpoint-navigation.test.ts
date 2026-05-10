@@ -12,11 +12,11 @@ describe('customer checkpoint navigation', () => {
       'P7 SOUL/AGENTS',
       'P8 Boundary',
       'P9 Skills 配置',
-      'P10 Tests',
-      'P11 Hermes',
+      'P10 Golden Tests',
+      'P11 Adversarial Tests',
       'P12 RTS Checklist',
       'P13 Customer View',
-      'P14 Channels',
+      'P14 Hermes + Channels',
       'P15 UAT',
       'P16 Delivery',
     ])
@@ -47,10 +47,10 @@ describe('customer checkpoint navigation', () => {
       'boundary',
       'onboarding/customer/skills',
       'tests',
-      'hermes',
+      'tests',
       'delivery',
       'overview',
-      'channels',
+      'hermes',
       'tasks',
       'delivery',
     ])
@@ -63,7 +63,6 @@ describe('customer checkpoint navigation', () => {
         .map(item => ({ label: item.label, panel: item.panel }))
     ).toEqual([
       { label: 'P13 Customer View', panel: 'overview' },
-      { label: 'P14 Channels', panel: 'channels' },
       { label: 'P15 UAT', panel: 'tasks' },
       { label: 'P16 Delivery', panel: 'delivery' },
     ])
