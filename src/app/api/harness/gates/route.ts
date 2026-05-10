@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import path from 'node:path'
+import os from 'node:os'
 import { access, readdir, readFile, stat } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { requireRole } from '@/lib/auth'
@@ -30,11 +31,14 @@ async function exists(filePath: string): Promise<boolean> {
 }
 
 async function resolvePhase0Dir(): Promise<string | null> {
+  const home = os.homedir()
   const candidates = [
     process.env.MC_HARNESS_PHASE0_DIR,
     process.env.GENESIS_HARNESS_PHASE0_DIR,
     '/harness/phase0',
-    '/Users/clare/Desktop/genesis-harness/phase0',
+    path.join(home, 'Desktop', 'Claude', 'genesis-harness', 'phase0'),
+    path.join(home, 'Desktop', 'genesis-harness', 'phase0'),
+    path.join(home, 'genesis-harness', 'phase0'),
     path.resolve(process.cwd(), 'phase0'),
   ].filter((value): value is string => Boolean(value))
 

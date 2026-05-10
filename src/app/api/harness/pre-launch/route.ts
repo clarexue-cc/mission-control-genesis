@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import path from 'node:path'
+import os from 'node:os'
 import { access, readdir, readFile, stat } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { requireRole } from '@/lib/auth'
@@ -50,11 +51,14 @@ async function writable(filePath: string): Promise<boolean> {
 }
 
 async function resolvePhase0Dir(): Promise<string | null> {
+  const home = os.homedir()
   const candidates = [
     process.env.MC_HARNESS_PHASE0_DIR,
     process.env.GENESIS_HARNESS_PHASE0_DIR,
     '/harness/phase0',
-    '/Users/clare/Desktop/genesis-harness/phase0',
+    path.join(home, 'Desktop', 'Claude', 'genesis-harness', 'phase0'),
+    path.join(home, 'Desktop', 'genesis-harness', 'phase0'),
+    path.join(home, 'genesis-harness', 'phase0'),
     path.resolve(process.cwd(), 'phase0'),
   ].filter((value): value is string => Boolean(value))
 
@@ -100,7 +104,6 @@ async function readTenantName(tenantDir: string): Promise<string | null> {
 async function loadRules(phase0Dir: string) {
   const rulesPath = await firstExisting([
     path.join(phase0Dir, 'templates', 'delivery-checklist', 'ready-to-ship-rules.json'),
-    '/Users/clare/Desktop/genesis-harness/phase0/templates/delivery-checklist/ready-to-ship-rules.json',
   ])
   const raw = rulesPath ? await readJson(rulesPath) : null
   const checks = Array.isArray(raw?.checks) ? raw.checks as ShipRule[] : []

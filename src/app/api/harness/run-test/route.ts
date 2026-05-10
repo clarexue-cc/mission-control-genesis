@@ -3,6 +3,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { constants } from 'node:fs'
 import { access, mkdir } from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { requireRole } from '@/lib/auth'
 
@@ -74,10 +75,13 @@ function makeRunId(suite: ApiSuite) {
 }
 
 async function resolveHarnessRoot(): Promise<string | null> {
+  const home = os.homedir()
   const candidates = [
     process.env.MC_HARNESS_ROOT,
     process.env.GENESIS_HARNESS_ROOT,
-    '/Users/clare/Desktop/genesis-harness',
+    path.join(home, 'Desktop', 'Claude', 'genesis-harness'),
+    path.join(home, 'Desktop', 'genesis-harness'),
+    path.join(home, 'genesis-harness'),
     path.resolve(process.cwd(), '..', 'genesis-harness'),
     path.resolve(process.cwd(), 'genesis-harness'),
   ].filter((value): value is string => Boolean(value))

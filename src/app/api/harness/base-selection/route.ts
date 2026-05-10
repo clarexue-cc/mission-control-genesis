@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { constants } from 'node:fs'
 import { access, readdir } from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { requireRole } from '@/lib/auth'
 
@@ -44,11 +45,13 @@ async function listTemplates(phase0Dir: string | null): Promise<string[]> {
 
 async function resolvePhase0Dir(): Promise<string | null> {
   const missionControlDir = process.cwd()
+  const home = os.homedir()
   const harnessRoot = await firstReadableDir([
     process.env.MC_HARNESS_ROOT || '',
     process.env.GENESIS_HARNESS_ROOT || '',
-    '/Users/clare/Desktop/genesis-harness',
-    '/Users/clare/genesis-harness',
+    path.join(home, 'Desktop', 'Claude', 'genesis-harness'),
+    path.join(home, 'Desktop', 'genesis-harness'),
+    path.join(home, 'genesis-harness'),
     path.resolve(missionControlDir, '..'),
   ].filter(Boolean))
 
@@ -56,7 +59,6 @@ async function resolvePhase0Dir(): Promise<string | null> {
     process.env.MC_HARNESS_PHASE0_DIR || '',
     process.env.GENESIS_HARNESS_PHASE0_DIR || '',
     harnessRoot ? path.join(harnessRoot, 'phase0') : '',
-    '/Users/clare/Desktop/genesis-harness/phase0',
   ].filter(Boolean))
 }
 

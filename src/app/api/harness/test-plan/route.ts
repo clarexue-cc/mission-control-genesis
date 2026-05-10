@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { constants } from 'node:fs'
 import { access, readFile } from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
@@ -112,10 +113,13 @@ function normalizeTenant(value: unknown): string {
 }
 
 async function resolveHarnessRoot(): Promise<string | null> {
+  const home = os.homedir()
   const candidates = [
     process.env.MC_HARNESS_ROOT,
     process.env.GENESIS_HARNESS_ROOT,
-    '/Users/clare/Desktop/genesis-harness',
+    path.join(home, 'Desktop', 'Claude', 'genesis-harness'),
+    path.join(home, 'Desktop', 'genesis-harness'),
+    path.join(home, 'genesis-harness'),
     path.resolve(process.cwd(), '..', 'genesis-harness'),
     path.resolve(process.cwd(), 'genesis-harness'),
   ].filter((value): value is string => Boolean(value))
