@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { constants } from 'node:fs'
 import { access, readdir, stat } from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { requireRole } from '@/lib/auth'
 
@@ -51,11 +52,13 @@ function check(id: string, label: string, passed: boolean, required: boolean, de
 
 async function buildReadinessChecks(): Promise<{ phase0Dir: string | null; checks: ReadinessCheck[] }> {
   const missionControlDir = process.cwd()
+  const home = os.homedir()
   const harnessRoot = await firstReadableDir([
     process.env.MC_HARNESS_ROOT || '',
     process.env.GENESIS_HARNESS_ROOT || '',
-    '/Users/clare/Desktop/genesis-harness',
-    '/Users/clare/genesis-harness',
+    path.join(home, 'Desktop', 'Claude', 'genesis-harness'),
+    path.join(home, 'Desktop', 'genesis-harness'),
+    path.join(home, 'genesis-harness'),
     path.resolve(missionControlDir, '..'),
   ].filter(Boolean))
 
@@ -63,7 +66,6 @@ async function buildReadinessChecks(): Promise<{ phase0Dir: string | null; check
     process.env.MC_HARNESS_PHASE0_DIR || '',
     process.env.GENESIS_HARNESS_PHASE0_DIR || '',
     harnessRoot ? path.join(harnessRoot, 'phase0') : '',
-    '/Users/clare/Desktop/genesis-harness/phase0',
   ].filter(Boolean))
 
   const tenantsDir = phase0Dir ? path.join(phase0Dir, 'tenants') : ''
@@ -95,9 +97,11 @@ async function buildReadinessChecks(): Promise<{ phase0Dir: string | null; check
     check(
       'tenants',
       'Tenant Vaults',
-      tenantCount > 0,
+      Boolean(tenantsDir && await isReadable(tenantsDir)),
       true,
-      tenantCount > 0 ? `发现 ${tenantCount} 个 tenant 目录` : '未发现 tenant 目录',
+      tenantsDir && await isReadable(tenantsDir)
+        ? (tenantCount > 0 ? `发现 ${tenantCount} 个 tenant 目录` : 'tenant 目录就绪（尚无 tenant，P3 创建）')
+        : '未发现 tenant 目录',
       tenantsDir || undefined,
     ),
     check(
