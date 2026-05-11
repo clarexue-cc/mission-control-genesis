@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import {
   CUSTOMER_INTAKE_MAX_BYTES,
+  IntakeStructuredData,
   isAllowedCustomerIntakeFile,
   normalizeCustomerTenantId,
   writeCustomerIntake,
@@ -29,6 +30,15 @@ async function readFileText(file: File): Promise<string> {
   return ''
 }
 
+function parseIntakeData(raw: string | null): IntakeStructuredData | undefined {
+  if (!raw) return undefined
+  try {
+    return JSON.parse(raw) as IntakeStructuredData
+  } catch {
+    return undefined
+  }
+}
+
 export async function POST(request: NextRequest) {
   const auth = requireRole(request, 'admin')
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -43,6 +53,7 @@ export async function POST(request: NextRequest) {
   const tenantIdRaw = formData.get('tenant_id')
   const tenantNameRaw = formData.get('tenant_name')
   const summaryRaw = formData.get('summary')
+  const intakeDataRaw = formData.get('intake_data')
   const file = formData.get('file')
 
   let tenantId: string
@@ -52,26 +63,42 @@ export async function POST(request: NextRequest) {
     return errorResponse(error?.message || 'Invalid tenant_id')
   }
 
-  if (!isUploadedFile(file)) return errorResponse('file is required')
-  if (file.size <= 0) return errorResponse('file must not be empty')
-  if (file.size > CUSTOMER_INTAKE_MAX_BYTES) return errorResponse('file exceeds 100MB limit', 413)
-  if (!isAllowedCustomerIntakeFile(file.name, file.type)) {
-    return errorResponse('file type must be audio/* or text/*')
+  const intakeData = parseIntakeData(typeof intakeDataRaw === 'string' ? intakeDataRaw : null)
+
+  // File is now optional — structured data alone is enough
+  let fileName: string | undefined
+  let fileType: string | undefined
+  let fileSize: number | undefined
+  let originalText: string | undefined
+
+  if (isUploadedFile(file) && file.size > 0) {
+    if (file.size > CUSTOMER_INTAKE_MAX_BYTES) return errorResponse('file exceeds 100MB limit', 413)
+    if (!isAllowedCustomerIntakeFile(file.name, file.type)) {
+      return errorResponse('file type must be audio/* or text/*')
+    }
+    fileName = file.name
+    fileType = file.type || 'application/octet-stream'
+    fileSize = file.size
+    const isText = file.type.toLowerCase().startsWith('text/') || /\.(md|txt)$/i.test(file.name)
+    if (isText) originalText = await readFileText(file)
   }
 
-  const isText = file.type.toLowerCase().startsWith('text/') || /\.(md|txt)$/i.test(file.name)
-  const originalText = isText ? await readFileText(file) : undefined
+  // Must have at least structured data or a file
+  if (!intakeData && !fileName) {
+    return errorResponse('Please provide intake questions (C1-C6 / S1-S6) or upload a file')
+  }
 
   try {
     const result = await writeCustomerIntake({
       tenantId,
       tenantName: typeof tenantNameRaw === 'string' ? tenantNameRaw : '',
-      fileName: file.name,
-      fileType: file.type || 'application/octet-stream',
-      fileSize: file.size,
+      fileName,
+      fileType,
+      fileSize,
       uploadedBy: auth.user.username,
       summary: typeof summaryRaw === 'string' ? summaryRaw : '',
       originalText,
+      intakeData,
     })
 
     return NextResponse.json({
