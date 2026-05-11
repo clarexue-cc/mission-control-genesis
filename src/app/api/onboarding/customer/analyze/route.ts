@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
       uat_criteria: state.draft?.uat_criteria || [],
       uat_tasks: blueprint?.uat_tasks || [],
       soul_draft: state.draft?.soul_draft || null,
+      agents_draft: state.draft?.agents_draft || null,
     })
   } catch (error: any) {
     return errorResponse(error?.message || 'Failed to read OB-S2 state', 500)
@@ -104,6 +105,7 @@ export async function POST(request: NextRequest) {
       uat_criteria: result.draft.uat_criteria,
       uat_tasks: uatTasks,
       soul_draft: result.draft.soul_draft,
+      agents_draft: result.draft.agents_draft || null,
     })
   } catch (error: any) {
     const message = error?.message || 'Failed to write intake-analysis.md'
@@ -161,6 +163,7 @@ export async function PUT(request: NextRequest) {
       uat_criteria: result.draft.uat_criteria,
       uat_tasks: uatTasks,
       soul_draft: result.draft.soul_draft,
+      agents_draft: result.draft.agents_draft || null,
     })
   } catch (error: any) {
     const message = error?.message || 'Failed to update intake-analysis.md'

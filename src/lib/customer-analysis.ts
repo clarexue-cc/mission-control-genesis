@@ -45,6 +45,15 @@ export interface CustomerAnalysisDraft {
     tone: string
     forbidden: string[]
   }
+  agents_draft: {
+    session_protocol: string[]
+    memory_system: any
+    workflow_steps_detailed: any[]
+    skill_dispatch_rules: any
+    progress_save: any
+    workspace_files: string[]
+    vault_structure: any
+  } | null
 }
 
 export interface CustomerAnalysisState {
@@ -284,6 +293,7 @@ function buildMockDraft(tenantId: string, intakeRaw: string): CustomerAnalysisDr
         tone: '清晰、审慎、可追溯，先讲结论再给证据。',
         forbidden: ['无来源结论', '自动外发', '越权抓取', '替代人工发布确认'],
       },
+      agents_draft: null,
     }
   }
 
@@ -387,6 +397,7 @@ function buildMockDraft(tenantId: string, intakeRaw: string): CustomerAnalysisDr
       tone: '专业、清晰、审慎，遇到缺失信息时明确标注待确认。',
       forbidden: ['泄露敏感信息', '越权操作', '未授权外发', '编造验证结果'],
     },
+    agents_draft: null,
   }
 }
 
@@ -606,14 +617,23 @@ function parseDraftFromText(text: string, options?: { requireCustomerSpecificSki
       human_confirmation: cleanDisplayValue(skill.human_confirmation || '待确认'),
       reason: cleanDisplayValue(skill.reason || '待补原因'),
     })),
-    boundary_draft: draft.boundary_draft.slice(0, 4),
-    uat_criteria: draft.uat_criteria.slice(0, 3),
+    boundary_draft: draft.boundary_draft.map(cleanDisplayValue).filter(Boolean),
+    uat_criteria: draft.uat_criteria.map(cleanDisplayValue).filter(Boolean),
     soul_draft: {
       name: cleanDisplayValue(draft.soul_draft.name || '客户交付助手'),
       role: cleanDisplayValue(draft.soul_draft.role || '读取客户 intake 并辅助生成交付草稿。'),
       tone: cleanDisplayValue(draft.soul_draft.tone || '专业、清晰、审慎。'),
       forbidden: draft.soul_draft.forbidden.map(cleanDisplayValue).filter(Boolean),
     },
+    agents_draft: draft.agents_draft ? {
+      session_protocol: Array.isArray(draft.agents_draft.session_protocol) ? draft.agents_draft.session_protocol.map(cleanDisplayValue) : [],
+      memory_system: draft.agents_draft.memory_system || null,
+      workflow_steps_detailed: Array.isArray(draft.agents_draft.workflow_steps_detailed) ? draft.agents_draft.workflow_steps_detailed : [],
+      skill_dispatch_rules: draft.agents_draft.skill_dispatch_rules || null,
+      progress_save: draft.agents_draft.progress_save || null,
+      workspace_files: Array.isArray(draft.agents_draft.workspace_files) ? draft.agents_draft.workspace_files : [],
+      vault_structure: draft.agents_draft.vault_structure || null,
+    } : null,
   }
   if (options?.requireCustomerSpecificSkills) assertCustomerSpecificSkillBlueprint(parsed)
   return parsed

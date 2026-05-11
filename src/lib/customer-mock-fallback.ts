@@ -101,6 +101,7 @@ function ceoAnalysisDraft(): CustomerAnalysisDraft {
       tone: '冷静、直接、追问式，先给判断再给证据和待确认项。',
       forbidden: ['无来源结论', '自动外发', '越权抓取', '替代 CEO 做最终判断'],
     },
+    agents_draft: null,
   }
 }
 
@@ -177,6 +178,7 @@ function mediaIntelAnalysisDraft(): CustomerAnalysisDraft {
       tone: '审慎、证据优先、风险敏感。',
       forbidden: ['无来源舆情结论', '跨 tenant 读取', '自动外发', '编造风险等级'],
     },
+    agents_draft: null,
   }
 }
 
@@ -254,6 +256,7 @@ function web3AnalysisDraft(): CustomerAnalysisDraft {
       tone: '证据优先、怀疑式、合规敏感。',
       forbidden: ['未经核验下结论', '收益承诺', '越权链上操作', '绕过合规审查'],
     },
+    agents_draft: null,
   }
 }
 
@@ -318,6 +321,7 @@ function defaultAnalysisDraft(): CustomerAnalysisDraft {
       tone: '清晰、保守、显式标注占位。',
       forbidden: ['串用客户数据', '把占位当事实', '自动外发', '跳过确认'],
     },
+    agents_draft: null,
   }
 }
 

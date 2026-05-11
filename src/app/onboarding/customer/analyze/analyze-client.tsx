@@ -33,6 +33,16 @@ interface SoulDraft {
   forbidden: string[]
 }
 
+interface AgentsDraft {
+  session_protocol: string[]
+  memory_system: any
+  workflow_steps_detailed: any[]
+  skill_dispatch_rules: any
+  progress_save: any
+  workspace_files: string[]
+  vault_structure: any
+}
+
 interface BlueprintDraft {
   workflow_steps: WorkflowStep[]
   skill_candidates: SkillCandidate[]
@@ -41,6 +51,7 @@ interface BlueprintDraft {
   boundary_draft: string[]
   uat_criteria: string[]
   soul_draft: SoulDraft
+  agents_draft: AgentsDraft | null
 }
 
 interface AnalyzeState {
@@ -63,6 +74,7 @@ interface AnalyzeState {
   boundary_draft: string[]
   uat_criteria: string[]
   soul_draft: SoulDraft | null
+  agents_draft: AgentsDraft | null
 }
 
 interface AnalyzeResult {
@@ -80,6 +92,7 @@ interface AnalyzeResult {
   boundary_draft: string[]
   uat_criteria: string[]
   soul_draft: SoulDraft | null
+  agents_draft: AgentsDraft | null
 }
 
 type Progress = 'pending' | 'analyzing' | 'success' | 'failed'
@@ -148,6 +161,7 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
   const uatCriteria = useMemo(() => activeDraft?.uat_criteria || result?.uat_criteria || state?.uat_criteria || [], [activeDraft?.uat_criteria, result?.uat_criteria, state?.uat_criteria])
   const deliveryMode = activeDraft?.delivery_mode || result?.delivery_mode || state?.delivery_mode || null
   const soulDraft = activeDraft?.soul_draft || result?.soul_draft || state?.soul_draft || null
+  const agentsDraft = activeDraft?.agents_draft || result?.agents_draft || state?.agents_draft || null
   const orderedSkillCandidates = useMemo(
     () => skillCandidates
       .map((skill, index) => ({ skill, index }))
@@ -229,6 +243,7 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
           boundary_draft: body.boundary_draft,
           uat_criteria: body.uat_criteria,
           soul_draft: body.soul_draft,
+          agents_draft: body.agents_draft || null,
         }
         : current)
       setProgress('success')
@@ -277,6 +292,7 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
           boundary_draft: body.boundary_draft,
           uat_criteria: body.uat_criteria,
           soul_draft: body.soul_draft,
+          agents_draft: body.agents_draft || null,
         }
         : current)
       setProgress('success')
@@ -481,14 +497,14 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                 </div>
               </div>
 
-              <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <details className="rounded-md border border-primary/30 bg-primary/5 p-4">
+                <summary className="flex cursor-pointer flex-wrap items-start justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-semibold">蓝图文字编辑</h3>
                     <p className="mt-1 text-xs text-muted-foreground">直接改下面的普通文字；保存后写回 intake-analysis.md，并同步 P8 / P9 / P15。</p>
                   </div>
                   <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">不用改 JSON</span>
-                </div>
+                </summary>
                 {activeDraft ? (
                   <>
                     <div className="mt-3 grid overflow-hidden rounded-md border border-border bg-background text-xs font-medium sm:grid-cols-5">
@@ -770,12 +786,12 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                 ) : (
                   <p className="mt-3 text-sm text-muted-foreground">分析完成后，这里会显示普通文字编辑区。</p>
                 )}
-              </div>
+              </details>
 
               <div className="rounded-md border border-border bg-background p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold">SOUL / AGENTS 草稿要素</h3>
-                  <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">P5</span>
+                  <h3 className="text-sm font-semibold">SOUL.md 草稿</h3>
+                  <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">P7 生成</span>
                 </div>
                 {soulDraft ? (
                   <div className="mt-3 grid gap-2 text-xs leading-relaxed text-muted-foreground md:grid-cols-2">
@@ -797,7 +813,126 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">分析完成后显示后续 P5 生成 SOUL.md / AGENTS.md 的输入。</p>
+                  <p className="mt-3 text-sm text-muted-foreground">分析完成后显示 SOUL.md 草稿（角色定义：你是谁）。</p>
+                )}
+              </div>
+
+              <div className="rounded-md border border-border bg-background p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold">AGENTS.md 草稿</h3>
+                  <span className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary">P7 生成</span>
+                </div>
+                {agentsDraft ? (
+                  <div className="mt-3 space-y-3 text-xs leading-relaxed text-muted-foreground">
+                    {agentsDraft.session_protocol.length > 0 && (
+                      <div className="rounded border border-border bg-card/50 px-3 py-2">
+                        <p className="font-medium text-foreground">Session 协议（{agentsDraft.session_protocol.length} 步）</p>
+                        <ol className="mt-2 space-y-1 pl-4 list-decimal">
+                          {agentsDraft.session_protocol.map((step, i) => (
+                            <li key={i}>{step}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+                    {agentsDraft.memory_system && (
+                      <div className="rounded border border-border bg-card/50 px-3 py-2">
+                        <p className="font-medium text-foreground">记忆系统</p>
+                        <p className="mt-1">
+                          类型：{agentsDraft.memory_system.type || '未指定'}
+                          {agentsDraft.memory_system.vault_root && <span className="ml-2 text-muted-foreground">| 路径：{agentsDraft.memory_system.vault_root}</span>}
+                        </p>
+                        {agentsDraft.memory_system.sections && (
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {(Array.isArray(agentsDraft.memory_system.sections)
+                              ? agentsDraft.memory_system.sections
+                              : Object.keys(agentsDraft.memory_system.sections)
+                            ).map((s: string) => (
+                              <span key={s} className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px]">{s}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {agentsDraft.workflow_steps_detailed.length > 0 && (
+                      <div className="rounded border border-border bg-card/50 px-3 py-2">
+                        <p className="font-medium text-foreground">Workflow 详细步骤（{agentsDraft.workflow_steps_detailed.length} 步）</p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {agentsDraft.workflow_steps_detailed.map((step: any, i: number) => {
+                            const isGate = step.gate || step.human_confirmation === 'required'
+                            return (
+                              <span
+                                key={i}
+                                className={`rounded-full px-2 py-0.5 text-[11px] ${
+                                  isGate
+                                    ? 'border border-destructive/40 bg-destructive/10 text-destructive font-medium'
+                                    : 'border border-border bg-background'
+                                }`}
+                              >
+                                {step.order || i + 1}. {step.name || step.title || `Step ${i + 1}`}
+                                {isGate ? ' (硬停)' : ''}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {agentsDraft.skill_dispatch_rules && (
+                      <div className="rounded border border-border bg-card/50 px-3 py-2">
+                        <p className="font-medium text-foreground">Skill 调度规则</p>
+                        <p className="mt-1">
+                          {typeof agentsDraft.skill_dispatch_rules === 'string'
+                            ? agentsDraft.skill_dispatch_rules
+                            : agentsDraft.skill_dispatch_rules.description || agentsDraft.skill_dispatch_rules.rule || JSON.stringify(agentsDraft.skill_dispatch_rules)}
+                        </p>
+                      </div>
+                    )}
+                    {agentsDraft.progress_save && (
+                      <div className="rounded border border-border bg-card/50 px-3 py-2">
+                        <p className="font-medium text-foreground">进度存档</p>
+                        <p className="mt-1">
+                          {typeof agentsDraft.progress_save === 'string'
+                            ? agentsDraft.progress_save
+                            : agentsDraft.progress_save.directory
+                              ? `目录：${agentsDraft.progress_save.directory}`
+                              : JSON.stringify(agentsDraft.progress_save)}
+                        </p>
+                      </div>
+                    )}
+                    {agentsDraft.vault_structure && (
+                      <div className="rounded border border-border bg-card/50 px-3 py-2">
+                        <p className="font-medium text-foreground">Vault 结构</p>
+                        <p className="mt-1">
+                          {typeof agentsDraft.vault_structure === 'string'
+                            ? agentsDraft.vault_structure
+                            : agentsDraft.vault_structure.index_file
+                              ? `索引：${agentsDraft.vault_structure.index_file}`
+                              : null}
+                        </p>
+                        {agentsDraft.vault_structure.directories && (
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {(Array.isArray(agentsDraft.vault_structure.directories)
+                              ? agentsDraft.vault_structure.directories
+                              : Object.keys(agentsDraft.vault_structure.directories)
+                            ).map((d: string) => (
+                              <span key={d} className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px]">{d}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {agentsDraft.workspace_files.length > 0 && (
+                      <div className="rounded border border-border bg-card/50 px-3 py-2">
+                        <p className="font-medium text-foreground">Workspace 文件（{agentsDraft.workspace_files.length}）</p>
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {agentsDraft.workspace_files.map((f) => (
+                            <span key={f} className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px] font-mono">{f}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">分析完成后显示 AGENTS.md 草稿（操作系统：怎么工作）。</p>
                 )}
               </div>
 
