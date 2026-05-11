@@ -61,7 +61,7 @@ export default function CustomerOnboardingPage() {
   const [tenantName, setTenantName] = useState('罗老师 · 公众号 Agent')
 
   // Layer 1: Customer Profile (C1-C6) — 罗老师真实数据
-  const [c1, setC1] = useState('教育行业，罗老师个人 IP + 小团队（~5人），技术水平低（不懂代码），关键对接人：Vinson（技术负责人）')
+  const [c1, setC1] = useState('教育行业，罗老师个人 IP + 小团队（~5人），技术水平低（不懂代码），关键对接人：Vinson（媒体运营负责人），陈晓（投研负责人）')
   const [c2Budget, setC2Budget] = useState('15万/3个月')
   const [c2Timeline, setC2Timeline] = useState('2026 Q2（5-7月）')
   const [c2AgentCount, setC2AgentCount] = useState('10')
