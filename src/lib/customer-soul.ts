@@ -151,16 +151,16 @@ export async function resolveCustomerSoulPaths(tenantId: string): Promise<Custom
   const normalizedTenantId = normalizeCustomerTenantId(tenantId)
   const harnessRoot = await resolveHarnessRoot()
   const vaultRelativePath = `phase0/tenants/${normalizedTenantId}/vault`
-  const agentMainRelativePath = `${vaultRelativePath}/Agent-Main`
+  const workspaceRelativePath = `phase0/tenants/${normalizedTenantId}/workspace`
   return {
     tenantId: normalizedTenantId,
     analysisRelativePath: `${vaultRelativePath}/intake-analysis.md`,
     analysisPhysicalPath: resolveWithin(harnessRoot, `${vaultRelativePath}/intake-analysis.md`),
-    agentMainPhysicalPath: resolveWithin(harnessRoot, agentMainRelativePath),
-    soulRelativePath: `${agentMainRelativePath}/SOUL.md`,
-    soulPhysicalPath: resolveWithin(harnessRoot, `${agentMainRelativePath}/SOUL.md`),
-    agentsRelativePath: `${agentMainRelativePath}/AGENTS.md`,
-    agentsPhysicalPath: resolveWithin(harnessRoot, `${agentMainRelativePath}/AGENTS.md`),
+    agentMainPhysicalPath: resolveWithin(harnessRoot, workspaceRelativePath),
+    soulRelativePath: `${workspaceRelativePath}/SOUL.md`,
+    soulPhysicalPath: resolveWithin(harnessRoot, `${workspaceRelativePath}/SOUL.md`),
+    agentsRelativePath: `${workspaceRelativePath}/AGENTS.md`,
+    agentsPhysicalPath: resolveWithin(harnessRoot, `${workspaceRelativePath}/AGENTS.md`),
   }
 }
 
