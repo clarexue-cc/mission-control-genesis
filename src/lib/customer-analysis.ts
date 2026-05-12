@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { constants } from 'node:fs'
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { resolveHarnessRoot } from '@/lib/harness-boundary'
 import { normalizeCustomerTenantId } from '@/lib/customer-intake'
@@ -56,6 +56,18 @@ export interface CustomerAnalysisDraft {
   } | null
 }
 
+export interface VaultFileInfo {
+  name: string
+  exists: boolean
+  content: string | null
+}
+
+export interface VaultDirInfo {
+  path: string
+  exists: boolean
+  children: string[]
+}
+
 export interface CustomerAnalysisState {
   tenantId: string
   intakeRawPath: string
@@ -69,6 +81,11 @@ export interface CustomerAnalysisState {
   analysisIntakeRawHash: string | null
   analysisMatchesIntake: boolean | null
   draft: CustomerAnalysisDraft | null
+  userMd: VaultFileInfo | null
+  identityMd: VaultFileInfo | null
+  vaultIndexMd: VaultFileInfo | null
+  vaultDirs: VaultDirInfo[]
+  templateFiles: VaultFileInfo[]
 }
 
 export interface CustomerAnalysisResult {
@@ -174,6 +191,10 @@ export async function resolveCustomerAnalysisPaths(tenantId: string): Promise<Cu
 
 export async function readCustomerAnalysisState(tenantId: string, previewLines = 18): Promise<CustomerAnalysisState> {
   const paths = await resolveCustomerAnalysisPaths(tenantId)
+  const harnessRoot = await resolveHarnessRoot()
+  const normalizedTenantId = normalizeCustomerTenantId(tenantId)
+  const vaultDir = resolveWithin(harnessRoot, `phase0/tenants/${normalizedTenantId}/vault`)
+
   const intakeRawExists = await fileExists(paths.intakeRawPhysicalPath)
   const intakeRawContent = intakeRawExists ? await readFile(paths.intakeRawPhysicalPath, 'utf8') : ''
   const intakeRawHash = intakeRawExists ? sha256Hex(intakeRawContent) : null
@@ -183,6 +204,46 @@ export async function readCustomerAnalysisState(tenantId: string, previewLines =
   const draft = analysisContent && intakeRawHash && analysisIntakeRawHash === intakeRawHash
     ? parseAnalysisDraft(analysisContent) || buildMockDraft(paths.tenantId, intakeRawContent)
     : null
+
+  async function readVaultFile(filename: string): Promise<VaultFileInfo> {
+    const filePath = path.join(vaultDir, filename)
+    const exists = await fileExists(filePath)
+    return { name: filename, exists, content: exists ? await readFile(filePath, 'utf8') : null }
+  }
+
+  async function readVaultDir(dirPath: string): Promise<VaultDirInfo> {
+    const fullPath = path.join(vaultDir, dirPath)
+    const exists = await fileExists(fullPath)
+    let children: string[] = []
+    if (exists) {
+      try { children = await readdir(fullPath) } catch { /* empty */ }
+    }
+    return { path: dirPath, exists, children }
+  }
+
+  const [userMd, identityMd, vaultIndexMd] = await Promise.all([
+    readVaultFile('USER.md'),
+    readVaultFile('IDENTITY.md'),
+    readVaultFile('00-vault-index.md'),
+  ])
+
+  const vaultDirs = await Promise.all([
+    readVaultDir('Agent-主编'),
+    readVaultDir('Agent-Shared'),
+    readVaultDir('Bulletin'),
+    readVaultDir('Archive'),
+  ])
+
+  const templateFiles = await Promise.all([
+    readVaultFile('00-permissions.yaml'),
+    readVaultFile('Agent-主编/working-context.md'),
+    readVaultFile('Agent-主编/mistakes.md'),
+    readVaultFile('Agent-主编/agent-guide.md'),
+    readVaultFile('Agent-Shared/decisions-log.md'),
+    readVaultFile('Agent-Shared/project-state.md'),
+    readVaultFile('Agent-Shared/user-profile.md'),
+    readVaultFile('Agent-Shared/shared-rules.md'),
+  ])
 
   return {
     tenantId: paths.tenantId,
@@ -199,6 +260,11 @@ export async function readCustomerAnalysisState(tenantId: string, previewLines =
       ? analysisIntakeRawHash === intakeRawHash
       : null,
     draft,
+    userMd,
+    identityMd,
+    vaultIndexMd,
+    vaultDirs,
+    templateFiles,
   }
 }
 

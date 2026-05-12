@@ -116,7 +116,7 @@ export default async function CustomerVaultFilePage({
 
   if (!stats) {
     return (
-      <main className="min-h-screen bg-background px-6 py-8 text-foreground">
+      <main className="h-screen overflow-y-auto bg-background px-6 py-8 text-foreground">
         <div className="mx-auto max-w-5xl">
           <Button asChild variant="outline" size="sm">
             <Link href={backHref}>返回 P6</Link>
@@ -142,7 +142,7 @@ export default async function CustomerVaultFilePage({
   const content = !isDirectory && stats.size <= 500_000 ? await readFile(targetPath, 'utf8') : ''
 
   return (
-    <main className="min-h-screen bg-background px-6 py-8 text-foreground">
+    <main className="h-screen overflow-y-auto bg-background px-6 py-8 text-foreground">
       <div className="mx-auto flex max-w-6xl flex-col gap-5">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5">
           <div>

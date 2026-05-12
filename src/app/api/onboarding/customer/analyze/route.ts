@@ -58,6 +58,11 @@ export async function GET(request: NextRequest) {
       uat_tasks: blueprint?.uat_tasks || [],
       soul_draft: state.draft?.soul_draft || null,
       agents_draft: state.draft?.agents_draft || null,
+      user_md: state.userMd,
+      identity_md: state.identityMd,
+      vault_index_md: state.vaultIndexMd,
+      vault_dirs: state.vaultDirs,
+      template_files: state.templateFiles,
     })
   } catch (error: any) {
     return errorResponse(error?.message || 'Failed to read OB-S2 state', 500)

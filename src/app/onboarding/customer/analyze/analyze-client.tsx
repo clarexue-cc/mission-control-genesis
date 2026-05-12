@@ -54,6 +54,18 @@ interface BlueprintDraft {
   agents_draft: AgentsDraft | null
 }
 
+interface VaultFileInfo {
+  name: string
+  exists: boolean
+  content: string | null
+}
+
+interface VaultDirInfo {
+  path: string
+  exists: boolean
+  children: string[]
+}
+
 interface AnalyzeState {
   ok: boolean
   tenant_id: string
@@ -75,6 +87,11 @@ interface AnalyzeState {
   uat_criteria: string[]
   soul_draft: SoulDraft | null
   agents_draft: AgentsDraft | null
+  user_md: VaultFileInfo | null
+  identity_md: VaultFileInfo | null
+  vault_index_md: VaultFileInfo | null
+  vault_dirs: VaultDirInfo[]
+  template_files: VaultFileInfo[]
 }
 
 interface AnalyzeResult {
@@ -132,6 +149,29 @@ function listToText(values: string[] | undefined): string {
 
 function textToList(value: string): string[] {
   return value.split('\n').map(line => line.trim()).filter(Boolean)
+}
+
+function VaultTreeLine({ icon, name, label, phase, indent = 0, last = false }: {
+  icon: string
+  name: string
+  label: string
+  phase: string
+  indent?: number
+  last?: boolean
+}) {
+  const prefix = indent === 0 ? '' : '│   '.repeat(indent - 1) + (last ? '└── ' : '├── ')
+  const done = phase.startsWith('✅')
+  const pending = phase.startsWith('⏳')
+  const phaseColor = done ? 'text-primary' : pending ? 'text-amber-500' : 'text-muted-foreground'
+  return (
+    <div className="flex items-baseline gap-0">
+      <span className="text-muted-foreground/50 select-none whitespace-pre">{prefix}</span>
+      <span>{icon} </span>
+      <span className="font-semibold text-foreground">{name}</span>
+      <span className="ml-2 font-sans text-muted-foreground">— {label}</span>
+      <span className={`ml-auto shrink-0 font-sans text-[11px] ${phaseColor}`}>{phase}</span>
+    </div>
+  )
 }
 
 export function CustomerAnalyzeClient({ username }: { username: string }) {
@@ -447,6 +487,114 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
             </div>
 
             <div className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pr-2">
+              {(state?.user_md || state?.identity_md) && (
+                <div className="space-y-4">
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold">USER.md — 用户画像</h3>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${state?.user_md?.exists ? 'bg-primary/15 text-primary' : 'bg-destructive/10 text-destructive'}`}>
+                          {state?.user_md?.exists ? '✅ P4 已完成' : '❌ 缺失'}
+                        </span>
+                      </div>
+                      {state?.user_md?.content ? (
+                        <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{state.user_md.content}</pre>
+                      ) : (
+                        <p className="mt-3 text-xs text-muted-foreground">尚未生成。</p>
+                      )}
+                    </div>
+
+                    <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold">IDENTITY.md — Agent 身份卡</h3>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${state?.identity_md?.exists ? 'bg-primary/15 text-primary' : 'bg-destructive/10 text-destructive'}`}>
+                          {state?.identity_md?.exists ? '✅ P4 已完成' : '❌ 缺失'}
+                        </span>
+                      </div>
+                      {state?.identity_md?.content ? (
+                        <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{state.identity_md.content}</pre>
+                      ) : (
+                        <p className="mt-3 text-xs text-muted-foreground">尚未生成。</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold">Agent 完整架构 — Workspace + Vault</h3>
+                        <p className="mt-1 text-xs text-muted-foreground">Workspace = 运行环境（手脚） ｜ Vault = 记忆系统（大脑）</p>
+                      </div>
+                      <div className="flex gap-2 text-[11px]">
+                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-primary">✅ = 已完成</span>
+                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-500">⏳ = 待补充</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 rounded border border-border bg-background px-4 py-3 font-mono text-xs leading-[1.9]">
+                      <div className="font-sans text-[11px] font-semibold text-primary mb-1">① Workspace — 运行环境（每个 Agent 独立一套）</div>
+                      <VaultTreeLine icon="📂" name="workspace-wechat-mp-agent/" label="公众号主编的运行环境" phase="" />
+                      <VaultTreeLine icon="💡" name="SOUL.md" label="人格 + 红线" phase="⏳ P7 生成" indent={1} />
+                      <VaultTreeLine icon="⚙️" name="AGENTS.md" label="操作系统 SOP + workflow" phase="⏳ P7 生成" indent={1} />
+                      <VaultTreeLine icon="🪪" name="IDENTITY.md" label="身份卡" phase="✅ P4 草稿" indent={1} />
+                      <VaultTreeLine icon="👤" name="USER.md" label="用户画像" phase="✅ P4 草稿" indent={1} />
+                      <VaultTreeLine icon="🧠" name="MEMORY.md" label="记忆索引（醒来先读，快速回忆）" phase="⏳ P7 生成" indent={1} />
+                      <VaultTreeLine icon="📄" name="TOOLS.md" label="工具使用规则" phase="⏳ P7 生成" indent={1} />
+                      <VaultTreeLine icon="📄" name="HEARTBEAT.md" label="定时任务（每日热点扫描）" phase="⏳ P7 生成" indent={1} />
+                      <VaultTreeLine icon="📄" name="PROBLEMS.md" label="已知问题 + 解决方案" phase="⏳ 运行时积累" indent={1} />
+                      <VaultTreeLine icon="📁" name="skills/" label="7 个 Workspace Skill" phase="⏳ P9 创建" indent={1} />
+                      <VaultTreeLine icon="📁" name="daily-trending/" label="" phase="⏳" indent={2} />
+                      <VaultTreeLine icon="📁" name="content-planner/" label="" phase="⏳" indent={2} />
+                      <VaultTreeLine icon="📁" name="article-writer/" label="" phase="⏳" indent={2} />
+                      <VaultTreeLine icon="📁" name="image-generator/" label="" phase="⏳" indent={2} />
+                      <VaultTreeLine icon="📁" name="cover-generator/" label="" phase="⏳" indent={2} />
+                      <VaultTreeLine icon="📁" name="markdown-to-html/" label="" phase="⏳" indent={2} />
+                      <VaultTreeLine icon="📁" name="publish-orchestrator/" label="" phase="⏳" indent={2} last />
+                      <VaultTreeLine icon="📁" name="drafts/" label="内容工厂（每篇文章一个子目录）" phase="⏳ 运行时产生" indent={1} />
+                      <VaultTreeLine icon="📁" name="saves/" label="进度存档（3 个网关状态 JSON）" phase="⏳ 运行时填充" indent={1} />
+                      <VaultTreeLine icon="📁" name="config/" label="运行时配置" phase="⏳ P6 部署时创建" indent={1} />
+                      <VaultTreeLine icon="📁" name=".openclaw/" label="OC 底座配置" phase="⏳ P6 部署时创建" indent={1} last />
+                    </div>
+
+                    <div className="mt-3 rounded border border-border bg-background px-4 py-3 font-mono text-xs leading-[1.9]">
+                      <div className="font-sans text-[11px] font-semibold text-primary mb-1">② Vault — 记忆系统 / Obsidian 知识库（多 Agent 共享一个 Vault）</div>
+                      <VaultTreeLine icon="📂" name="vault/" label="罗老师媒体业务 — Agent 的外部大脑" phase="" />
+
+                      <div className="mt-1 ml-4 mb-1 font-sans text-[11px] text-muted-foreground/70">── 全局导航 ──</div>
+                      <VaultTreeLine icon="📄" name="00-vault-index.md" label="导航索引" phase="✅ P4" indent={1} />
+                      <VaultTreeLine icon="🔐" name="00-permissions.yaml" label="权限矩阵" phase="✅ P4" indent={1} />
+
+                      <div className="mt-1 ml-4 mb-1 font-sans text-[11px] text-muted-foreground/70">── Agent 私有记忆（每个 Agent 一个目录） ──</div>
+                      <VaultTreeLine icon="📁" name="Agent-主编/" label="主编的私有记忆" phase="✅ P4" indent={1} />
+                      <VaultTreeLine icon="📄" name="working-context.md" label="上次做到哪了" phase="✅ P4 骨架，运行时填充" indent={2} />
+                      <VaultTreeLine icon="📄" name="mistakes.md" label="错误学习" phase="✅ P4 骨架，运行时填充" indent={2} />
+                      <VaultTreeLine icon="📄" name="agent-guide.md" label="主编专有行为准则" phase="⏳ P7 生成" indent={2} />
+                      <VaultTreeLine icon="📁" name="daily/" label="日志（按日期）" phase="✅ P4 空目录，运行时填充" indent={2} />
+                      <VaultTreeLine icon="📁" name="published/" label="发布档案（标题/链接/数据/复盘）" phase="⏳ 运行时积累" indent={2} last />
+                      <VaultTreeLine icon="📁" name="Agent-搜索/" label="搜索 Agent 的私有记忆" phase="⏳ 后续入驻时创建" indent={1} />
+                      <VaultTreeLine icon="📁" name="Agent-.../" label="更多 Agent" phase="⏳ 按需扩展" indent={1} />
+
+                      <div className="mt-1 ml-4 mb-1 font-sans text-[11px] text-muted-foreground/70">── 跨 Agent 共享层 ──</div>
+                      <VaultTreeLine icon="📁" name="Agent-Shared/" label="所有 Agent 共享的知识和规则" phase="✅ P4" indent={1} />
+                      <VaultTreeLine icon="📄" name="user-profile.md" label="用户画像（动态，运行时更新）" phase="✅ P4 骨架，运行时填充" indent={2} />
+                      <VaultTreeLine icon="📄" name="project-state.md" label="项目进度" phase="✅ P4 骨架，运行时填充" indent={2} />
+                      <VaultTreeLine icon="📄" name="decisions-log.md" label="决策记录" phase="✅ P4 骨架，运行时填充" indent={2} />
+                      <VaultTreeLine icon="📄" name="shared-rules.md" label="跨 Agent 规则" phase="✅ P4" indent={2} />
+                      <VaultTreeLine icon="📁" name="knowledge/" label="行业知识库" phase="⏳ 运行时积累" indent={2} last />
+
+                      <div className="mt-1 ml-4 mb-1 font-sans text-[11px] text-muted-foreground/70">── 短期通信层（Agent 之间传话用） ──</div>
+                      <VaultTreeLine icon="📁" name="Bulletin/" label="Agent 间短期通信" phase="✅ P4" indent={1} />
+                      <VaultTreeLine icon="📁" name="daily-briefing/" label="每日简报" phase="✅ P4 空目录，运行时填充" indent={2} />
+                      <VaultTreeLine icon="📁" name="search-findings/" label="搜索发现" phase="✅ P4 空目录，运行时填充" indent={2} />
+                      <VaultTreeLine icon="📁" name="alerts/" label="告警" phase="✅ P4 空目录，运行时填充" indent={2} />
+                      <VaultTreeLine icon="📁" name="requests/" label="跨 Agent 请求" phase="✅ P4 空目录，运行时填充" indent={2} last />
+
+                      <VaultTreeLine icon="📁" name="Archive/" label="归档区（守护 Agent 管理）" phase="✅ P4 空目录" indent={1} last />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {workflowSteps.length > 0 ? (
                 <div className="rounded-md border border-border bg-background p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
