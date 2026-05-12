@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { constants } from 'node:fs'
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, stat as fsStat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { resolveHarnessRoot } from '@/lib/harness-boundary'
 import { normalizeCustomerTenantId } from '@/lib/customer-intake'
@@ -494,5 +494,108 @@ export async function generateCustomerSoul(tenantIdInput: string): Promise<Custo
       soul: sha256Hex(draft.soul_md),
       agents: sha256Hex(draft.agents_md),
     },
+  }
+}
+
+// ── P7 全量定稿 — 文件扫描 ──────────────────────────────────
+
+export interface P7FileInfo {
+  name: string
+  displayName: string
+  relativePath: string
+  group: 'workspace' | 'skill' | 'vault'
+  exists: boolean
+  sizeBytes: number
+}
+
+export interface P7FilesStatus {
+  tenantId: string
+  total: number
+  existsCount: number
+  missingCount: number
+  groups: {
+    workspace: P7FileInfo[]
+    skills: P7FileInfo[]
+    vault: P7FileInfo[]
+  }
+}
+
+const P7_WORKSPACE_DEFS = [
+  { name: 'SOUL.md', displayName: 'SOUL — 身份定义' },
+  { name: 'AGENTS.md', displayName: 'AGENTS — 操作系统' },
+  { name: 'MEMORY.md', displayName: 'MEMORY — 记忆索引' },
+  { name: 'TOOLS.md', displayName: 'TOOLS — 工具规则' },
+  { name: 'USER.md', displayName: 'USER — 用户偏好' },
+  { name: 'IDENTITY.md', displayName: 'IDENTITY — 身份标识' },
+  { name: 'HEARTBEAT.md', displayName: 'HEARTBEAT — 定时任务' },
+  { name: 'PROBLEMS.md', displayName: 'PROBLEMS — 已知问题' },
+  { name: 'boundary-rules.json', displayName: 'Boundary — 红线规则' },
+]
+
+const P7_SKILL_DEFS = [
+  { name: 'daily-trending', displayName: '热点扫描' },
+  { name: 'content-planner', displayName: '内容规划' },
+  { name: 'article-writer', displayName: '文章撰写' },
+  { name: 'image-generator', displayName: '配图生成' },
+  { name: 'cover-generator', displayName: '封面生成' },
+  { name: 'markdown-to-html', displayName: 'MD转HTML' },
+  { name: 'publish-orchestrator', displayName: '发布编排' },
+]
+
+const P7_VAULT_DEFS = [
+  { name: '00-vault-index.md', displayName: 'Vault 导航索引' },
+  { name: '00-permissions.yaml', displayName: '权限矩阵' },
+  { name: 'Agent-Shared/user-profile.md', displayName: '用户画像' },
+  { name: 'Agent-Shared/project-state.md', displayName: '项目进度' },
+  { name: 'Agent-Shared/decisions-log.md', displayName: '决策记录' },
+  { name: 'Agent-Shared/shared-rules.md', displayName: '跨Agent规则' },
+  { name: 'Agent-主编/working-context.md', displayName: '工作上下文' },
+  { name: 'Agent-主编/mistakes.md', displayName: '错误记录' },
+]
+
+async function probeFile(
+  basePath: string,
+  fileName: string,
+  displayName: string,
+  group: P7FileInfo['group'],
+  harnessRoot: string,
+): Promise<P7FileInfo> {
+  const relativePath = `${basePath}/${fileName}`
+  const physicalPath = resolveWithin(harnessRoot, relativePath)
+  try {
+    const info = await fsStat(physicalPath)
+    return { name: fileName, displayName, relativePath, group, exists: true, sizeBytes: info.size }
+  } catch {
+    return { name: fileName, displayName, relativePath, group, exists: false, sizeBytes: 0 }
+  }
+}
+
+export async function readP7FilesStatus(tenantId: string): Promise<P7FilesStatus> {
+  const normalizedTenantId = normalizeCustomerTenantId(tenantId)
+  const harnessRoot = await resolveHarnessRoot()
+  const wsBase = `phase0/tenants/${normalizedTenantId}/workspace`
+  const vaultBase = `phase0/tenants/${normalizedTenantId}/vault`
+
+  const [workspace, skills, vault] = await Promise.all([
+    Promise.all(P7_WORKSPACE_DEFS.map(f =>
+      probeFile(wsBase, f.name, f.displayName, 'workspace', harnessRoot)
+    )),
+    Promise.all(P7_SKILL_DEFS.map(f =>
+      probeFile(wsBase, `skills/${f.name}/SKILL.md`, f.displayName, 'skill', harnessRoot)
+    )),
+    Promise.all(P7_VAULT_DEFS.map(f =>
+      probeFile(vaultBase, f.name, f.displayName, 'vault', harnessRoot)
+    )),
+  ])
+
+  const all = [...workspace, ...skills, ...vault]
+  const existsCount = all.filter(f => f.exists).length
+
+  return {
+    tenantId: normalizedTenantId,
+    total: all.length,
+    existsCount,
+    missingCount: all.length - existsCount,
+    groups: { workspace, skills, vault },
   }
 }

@@ -5,6 +5,26 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { resolveDefaultCustomerTenantId } from '@/lib/mc-stable-mode'
 
+interface P7FileInfo {
+  name: string
+  display_name: string
+  relative_path: string
+  group: 'workspace' | 'skill' | 'vault'
+  exists: boolean
+  size_bytes: number
+}
+
+interface P7FilesData {
+  total: number
+  exists_count: number
+  missing_count: number
+  groups: {
+    workspace: P7FileInfo[]
+    skills: P7FileInfo[]
+    vault: P7FileInfo[]
+  }
+}
+
 interface SoulState {
   ok: boolean
   tenant_id: string
@@ -18,6 +38,7 @@ interface SoulState {
   mode: string | null
   unresolved_placeholders: string[]
   content_hashes: { soul: string | null; agents: string | null }
+  p7_files?: P7FilesData
 }
 
 interface SoulResult {
@@ -36,6 +57,45 @@ interface SoulResult {
 type Progress = 'pending' | 'generating' | 'success' | 'failed'
 
 const DEFAULT_TENANT_ID = resolveDefaultCustomerTenantId()
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+}
+
+function P7FileRow({ file }: { file: P7FileInfo }) {
+  return (
+    <div className="flex items-center justify-between gap-2 py-1 text-sm">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="shrink-0">{file.exists ? '✅' : '❌'}</span>
+        <span className={`truncate ${file.exists ? 'text-foreground' : 'text-muted-foreground'}`}>
+          {file.display_name}
+        </span>
+      </div>
+      {file.exists && (
+        <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(file.size_bytes)}</span>
+      )}
+    </div>
+  )
+}
+
+function P7GroupCard({ title, files }: { title: string; files: P7FileInfo[] }) {
+  const done = files.filter(f => f.exists).length
+  return (
+    <div className="rounded-md border border-border bg-background p-4">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <span className={`text-xs font-medium ${done === files.length ? 'text-primary' : 'text-muted-foreground'}`}>
+          {done}/{files.length}
+        </span>
+      </div>
+      <div className="space-y-0.5">
+        {files.map(file => <P7FileRow key={file.name} file={file} />)}
+      </div>
+    </div>
+  )
+}
 
 function previewText(value: string | null | undefined, maxLines = 20): string {
   return (value || '').split('\n').slice(0, maxLines).join('\n')
@@ -137,10 +197,19 @@ export function CustomerSoulClient({ username }: { username: string }) {
         <header className="border-b border-border pb-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P7 / OB-S5</p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-normal">SOUL / AGENTS 生成</h1>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P7</p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-normal">全量定稿</h1>
             </div>
             <div className="flex items-center gap-2">
+              {state?.p7_files && (
+                <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  state.p7_files.missing_count === 0
+                    ? 'border border-primary/40 bg-primary/15 text-primary'
+                    : 'border border-yellow-500/40 bg-yellow-500/15 text-yellow-600'
+                }`}>
+                  {state.p7_files.exists_count}/{state.p7_files.total} 文件就绪
+                </span>
+              )}
               {mode && (
                 <span className="rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-xs font-medium text-primary">
                   {mode}
@@ -152,9 +221,33 @@ export function CustomerSoulClient({ username }: { username: string }) {
             </div>
           </div>
           <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            基于 vault/intake-analysis.md 生成 Agent-Main 的 SOUL.md 与 AGENTS.md，并检查占位符残留。
+            Workspace 9 文件 + Skills 7 个 + Vault 8 文件 = 24 项全量定稿清单。扫描 tenant 实际文件状态。
           </p>
         </header>
+
+        {state?.p7_files && (
+          <section className="rounded-lg border border-border bg-card p-5">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h2 className="text-lg font-semibold">P7 文件清单</h2>
+              <div className="flex items-center gap-2">
+                {state.p7_files.missing_count === 0 ? (
+                  <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary">
+                    全部就绪 ✓
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-destructive/15 px-3 py-1 text-xs font-medium text-destructive">
+                    {state.p7_files.missing_count} 个缺失
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <P7GroupCard title="Workspace 核心文件" files={state.p7_files.groups.workspace} />
+              <P7GroupCard title="Skills 定义 (P8)" files={state.p7_files.groups.skills} />
+              <P7GroupCard title="Vault 知识库" files={state.p7_files.groups.vault} />
+            </div>
+          </section>
+        )}
 
         <section className="grid gap-6 xl:grid-cols-[minmax(300px,0.52fr)_minmax(0,1.48fr)]">
           <form onSubmit={generate} className="space-y-5 rounded-lg border border-border bg-card p-5">
@@ -241,7 +334,7 @@ export function CustomerSoulClient({ username }: { username: string }) {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">生成结果</h2>
-                <p className="mt-1 text-xs text-muted-foreground">输出目录：phase0/tenants/&lt;tenant&gt;/vault/Agent-Main/</p>
+                <p className="mt-1 text-xs text-muted-foreground">输出目录：phase0/tenants/&lt;tenant&gt;/workspace/</p>
               </div>
               {mode && <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary">{mode}</span>}
             </div>

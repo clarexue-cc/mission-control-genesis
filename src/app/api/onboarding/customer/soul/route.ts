@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/auth'
 import {
   generateCustomerSoul,
   readCustomerSoulState,
+  readP7FilesStatus,
 } from '@/lib/customer-soul'
 import { normalizeCustomerTenantId } from '@/lib/customer-intake'
 
@@ -30,7 +31,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const state = await readCustomerSoulState(tenantId)
+    const [state, p7Status] = await Promise.all([
+      readCustomerSoulState(tenantId),
+      readP7FilesStatus(tenantId),
+    ])
     return NextResponse.json({
       ok: true,
       tenant_id: state.tenantId,
@@ -50,6 +54,25 @@ export async function GET(request: NextRequest) {
       mode: state.mode,
       unresolved_placeholders: state.unresolvedPlaceholders,
       content_hashes: state.contentHashes,
+      p7_files: {
+        total: p7Status.total,
+        exists_count: p7Status.existsCount,
+        missing_count: p7Status.missingCount,
+        groups: {
+          workspace: p7Status.groups.workspace.map(f => ({
+            name: f.name, display_name: f.displayName, relative_path: f.relativePath,
+            group: f.group, exists: f.exists, size_bytes: f.sizeBytes,
+          })),
+          skills: p7Status.groups.skills.map(f => ({
+            name: f.name, display_name: f.displayName, relative_path: f.relativePath,
+            group: f.group, exists: f.exists, size_bytes: f.sizeBytes,
+          })),
+          vault: p7Status.groups.vault.map(f => ({
+            name: f.name, display_name: f.displayName, relative_path: f.relativePath,
+            group: f.group, exists: f.exists, size_bytes: f.sizeBytes,
+          })),
+        },
+      },
     })
   } catch (error: any) {
     return errorResponse(error?.message || 'Failed to read OB-S5 state', 500)
