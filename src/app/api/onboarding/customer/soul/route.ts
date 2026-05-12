@@ -58,20 +58,10 @@ export async function GET(request: NextRequest) {
         total: p7Status.total,
         exists_count: p7Status.existsCount,
         missing_count: p7Status.missingCount,
-        groups: {
-          workspace: p7Status.groups.workspace.map(f => ({
-            name: f.name, display_name: f.displayName, relative_path: f.relativePath,
-            group: f.group, exists: f.exists, size_bytes: f.sizeBytes,
-          })),
-          skills: p7Status.groups.skills.map(f => ({
-            name: f.name, display_name: f.displayName, relative_path: f.relativePath,
-            group: f.group, exists: f.exists, size_bytes: f.sizeBytes,
-          })),
-          vault: p7Status.groups.vault.map(f => ({
-            name: f.name, display_name: f.displayName, relative_path: f.relativePath,
-            group: f.group, exists: f.exists, size_bytes: f.sizeBytes,
-          })),
-        },
+        files: p7Status.files.map(f => ({
+          name: f.name, display_name: f.displayName, relative_path: f.relativePath,
+          exists: f.exists, size_bytes: f.sizeBytes,
+        })),
       },
     })
   } catch (error: any) {

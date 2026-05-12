@@ -9,7 +9,6 @@ interface P7FileInfo {
   name: string
   display_name: string
   relative_path: string
-  group: 'workspace' | 'skill' | 'vault'
   exists: boolean
   size_bytes: number
 }
@@ -18,11 +17,7 @@ interface P7FilesData {
   total: number
   exists_count: number
   missing_count: number
-  groups: {
-    workspace: P7FileInfo[]
-    skills: P7FileInfo[]
-    vault: P7FileInfo[]
-  }
+  files: P7FileInfo[]
 }
 
 interface SoulState {
@@ -80,22 +75,6 @@ function P7FileRow({ file }: { file: P7FileInfo }) {
   )
 }
 
-function P7GroupCard({ title, files }: { title: string; files: P7FileInfo[] }) {
-  const done = files.filter(f => f.exists).length
-  return (
-    <div className="rounded-md border border-border bg-background p-4">
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <h3 className="text-sm font-semibold">{title}</h3>
-        <span className={`text-xs font-medium ${done === files.length ? 'text-primary' : 'text-muted-foreground'}`}>
-          {done}/{files.length}
-        </span>
-      </div>
-      <div className="space-y-0.5">
-        {files.map(file => <P7FileRow key={file.name} file={file} />)}
-      </div>
-    </div>
-  )
-}
 
 function previewText(value: string | null | undefined, maxLines = 20): string {
   return (value || '').split('\n').slice(0, maxLines).join('\n')
@@ -221,14 +200,14 @@ export function CustomerSoulClient({ username }: { username: string }) {
             </div>
           </div>
           <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            Workspace 9 文件 + Skills 7 个 + Vault 8 文件 = 24 项全量定稿清单。扫描 tenant 实际文件状态。
+            SOUL + AGENTS + MEMORY — 核心身份与行为文档定稿。
           </p>
         </header>
 
         {state?.p7_files && (
           <section className="rounded-lg border border-border bg-card p-5">
             <div className="flex items-center justify-between gap-3 mb-4">
-              <h2 className="text-lg font-semibold">P7 文件清单</h2>
+              <h2 className="text-lg font-semibold">P7 核心文档</h2>
               <div className="flex items-center gap-2">
                 {state.p7_files.missing_count === 0 ? (
                   <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary">
@@ -241,10 +220,8 @@ export function CustomerSoulClient({ username }: { username: string }) {
                 )}
               </div>
             </div>
-            <div className="grid gap-4 lg:grid-cols-3">
-              <P7GroupCard title="Workspace 核心文件" files={state.p7_files.groups.workspace} />
-              <P7GroupCard title="Skills 定义 (P8)" files={state.p7_files.groups.skills} />
-              <P7GroupCard title="Vault 知识库" files={state.p7_files.groups.vault} />
+            <div className="space-y-1">
+              {state.p7_files.files.map(file => <P7FileRow key={file.name} file={file} />)}
             </div>
           </section>
         )}
