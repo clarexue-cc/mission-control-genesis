@@ -18,10 +18,16 @@ export interface CustomerSoulState {
   analysisPreview: string
   soulPath: string
   agentsPath: string
+  memoryPath: string
+  boundaryPath: string
   soulExists: boolean
   agentsExists: boolean
+  memoryExists: boolean
+  boundaryExists: boolean
   soulContent: string | null
   agentsContent: string | null
+  memoryContent: string | null
+  boundaryContent: string | null
   mode: CustomerSoulMode | null
   unresolvedPlaceholders: string[]
   contentHashes: { soul: string | null; agents: string | null }
@@ -48,6 +54,10 @@ interface CustomerSoulPaths {
   soulPhysicalPath: string
   agentsRelativePath: string
   agentsPhysicalPath: string
+  memoryRelativePath: string
+  memoryPhysicalPath: string
+  boundaryRelativePath: string
+  boundaryPhysicalPath: string
 }
 
 interface CustomerSoulDraft {
@@ -161,6 +171,10 @@ export async function resolveCustomerSoulPaths(tenantId: string): Promise<Custom
     soulPhysicalPath: resolveWithin(harnessRoot, `${workspaceRelativePath}/SOUL.md`),
     agentsRelativePath: `${workspaceRelativePath}/AGENTS.md`,
     agentsPhysicalPath: resolveWithin(harnessRoot, `${workspaceRelativePath}/AGENTS.md`),
+    memoryRelativePath: `${workspaceRelativePath}/MEMORY.md`,
+    memoryPhysicalPath: resolveWithin(harnessRoot, `${workspaceRelativePath}/MEMORY.md`),
+    boundaryRelativePath: `${workspaceRelativePath}/boundary-rules.json`,
+    boundaryPhysicalPath: resolveWithin(harnessRoot, `${workspaceRelativePath}/boundary-rules.json`),
   }
 }
 
@@ -170,8 +184,12 @@ export async function readCustomerSoulState(tenantId: string, previewLines = 18)
   const analysisContent = analysisExists ? await readFile(paths.analysisPhysicalPath, 'utf8') : ''
   const soulExists = await fileExists(paths.soulPhysicalPath)
   const agentsExists = await fileExists(paths.agentsPhysicalPath)
+  const memoryExists = await fileExists(paths.memoryPhysicalPath)
+  const boundaryExists = await fileExists(paths.boundaryPhysicalPath)
   const soulContent = soulExists ? await readFile(paths.soulPhysicalPath, 'utf8') : null
   const agentsContent = agentsExists ? await readFile(paths.agentsPhysicalPath, 'utf8') : null
+  const memoryContent = memoryExists ? await readFile(paths.memoryPhysicalPath, 'utf8') : null
+  const boundaryContent = boundaryExists ? await readFile(paths.boundaryPhysicalPath, 'utf8') : null
 
   return {
     tenantId: paths.tenantId,
@@ -180,10 +198,16 @@ export async function readCustomerSoulState(tenantId: string, previewLines = 18)
     analysisPreview: analysisContent.split('\n').slice(0, previewLines).join('\n'),
     soulPath: paths.soulRelativePath,
     agentsPath: paths.agentsRelativePath,
+    memoryPath: paths.memoryRelativePath,
+    boundaryPath: paths.boundaryRelativePath,
     soulExists,
     agentsExists,
+    memoryExists,
+    boundaryExists,
     soulContent,
     agentsContent,
+    memoryContent,
+    boundaryContent,
     mode: soulContent ? parseSoulMode(soulContent) : null,
     unresolvedPlaceholders: detectUnresolvedPlaceholders(soulContent || '', agentsContent || ''),
     contentHashes: {
@@ -497,7 +521,7 @@ export async function generateCustomerSoul(tenantIdInput: string): Promise<Custo
   }
 }
 
-// ── P7 核心文件状态 ──────────────────────────────────
+// ── P7 核心定稿文件状态（4 个：SOUL / AGENTS / MEMORY / boundary）──
 
 export interface P7FileInfo {
   name: string
@@ -515,10 +539,11 @@ export interface P7FilesStatus {
   files: P7FileInfo[]
 }
 
-const P7_CORE_FILES = [
+const P7_CORE_DEFS = [
   { name: 'SOUL.md', displayName: 'SOUL — 身份定义' },
   { name: 'AGENTS.md', displayName: 'AGENTS — 操作系统' },
   { name: 'MEMORY.md', displayName: 'MEMORY — 记忆索引' },
+  { name: 'boundary-rules.json', displayName: 'Boundary — 红线配置' },
 ]
 
 export async function readP7FilesStatus(tenantId: string): Promise<P7FilesStatus> {
@@ -526,7 +551,7 @@ export async function readP7FilesStatus(tenantId: string): Promise<P7FilesStatus
   const harnessRoot = await resolveHarnessRoot()
   const wsBase = `phase0/tenants/${normalizedTenantId}/workspace`
 
-  const files = await Promise.all(P7_CORE_FILES.map(async (f) => {
+  const files = await Promise.all(P7_CORE_DEFS.map(async (f) => {
     const relativePath = `${wsBase}/${f.name}`
     const physicalPath = resolveWithin(harnessRoot, relativePath)
     try {

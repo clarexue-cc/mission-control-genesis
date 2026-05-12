@@ -26,10 +26,12 @@ interface SoulState {
   analysis_path: string
   analysis_exists: boolean
   analysis_preview: string
-  paths: { soul: string; agents: string }
-  content: { soul: string | null; agents: string | null }
+  paths: { soul: string; agents: string; memory: string; boundary: string }
+  content: { soul: string | null; agents: string | null; memory: string | null; boundary: string | null }
   soul_exists: boolean
   agents_exists: boolean
+  memory_exists: boolean
+  boundary_exists: boolean
   mode: string | null
   unresolved_placeholders: string[]
   content_hashes: { soul: string | null; agents: string | null }
@@ -59,36 +61,46 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
 }
 
-function P7FileRow({ file }: { file: P7FileInfo }) {
+function StatusBadge({ exists, label }: { exists: boolean; label: string }) {
   return (
-    <div className="flex items-center justify-between gap-2 py-1 text-sm">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="shrink-0">{file.exists ? '✅' : '❌'}</span>
-        <span className={`truncate ${file.exists ? 'text-foreground' : 'text-muted-foreground'}`}>
-          {file.display_name}
-        </span>
-      </div>
-      {file.exists && (
-        <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(file.size_bytes)}</span>
-      )}
-    </div>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+      exists
+        ? 'border border-primary/40 bg-primary/15 text-primary'
+        : 'border border-destructive/40 bg-destructive/15 text-destructive'
+    }`}>
+      {exists ? '✅' : '❌'} {label}
+    </span>
   )
 }
 
-
-function previewText(value: string | null | undefined, maxLines = 20): string {
-  return (value || '').split('\n').slice(0, maxLines).join('\n')
-}
-
-function joinDiff(diff: SoulResult['diff_vs_template'] | null): string {
-  if (!diff) return ''
-  return [
-    '# SOUL.md diff',
-    diff.soul || '+ (no SOUL diff)',
-    '',
-    '# AGENTS.md diff',
-    diff.agents || '+ (no AGENTS diff)',
-  ].join('\n')
+/** 全宽文档查看区 */
+function DocSection({ title, path, content, exists, placeholder }: {
+  title: string
+  path?: string
+  content: string
+  exists: boolean
+  placeholder: string
+}) {
+  return (
+    <section className="rounded-lg border border-border bg-card">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-4">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <StatusBadge exists={exists} label={exists ? formatBytes(new Blob([content]).size) : '缺失'} />
+        </div>
+        {path && <span className="text-xs text-muted-foreground break-all">{path}</span>}
+      </div>
+      <div className="p-6">
+        {content ? (
+          <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-foreground/90 max-h-[70vh] overflow-auto">
+            {content}
+          </pre>
+        ) : (
+          <p className="text-sm text-muted-foreground">{placeholder}</p>
+        )}
+      </div>
+    </section>
+  )
 }
 
 export function CustomerSoulClient({ username }: { username: string }) {
@@ -101,9 +113,10 @@ export function CustomerSoulClient({ username }: { username: string }) {
 
   const soulContent = result?.content.soul || state?.content.soul || ''
   const agentsContent = result?.content.agents || state?.content.agents || ''
+  const memoryContent = state?.content.memory || ''
+  const boundaryContent = state?.content.boundary || ''
   const mode = result?.mode || state?.mode || null
   const placeholders = result?.unresolved_placeholders || state?.unresolved_placeholders || []
-  const diffPreview = useMemo(() => joinDiff(result?.diff_vs_template || null), [result])
 
   async function loadState(nextTenantId = tenantId) {
     const normalizedTenantId = nextTenantId.trim() || DEFAULT_TENANT_ID
@@ -113,12 +126,12 @@ export function CustomerSoulClient({ username }: { username: string }) {
     try {
       const response = await fetch(`/api/onboarding/customer/soul?tenant_id=${encodeURIComponent(normalizedTenantId)}`)
       const body = await response.json()
-      if (!response.ok) throw new Error(body?.error || '读取 OB-S5 状态失败')
+      if (!response.ok) throw new Error(body?.error || '读取状态失败')
       setState(body)
       setResult(null)
       setProgress(body.soul_exists && body.agents_exists ? 'success' : 'pending')
     } catch (err: any) {
-      setError(err?.message || '读取 OB-S5 状态失败')
+      setError(err?.message || '读取状态失败')
       setState(null)
       setResult(null)
       setProgress('failed')
@@ -152,8 +165,8 @@ export function CustomerSoulClient({ username }: { username: string }) {
       setState(current => current
         ? {
           ...current,
-          content: body.content,
-          paths: body.paths,
+          content: { ...current.content, soul: body.content.soul, agents: body.content.agents },
+          paths: { ...current.paths, soul: body.paths.soul, agents: body.paths.agents },
           soul_exists: true,
           agents_exists: true,
           mode: body.mode,
@@ -172,21 +185,23 @@ export function CustomerSoulClient({ username }: { username: string }) {
 
   return (
     <main className="h-screen overflow-y-auto bg-background text-foreground">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-8">
+
+        {/* ── 页头 + 控制栏 ── */}
         <header className="border-b border-border pb-5">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P7</p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-normal">全量定稿</h1>
+              <h1 className="mt-2 text-3xl font-semibold tracking-normal">核心文档定稿</h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {state?.p7_files && (
                 <span className={`rounded-full px-3 py-1 text-xs font-medium ${
                   state.p7_files.missing_count === 0
                     ? 'border border-primary/40 bg-primary/15 text-primary'
                     : 'border border-yellow-500/40 bg-yellow-500/15 text-yellow-600'
                 }`}>
-                  {state.p7_files.exists_count}/{state.p7_files.total} 文件就绪
+                  {state.p7_files.exists_count}/{state.p7_files.total} 就绪
                 </span>
               )}
               {mode && (
@@ -195,186 +210,109 @@ export function CustomerSoulClient({ username }: { username: string }) {
                 </span>
               )}
               <Button asChild variant="outline" size="sm">
-                <Link href="/">返回 MC 主页面</Link>
+                <Link href="/">返回 MC</Link>
               </Button>
             </div>
           </div>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            SOUL + AGENTS + MEMORY — 核心身份与行为文档定稿。
+          <p className="mt-2 text-sm text-muted-foreground">
+            P7 定稿的 4 个核心文档：SOUL（身份定义）、AGENTS（操作系统）、MEMORY（记忆索引）、Boundary（红线配置）。逐个确认内容后进入 P8。
           </p>
         </header>
 
-        {state?.p7_files && (
-          <section className="rounded-lg border border-border bg-card p-5">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <h2 className="text-lg font-semibold">P7 核心文档</h2>
-              <div className="flex items-center gap-2">
-                {state.p7_files.missing_count === 0 ? (
-                  <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary">
-                    全部就绪 ✓
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-destructive/15 px-3 py-1 text-xs font-medium text-destructive">
-                    {state.p7_files.missing_count} 个缺失
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="space-y-1">
-              {state.p7_files.files.map(file => <P7FileRow key={file.name} file={file} />)}
-            </div>
-          </section>
-        )}
-
-        <section className="grid gap-6 xl:grid-cols-[minmax(300px,0.52fr)_minmax(0,1.48fr)]">
-          <form onSubmit={generate} className="space-y-5 rounded-lg border border-border bg-card p-5">
-            <div>
+        {/* ── 操作面板（紧凑） ── */}
+        <section className="rounded-lg border border-border bg-card p-5">
+          <form onSubmit={generate} className="flex flex-wrap items-end gap-4">
+            <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium" htmlFor="tenant-id">Tenant ID</label>
-              <div className="mt-2 flex gap-2">
+              <div className="mt-1.5 flex gap-2">
                 <input
                   id="tenant-id"
                   value={tenantId}
-                  onChange={(event) => {
-                    setTenantId(event.target.value)
-                    setState(null)
-                    setResult(null)
-                    setProgress('pending')
-                    setError('')
-                  }}
+                  onChange={(e) => { setTenantId(e.target.value); setState(null); setResult(null); setProgress('pending'); setError('') }}
                   required
                   className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                  placeholder="edu-luolaoshi-v1"
                 />
                 <Button type="button" variant="outline" onClick={() => loadState()} disabled={loading}>
                   {loading ? '读取中...' : '读取'}
                 </Button>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">生成操作者：{username}</p>
             </div>
-
             {state && (
-              <div className="space-y-2 rounded-md border border-border bg-background px-3 py-3 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">intake-analysis.md</span>
-                  <span className={state.analysis_exists ? 'text-primary' : 'text-destructive'}>
-                    {state.analysis_exists ? '已找到' : '缺失'}
-                  </span>
-                </div>
-                <div className="break-all text-xs text-muted-foreground">{state.analysis_path}</div>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-muted-foreground">intake-analysis.md</span>
+                <span className={state.analysis_exists ? 'text-primary font-medium' : 'text-destructive font-medium'}>
+                  {state.analysis_exists ? '✅ 已找到' : '❌ 缺失'}
+                </span>
               </div>
             )}
-
-            <div className="grid grid-cols-4 gap-2 text-center text-xs">
-              {(['pending', 'generating', 'success', 'failed'] as Progress[]).map(step => (
-                <div
-                  key={step}
-                  className={`rounded-md border px-2 py-2 ${
-                    progress === step ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-background text-muted-foreground'
-                  }`}
-                >
-                  {step}
-                </div>
-              ))}
-            </div>
-
-            {error && (
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </div>
-            )}
-
-            {result?.already_exists && (
-              <div className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm text-primary">
-                SOUL.md 与 AGENTS.md 已存在，本次生成未覆盖原文件。
-              </div>
-            )}
-
-            <div className={`rounded-md border px-3 py-3 text-sm ${
-              placeholders.length > 0 ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-primary/40 bg-primary/10 text-primary'
-            }`}>
-              占位符残留：{placeholders.length}
+            <div className="flex items-center gap-2">
               {placeholders.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {placeholders.map(item => (
-                    <span key={item} className="rounded-md border border-destructive/40 px-2 py-1 text-xs">{`{{${item}}}`}</span>
-                  ))}
-                </div>
+                <span className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive">
+                  占位符残留：{placeholders.length}
+                </span>
               )}
+              <Button type="submit" disabled={loading || !state?.analysis_exists}>
+                {progress === 'generating' ? '生成中...' : '生成 SOUL/AGENTS'}
+              </Button>
             </div>
-
-            <Button type="submit" disabled={loading || !state?.analysis_exists} className="w-full">
-              {progress === 'generating' ? '生成中...' : '生成 SOUL/AGENTS'}
-            </Button>
           </form>
-
-          <section className="rounded-lg border border-border bg-card p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold">生成结果</h2>
-                <p className="mt-1 text-xs text-muted-foreground">输出目录：phase0/tenants/&lt;tenant&gt;/workspace/</p>
-              </div>
-              {mode && <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary">{mode}</span>}
+          {error && (
+            <div className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
             </div>
-
-            <div className="mt-4 space-y-4">
-              <div className="rounded-md border border-border bg-background p-4">
-                <h3 className="text-sm font-semibold">intake-analysis.md 摘要</h3>
-                {state?.analysis_preview ? (
-                  <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
-                    {previewText(state.analysis_preview, 16)}
-                  </pre>
-                ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">尚未读取到 intake-analysis.md。请先完成 OB-S2 分析。</p>
-                )}
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-md border border-border bg-background p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-semibold">SOUL.md</h3>
-                    <span className="break-all text-[11px] text-muted-foreground">{result?.paths.soul || state?.paths.soul}</span>
-                  </div>
-                  {soulContent ? (
-                    <textarea
-                      value={soulContent}
-                      readOnly
-                      className="mt-3 h-96 w-full resize-y rounded-md border border-border bg-card p-3 font-mono text-xs leading-relaxed text-muted-foreground outline-none"
-                    />
-                  ) : (
-                    <p className="mt-3 text-sm text-muted-foreground">生成后显示 SOUL.md。</p>
-                  )}
-                </div>
-
-                <div className="rounded-md border border-border bg-background p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-semibold">AGENTS.md</h3>
-                    <span className="break-all text-[11px] text-muted-foreground">{result?.paths.agents || state?.paths.agents}</span>
-                  </div>
-                  {agentsContent ? (
-                    <textarea
-                      value={agentsContent}
-                      readOnly
-                      className="mt-3 h-96 w-full resize-y rounded-md border border-border bg-card p-3 font-mono text-xs leading-relaxed text-muted-foreground outline-none"
-                    />
-                  ) : (
-                    <p className="mt-3 text-sm text-muted-foreground">生成后显示 AGENTS.md。</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-md border border-border bg-background p-4">
-                <h3 className="text-sm font-semibold">diff vs template</h3>
-                {diffPreview ? (
-                  <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-primary">
-                    {diffPreview}
-                  </pre>
-                ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">生成后显示 template baseline 到实际内容的新增行。</p>
-                )}
-              </div>
+          )}
+          {result?.already_exists && (
+            <div className="mt-3 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm text-primary">
+              SOUL.md 与 AGENTS.md 已存在，本次未覆盖原文件。
             </div>
-          </section>
+          )}
         </section>
+
+        {/* ── P7 文件状态一览 ── */}
+        {state?.p7_files && (
+          <div className="flex flex-wrap gap-3">
+            {state.p7_files.files.map(f => (
+              <StatusBadge key={f.name} exists={f.exists} label={`${f.display_name}${f.exists ? ` (${formatBytes(f.size_bytes)})` : ''}`} />
+            ))}
+          </div>
+        )}
+
+        {/* ── SOUL.md 全宽 ── */}
+        <DocSection
+          title="SOUL.md — 身份定义"
+          path={state?.paths.soul}
+          content={soulContent}
+          exists={state?.soul_exists ?? false}
+          placeholder="尚未生成 SOUL.md。请先完成 intake-analysis 后点击「生成 SOUL/AGENTS」。"
+        />
+
+        {/* ── AGENTS.md 全宽 ── */}
+        <DocSection
+          title="AGENTS.md — 操作系统"
+          path={state?.paths.agents}
+          content={agentsContent}
+          exists={state?.agents_exists ?? false}
+          placeholder="尚未生成 AGENTS.md。"
+        />
+
+        {/* ── MEMORY.md 全宽 ── */}
+        <DocSection
+          title="MEMORY.md — 记忆索引"
+          path={state?.paths.memory}
+          content={memoryContent}
+          exists={state?.memory_exists ?? false}
+          placeholder="尚未创建 MEMORY.md。P7 阶段需要初始化记忆索引。"
+        />
+
+        {/* ── boundary-rules.json 全宽 ── */}
+        <DocSection
+          title="boundary-rules.json — 红线配置"
+          path={state?.paths.boundary}
+          content={boundaryContent}
+          exists={state?.boundary_exists ?? false}
+          placeholder="尚未创建 boundary-rules.json。P7 阶段需要从蓝图红线生成 JSON 配置。"
+        />
+
       </div>
     </main>
   )
