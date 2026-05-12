@@ -194,6 +194,7 @@ export async function readCustomerAnalysisState(tenantId: string, previewLines =
   const harnessRoot = await resolveHarnessRoot()
   const normalizedTenantId = normalizeCustomerTenantId(tenantId)
   const vaultDir = resolveWithin(harnessRoot, `phase0/tenants/${normalizedTenantId}/vault`)
+  const workspaceDir = resolveWithin(harnessRoot, `phase0/tenants/${normalizedTenantId}/workspace`)
 
   const intakeRawExists = await fileExists(paths.intakeRawPhysicalPath)
   const intakeRawContent = intakeRawExists ? await readFile(paths.intakeRawPhysicalPath, 'utf8') : ''
@@ -211,6 +212,12 @@ export async function readCustomerAnalysisState(tenantId: string, previewLines =
     return { name: filename, exists, content: exists ? await readFile(filePath, 'utf8') : null }
   }
 
+  async function readWorkspaceFile(filename: string): Promise<VaultFileInfo> {
+    const filePath = path.join(workspaceDir, filename)
+    const exists = await fileExists(filePath)
+    return { name: filename, exists, content: exists ? await readFile(filePath, 'utf8') : null }
+  }
+
   async function readVaultDir(dirPath: string): Promise<VaultDirInfo> {
     const fullPath = path.join(vaultDir, dirPath)
     const exists = await fileExists(fullPath)
@@ -222,8 +229,8 @@ export async function readCustomerAnalysisState(tenantId: string, previewLines =
   }
 
   const [userMd, identityMd, vaultIndexMd] = await Promise.all([
-    readVaultFile('USER.md'),
-    readVaultFile('IDENTITY.md'),
+    readWorkspaceFile('USER.md'),
+    readWorkspaceFile('IDENTITY.md'),
     readVaultFile('00-vault-index.md'),
   ])
 

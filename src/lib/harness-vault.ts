@@ -44,7 +44,7 @@ const OBSIDIAN_VAULT_ROOT = process.env.MC_OBSIDIAN_VAULT_ROOT || process.env.OB
 
 // TODO: During development, empty tenant agent directories fall back to vault-template/Agent-TEMPLATE below.
 const tenantAgentDir: Record<BoundaryTenant, string> = {
-  'ceo-assistant-v1': 'Agent-Main',
+  'wechat-mp-agent': 'Agent-Main',
   'media-intel-v1': 'Agent-MediaIntel',
   'web3-research-v1': 'Agent-Web3Research',
 }

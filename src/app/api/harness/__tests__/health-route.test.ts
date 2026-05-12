@@ -34,7 +34,7 @@ describe('GET /api/harness/health', () => {
     }
   }
 
-  function request(tenant = 'ceo-assistant-v1') {
+  function request(tenant = 'wechat-mp-agent') {
     return new NextRequest(`http://localhost/api/harness/health?tenant=${tenant}`)
   }
 
@@ -52,26 +52,26 @@ const cases = [
   ...Array.from({ length: 3 }, (_, index) => ({ suite: 'Cross-session', testId: 'CROSS-CEO-' + String(index + 1).padStart(2, '0'), title: 'Cross ' + index, prompt: 'cross' })),
   ...Array.from({ length: ${total === 46 ? 8 : 1} }, (_, index) => ({ suite: 'Drift', testId: 'DFT-TRIG-' + String(index + 1).padStart(2, '0'), title: 'Drift ' + index, prompt: 'drift' })),
 ]
-console.log(JSON.stringify({ tenant: 'ceo-assistant-v1', template: 'ceo-assistant-v1', total: cases.length, cases }))
+console.log(JSON.stringify({ tenant: 'wechat-mp-agent', template: 'wechat-mp-agent', total: cases.length, cases }))
 `, 'utf8')
   }
 
   async function writeHarnessFiles() {
-    await mkdir(path.join(harnessRoot, 'phase0/templates/ceo-assistant-v1/tests'), { recursive: true })
-    await mkdir(path.join(harnessRoot, 'phase0/templates/ceo-assistant-v1/config'), { recursive: true })
+    await mkdir(path.join(harnessRoot, 'phase0/templates/wechat-mp-agent/tests'), { recursive: true })
+    await mkdir(path.join(harnessRoot, 'phase0/templates/wechat-mp-agent/config'), { recursive: true })
     await writeFile(path.join(harnessRoot, 'package.json'), '{"name":"harness-test"}\n', 'utf8')
-    await writeFile(path.join(harnessRoot, 'phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md'), '# Golden', 'utf8')
-    await writeFile(path.join(harnessRoot, 'phase0/templates/ceo-assistant-v1/tests/adversarial-25-cc.md'), '# Adversarial', 'utf8')
-    await writeFile(path.join(harnessRoot, 'phase0/templates/ceo-assistant-v1/tests/cross-session-3-cc.md'), '# Cross', 'utf8')
-    await writeFile(path.join(harnessRoot, 'phase0/templates/ceo-assistant-v1/tests/drift-8-cc.md'), '# Drift', 'utf8')
-    await writeFile(path.join(harnessRoot, 'phase0/templates/ceo-assistant-v1/config/boundary-rules.json'), '{}', 'utf8')
+    await writeFile(path.join(harnessRoot, 'phase0/templates/wechat-mp-agent/tests/golden-10-cc.md'), '# Golden', 'utf8')
+    await writeFile(path.join(harnessRoot, 'phase0/templates/wechat-mp-agent/tests/adversarial-25-cc.md'), '# Adversarial', 'utf8')
+    await writeFile(path.join(harnessRoot, 'phase0/templates/wechat-mp-agent/tests/cross-session-3-cc.md'), '# Cross', 'utf8')
+    await writeFile(path.join(harnessRoot, 'phase0/templates/wechat-mp-agent/tests/drift-8-cc.md'), '# Drift', 'utf8')
+    await writeFile(path.join(harnessRoot, 'phase0/templates/wechat-mp-agent/config/boundary-rules.json'), '{}', 'utf8')
   }
 
   async function writeFakeDocker(mode: 'healthy' | 'missing' = 'healthy') {
     dockerPath = path.join(harnessRoot, 'fake-docker.mjs')
     await writeFile(dockerPath, `#!/usr/bin/env node
 if (${JSON.stringify(mode)} === 'missing') {
-  console.error('No such container: ceo-assistant-v1')
+  console.error('No such container: wechat-mp-agent')
   process.exit(1)
 }
 console.log(JSON.stringify([{ State: { Running: true, Health: { Status: 'healthy' } } }]))
@@ -111,12 +111,12 @@ console.log(JSON.stringify([{ State: { Running: true, Health: { Status: 'healthy
     expect(response.status).toBe(200)
     expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'viewer')
     expect(body.status).toBe('ready')
-    expect(body.tenant).toBe('ceo-assistant-v1')
-    expect(body.template).toBe('ceo-assistant-v1')
+    expect(body.tenant).toBe('wechat-mp-agent')
+    expect(body.template).toBe('wechat-mp-agent')
     expect(body.total_cases).toBe(46)
-    expect(body.runtime_target).toBe('docker exec ceo-assistant-v1')
+    expect(body.runtime_target).toBe('docker exec wechat-mp-agent')
     expect(body.container).toMatchObject({
-      name: 'ceo-assistant-v1',
+      name: 'wechat-mp-agent',
       status: 'pass',
       running: true,
       health: 'healthy',
@@ -145,14 +145,14 @@ console.log(JSON.stringify([{ State: { Running: true, Health: { Status: 'healthy
 
     expect(response.status).toBe(200)
     expect(body.status).toBe('blocked')
-    expect(body.runtime_target).toBe('docker exec ceo-assistant-v1')
+    expect(body.runtime_target).toBe('docker exec wechat-mp-agent')
     expect(body.container).toMatchObject({
-      name: 'ceo-assistant-v1',
+      name: 'wechat-mp-agent',
       status: 'fail',
       running: false,
       health: null,
     })
-    expect(body.container.detail).toContain('No such container: ceo-assistant-v1')
+    expect(body.container.detail).toContain('No such container: wechat-mp-agent')
     expect(body.checks.find((check: any) => check.id === 'runtime_container')).toMatchObject({
       status: 'fail',
     })

@@ -59,7 +59,7 @@ function jsonResponse(body: unknown, ok = true) {
 }
 
 function setCustomerMode(role = 'customer-admin') {
-  window.history.pushState({}, '', `/?role=${encodeURIComponent(role)}&tenant=ceo-assistant-v1`)
+  window.history.pushState({}, '', `/?role=${encodeURIComponent(role)}&tenant=wechat-mp-agent`)
   document.cookie = `mc-view-role=${encodeURIComponent(role)}; path=/`
 }
 
@@ -81,7 +81,7 @@ describe('customer-mode panels', () => {
 
   it('masks tenant provider keys and hides marked master keys for customers', async () => {
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {
-      if (url === '/api/harness/providers?tenantId=ceo-assistant-v1') {
+      if (url === '/api/harness/providers?tenantId=wechat-mp-agent') {
         return Promise.resolve(jsonResponse({
           providers: [
             {
@@ -120,7 +120,7 @@ describe('customer-mode panels', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/harness/providers/openai', expect.objectContaining({
         method: 'DELETE',
-        body: JSON.stringify({ tenantId: 'ceo-assistant-v1' }),
+        body: JSON.stringify({ tenantId: 'wechat-mp-agent' }),
       }))
     })
   })
@@ -130,19 +130,19 @@ describe('customer-mode panels', () => {
       if (url === '/api/settings') {
         return Promise.resolve(jsonResponse({ error: 'Admin access required' }, false))
       }
-      if (url === '/api/harness/budget/ceo-assistant-v1') {
+      if (url === '/api/harness/budget/wechat-mp-agent') {
         return Promise.resolve(jsonResponse({
           monthly_budget_usd: 50,
           alert_at_percent: 80,
           action_on_exceed: 'pause',
         }))
       }
-      if (url === '/api/harness/billing/ceo-assistant-v1') {
+      if (url === '/api/harness/billing/wechat-mp-agent') {
         return Promise.resolve(jsonResponse({
           totals: { estimatedCostUsd: 12.5, totalTokens: 1400, calls: 9 },
         }))
       }
-      if (url === '/api/harness/providers?tenantId=ceo-assistant-v1') {
+      if (url === '/api/harness/providers?tenantId=wechat-mp-agent') {
         return Promise.resolve(jsonResponse({
           providers: [
             { name: 'openai', baseUrl: 'https://api.openai.com/v1', keyLast4: '7890' },
@@ -150,7 +150,7 @@ describe('customer-mode panels', () => {
           ],
         }))
       }
-      if (url === '/api/harness/tenant/ceo-assistant-v1/preferences' && (!init || init.method === undefined)) {
+      if (url === '/api/harness/tenant/wechat-mp-agent/preferences' && (!init || init.method === undefined)) {
         return Promise.resolve(jsonResponse({
           default_model: 'anthropic',
           notifications: {
@@ -160,7 +160,7 @@ describe('customer-mode panels', () => {
           },
         }))
       }
-      if (url === '/api/harness/tenant/ceo-assistant-v1/preferences' && init?.method === 'PATCH') {
+      if (url === '/api/harness/tenant/wechat-mp-agent/preferences' && init?.method === 'PATCH') {
         return Promise.resolve(jsonResponse({
           default_model: 'openai',
           notifications: {
@@ -193,7 +193,7 @@ describe('customer-mode panels', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save preferences' }))
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/harness/tenant/ceo-assistant-v1/preferences', expect.objectContaining({
+      expect(fetchMock).toHaveBeenCalledWith('/api/harness/tenant/wechat-mp-agent/preferences', expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({
           default_model: 'openai',
@@ -242,7 +242,7 @@ describe('customer-mode panels', () => {
       if (url === '/api/agents') {
         return Promise.resolve(jsonResponse({ agents: [customerAgent] }))
       }
-      if (url === '/api/langfuse/agent-stats?tenantId=ceo-assistant-v1') {
+      if (url === '/api/langfuse/agent-stats?tenantId=wechat-mp-agent') {
         return Promise.resolve(jsonResponse({
           agents: [
             {

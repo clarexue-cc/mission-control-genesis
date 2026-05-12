@@ -11,7 +11,7 @@ type StableModeEnv = Partial<Pick<NodeJS.ProcessEnv,
   | 'NEXT_PUBLIC_MC_STABLE_FIXED'
 >>
 
-export const FIXED_DEV_DEFAULT_TENANT_ID = 'ceo-assistant-v1'
+export const FIXED_DEV_DEFAULT_TENANT_ID = 'wechat-mp-agent'
 export const LEGACY_DEFAULT_CUSTOMER_TENANT_ID = 'media-intel-v1'
 
 const clientStableEnv: StableModeEnv = {

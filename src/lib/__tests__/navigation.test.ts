@@ -6,9 +6,9 @@ describe('panel navigation hrefs', () => {
   it('keeps customer tenant and role context on cron links', () => {
     expect(
       buildPanelNavigationHref('cron', {
-        search: '?tenant=ceo-assistant-v1&role=customer',
+        search: '?tenant=wechat-mp-agent&role=customer',
       })
-    ).toBe('/cron?tenant=ceo-assistant-v1&role=customer')
+    ).toBe('/cron?tenant=wechat-mp-agent&role=customer')
   })
 
   it('keeps explicit customer checkpoint role on tenant-scoped links', () => {
@@ -16,8 +16,8 @@ describe('panel navigation hrefs', () => {
       buildPanelNavigationHref('overview', {
         tenantScoped: true,
         role: 'customer',
-        search: '?tenant=ceo-assistant-v1',
+        search: '?tenant=wechat-mp-agent',
       })
-    ).toBe('/?tenant=ceo-assistant-v1&role=customer')
+    ).toBe('/?tenant=wechat-mp-agent&role=customer')
   })
 })

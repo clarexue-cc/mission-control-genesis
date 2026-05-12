@@ -145,7 +145,7 @@ function StatusLights({ status }: { status: CheckStatus }) {
 export function DeliveryChecklistPanel() {
   const navigateToPanel = useNavigateToPanel()
   const [tenant, setTenant] = useState(readTenantFromLocation)
-  const [availableTenants, setAvailableTenants] = useState(['ceo-assistant-v1', 'media-intel-v1', 'web3-research-v1'])
+  const [availableTenants, setAvailableTenants] = useState(['wechat-mp-agent'])
   const [profile, setProfile] = useState<'strict' | 'green'>('strict')
   const [report, setReport] = useState<ReadyToShipReport | null>(null)
   const [loading, setLoading] = useState(true)
@@ -172,7 +172,7 @@ export function DeliveryChecklistPanel() {
       const body = await response.json() as ReadyToShipReport
       if (!response.ok) throw new Error(body.error || 'Failed to run ready-to-ship checks')
       setReport(body)
-      setAvailableTenants(body.tenants?.length ? body.tenants : ['ceo-assistant-v1', 'media-intel-v1', 'web3-research-v1'])
+      setAvailableTenants(body.tenants?.length ? body.tenants : ['wechat-mp-agent'])
       const firstProblem = body.checks.find(check => check.status === 'fail' || check.status === 'warn')
       setExpanded(firstProblem ? new Set([firstProblem.check_id]) : new Set())
     } catch (nextError) {

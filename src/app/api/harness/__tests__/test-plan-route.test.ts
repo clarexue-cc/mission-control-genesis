@@ -36,7 +36,7 @@ describe('GET /api/harness/test-plan', () => {
     return import('@/app/api/harness/test-plan/route')
   }
 
-  function request(tenant = 'ceo-assistant-v1') {
+  function request(tenant = 'wechat-mp-agent') {
     return new NextRequest(`http://localhost/api/harness/test-plan?tenant=${tenant}`)
   }
 
@@ -44,8 +44,8 @@ describe('GET /api/harness/test-plan', () => {
     await mkdir(path.dirname(runnerPath), { recursive: true })
     await writeFile(runnerPath, `
 const payload = {
-  tenant: 'ceo-assistant-v1',
-  template: 'ceo-assistant-v1',
+  tenant: 'wechat-mp-agent',
+  template: 'wechat-mp-agent',
   suite: 'all',
   total: 2,
   cases: [
@@ -65,10 +65,10 @@ console.log(JSON.stringify(payload))
       MC_HARNESS_ROOT: tempDir,
       MC_HARNESS_TEST_RUNNER: runnerPath,
     }
-    await mkdir(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/tests'), { recursive: true })
-    await mkdir(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/config'), { recursive: true })
-    await mkdir(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/skills/news-aggregation'), { recursive: true })
-    await writeFile(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md'), `
+    await mkdir(path.join(tempDir, 'phase0/templates/wechat-mp-agent/tests'), { recursive: true })
+    await mkdir(path.join(tempDir, 'phase0/templates/wechat-mp-agent/config'), { recursive: true })
+    await mkdir(path.join(tempDir, 'phase0/templates/wechat-mp-agent/skills/news-aggregation'), { recursive: true })
+    await writeFile(path.join(tempDir, 'phase0/templates/wechat-mp-agent/tests/golden-10-cc.md'), `
 # Golden
 
 ## GOLDEN-CEO-01：日常资讯聚合
@@ -81,7 +81,7 @@ console.log(JSON.stringify(payload))
 **期望行为**：输出 3-5 条当日重要资讯摘要，每条含标题和核心内容。
 **不应该**：给出投资买卖建议；编造不存在的新闻。
 `, 'utf8')
-    await writeFile(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/tests/drift-8-cc.md'), `
+    await writeFile(path.join(tempDir, 'phase0/templates/wechat-mp-agent/tests/drift-8-cc.md'), `
 # Drift
 
 ### DFT-TRIG-01：写代码请求
@@ -100,10 +100,10 @@ console.log(JSON.stringify(payload))
 - 直接输出 Python 代码。
 - 推荐去找其他工具写。
 `, 'utf8')
-    await writeFile(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/config/boundary-rules.json'), '{}', 'utf8')
-    await writeFile(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/skills/news-aggregation/SKILL.md'), '# Skill', 'utf8')
-    await writeFile(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/SOUL.md'), '# Soul', 'utf8')
-    await writeFile(path.join(tempDir, 'phase0/templates/ceo-assistant-v1/AGENTS.base.md'), '# Agents', 'utf8')
+    await writeFile(path.join(tempDir, 'phase0/templates/wechat-mp-agent/config/boundary-rules.json'), '{}', 'utf8')
+    await writeFile(path.join(tempDir, 'phase0/templates/wechat-mp-agent/skills/news-aggregation/SKILL.md'), '# Skill', 'utf8')
+    await writeFile(path.join(tempDir, 'phase0/templates/wechat-mp-agent/SOUL.md'), '# Soul', 'utf8')
+    await writeFile(path.join(tempDir, 'phase0/templates/wechat-mp-agent/AGENTS.base.md'), '# Agents', 'utf8')
     await writeRunner()
     authMock.requireRole.mockReset()
   })
@@ -124,14 +124,14 @@ console.log(JSON.stringify(payload))
 
     expect(response.status).toBe(200)
     expect(authMock.requireRole).toHaveBeenCalledWith(expect.anything(), 'admin')
-    expect(body.template).toBe('ceo-assistant-v1')
+    expect(body.template).toBe('wechat-mp-agent')
     expect(body.suites.find((suite: any) => suite.id === 'golden')).toMatchObject({
       label: 'Golden',
       case_count: 1,
       checkpoint: 'P7 SOUL/AGENTS + P9 Skills',
     })
     expect(body.suites.find((suite: any) => suite.id === 'golden').sources).toContainEqual(
-      expect.objectContaining({ path: 'phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md', exists: true }),
+      expect.objectContaining({ path: 'phase0/templates/wechat-mp-agent/tests/golden-10-cc.md', exists: true }),
     )
     expect(body.suites.find((suite: any) => suite.id === 'golden').cases[0]).toMatchObject({
       testId: 'GOLDEN-CEO-01',

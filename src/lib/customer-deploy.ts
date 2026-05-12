@@ -29,6 +29,8 @@ export interface CustomerDeployState {
   deployStatusPath: string
   deployStatus: CustomerDeployStatus | null
   vaultTree: VaultTreeNode[]
+  workspaceTree: VaultTreeNode[]
+  openclawConfig: Record<string, unknown> | null
 }
 
 export interface CustomerDeployResult extends CustomerDeployState {
@@ -231,10 +233,35 @@ async function readVaultTree(root: string, logicalPrefix = 'vault', depth = 3): 
   return nodes
 }
 
+async function readOpenclawConfig(tenantRoot: string): Promise<Record<string, unknown> | null> {
+  try {
+    const configPath = resolveWithin(tenantRoot, 'config/openclaw.json')
+    const config = JSON.parse(await readFile(configPath, 'utf8'))
+    // Merge harness-meta.json (genesis-harness custom fields) so the UI can display them
+    try {
+      const metaPath = resolveWithin(tenantRoot, 'config/harness-meta.json')
+      const meta = JSON.parse(await readFile(metaPath, 'utf8'))
+      if (meta) {
+        config.meta = { ...config.meta, ...meta }
+        if (meta.platform) config.platform = meta.platform
+        if (meta.model_strategy) {
+          config.agents = config.agents || {}
+          config.agents.defaults = config.agents.defaults || {}
+          config.agents.defaults.model = { ...(config.agents.defaults.model || {}), ...meta.model_strategy }
+        }
+      }
+    } catch { /* harness-meta.json is optional */ }
+    return config
+  } catch {
+    return null
+  }
+}
+
 export async function readCustomerDeployState(tenantId: string): Promise<CustomerDeployState> {
   const paths = await resolveCustomerDeployPaths(tenantId)
   const confirmationExists = await fileExists(paths.confirmationPath)
   const confirmationContent = confirmationExists ? await readFile(paths.confirmationPath, 'utf8') : ''
+  const workspaceRoot = resolveWithin(paths.tenantRoot, 'workspace')
   return {
     tenantId: paths.tenantId,
     tenantRoot: `phase0/tenants/${paths.tenantId}`,
@@ -244,6 +271,8 @@ export async function readCustomerDeployState(tenantId: string): Promise<Custome
     deployStatusPath: paths.deployStatusRelativePath,
     deployStatus: await readDeployStatus(paths.deployStatusPath),
     vaultTree: await readVaultTree(paths.vaultRoot),
+    workspaceTree: await readVaultTree(workspaceRoot, 'workspace'),
+    openclawConfig: await readOpenclawConfig(paths.tenantRoot),
   }
 }
 

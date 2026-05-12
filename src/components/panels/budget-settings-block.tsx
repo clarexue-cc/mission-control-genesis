@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 export const TENANT_OPTIONS = [
-  { id: 'ceo-assistant-v1', label: 'CEO Assistant' },
+  { id: 'wechat-mp-agent', label: '公众号主编' },
   { id: 'media-intel-v1', label: 'Media Intel' },
   { id: 'web3-research-v1', label: 'Web3 Research' },
   { id: 'tenant-luo-001', label: 'Luo Tenant' },

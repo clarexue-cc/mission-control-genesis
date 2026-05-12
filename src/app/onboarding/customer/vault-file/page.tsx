@@ -21,16 +21,18 @@ function firstParam(value: SearchParamValue): string | undefined {
   return Array.isArray(value) ? value[0] : value
 }
 
-function normalizeVaultRelativePath(value: SearchParamValue): string {
-  const raw = (firstParam(value) || 'vault').trim()
-  if (!raw || raw === 'vault' || raw === 'vault/') return ''
+function normalizeVaultRelativePath(rawInput: string | undefined): string {
+  const raw = (rawInput || 'vault').trim()
+  if (!raw || raw === 'vault' || raw === 'vault/' || raw === 'workspace' || raw === 'workspace/') return ''
   if (path.isAbsolute(raw) || path.win32.isAbsolute(raw) || raw.includes('\0')) {
     throw new Error('Invalid vault path')
   }
 
   let normalized = raw.replace(/\\/g, '/').replace(/^\/+/, '')
   if (normalized === 'vault' || normalized === 'vault/') return ''
+  if (normalized === 'workspace' || normalized === 'workspace/') return ''
   if (normalized.startsWith('vault/')) normalized = normalized.slice('vault/'.length)
+  if (normalized.startsWith('workspace/')) normalized = normalized.slice('workspace/'.length)
 
   const segments = normalized.split('/').filter(Boolean)
   if (segments.some(segment => segment === '.' || segment === '..')) {
@@ -39,8 +41,8 @@ function normalizeVaultRelativePath(value: SearchParamValue): string {
   return segments.join('/')
 }
 
-function vaultHref(tenant: string, relativePath: string) {
-  const logicalPath = relativePath ? `vault/${relativePath}` : 'vault'
+function vaultHref(tenant: string, relativePath: string, prefix = 'vault') {
+  const logicalPath = relativePath ? `${prefix}/${relativePath}` : prefix
   return `/onboarding/customer/vault-file?tenant=${encodeURIComponent(tenant)}&path=${encodeURIComponent(logicalPath)}`
 }
 
@@ -106,11 +108,14 @@ export default async function CustomerVaultFilePage({
 
   const params = (await searchParams) || {}
   const tenant = normalizeCustomerTenantId(firstParam(params.tenant) || resolveDefaultCustomerTenantId())
-  const relativePath = normalizeVaultRelativePath(params.path)
+  const rawPath = firstParam(params.path) || ''
+  const isWorkspacePath = rawPath.startsWith('workspace/') || rawPath === 'workspace'
+  const subDir = isWorkspacePath ? 'workspace' : 'vault'
+  const relativePath = normalizeVaultRelativePath(isWorkspacePath ? rawPath.replace(/^workspace\/?/, '') : rawPath)
   const harnessRoot = await resolveHarnessRoot()
-  const vaultRoot = resolveWithin(harnessRoot, `phase0/tenants/${tenant}/vault`)
+  const vaultRoot = resolveWithin(harnessRoot, `phase0/tenants/${tenant}/${subDir}`)
   const targetPath = resolveWithin(vaultRoot, relativePath || '.')
-  const logicalPath = relativePath ? `vault/${relativePath}` : 'vault/'
+  const logicalPath = relativePath ? `${subDir}/${relativePath}` : `${subDir}/`
   const backHref = `/onboarding/customer/deploy?role=admin&tenant=${encodeURIComponent(tenant)}`
   const stats = await stat(targetPath).catch(() => null)
 
@@ -146,7 +151,7 @@ export default async function CustomerVaultFilePage({
       <div className="mx-auto flex max-w-6xl flex-col gap-5">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P6 Vault 查看</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P6 {isWorkspacePath ? 'Workspace' : 'Vault'} 查看</p>
             <h1 className="mt-2 break-words text-2xl font-semibold tracking-normal">{logicalPath}</h1>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
               这里读取的是 P6 真实创建出来的 tenant vault 文件；OpenClaw/Obsidian 只是后续运行或查看入口，不是本页的数据源。
@@ -164,7 +169,7 @@ export default async function CustomerVaultFilePage({
           </div>
           <div className="rounded-md border border-border bg-card p-4">
             <div className="text-xs text-muted-foreground">当前来源</div>
-            <div className="mt-1 text-sm font-semibold text-primary">Harness tenant vault</div>
+            <div className="mt-1 text-sm font-semibold text-primary">Harness tenant {isWorkspacePath ? 'workspace' : 'vault'}</div>
           </div>
           <div className="rounded-md border border-border bg-card p-4">
             <div className="text-xs text-muted-foreground">节点标记</div>
@@ -198,7 +203,7 @@ export default async function CustomerVaultFilePage({
                         {stageLabel(childRelativePath, childIsDirectory)}
                       </span>
                       <Button asChild variant="outline" size="sm">
-                        <Link href={vaultHref(tenant, childRelativePath)}>查看</Link>
+                        <Link href={vaultHref(tenant, childRelativePath, subDir)}>查看</Link>
                       </Button>
                     </div>
                   </div>

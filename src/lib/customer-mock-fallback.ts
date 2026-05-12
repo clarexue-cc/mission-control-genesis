@@ -20,8 +20,8 @@ function markdownEscape(value: string): string {
   return cleanDisplayValue(value).replace(/\|/g, '\\|')
 }
 
-function normalizeTenantKey(tenantId: string): 'ceo-assistant-v1' | 'media-intel-v1' | 'web3-research-v1' | 'default' {
-  if (tenantId === 'ceo-assistant-v1') return 'ceo-assistant-v1'
+function normalizeTenantKey(tenantId: string): 'wechat-mp-agent' | 'media-intel-v1' | 'web3-research-v1' | 'default' {
+  if (tenantId === 'wechat-mp-agent') return 'wechat-mp-agent'
   if (tenantId === 'media-intel-v1') return 'media-intel-v1'
   if (tenantId === 'web3-research-v1') return 'web3-research-v1'
   return 'default'
@@ -327,7 +327,7 @@ function defaultAnalysisDraft(): CustomerAnalysisDraft {
 
 export function buildMockCustomerAnalysisDraft(tenantId: string, _intakeRaw: string): CustomerAnalysisDraft {
   switch (normalizeTenantKey(tenantId)) {
-    case 'ceo-assistant-v1':
+    case 'wechat-mp-agent':
       return ceoAnalysisDraft()
     case 'media-intel-v1':
       return mediaIntelAnalysisDraft()
@@ -420,7 +420,7 @@ export function buildMockCustomerSoulDraft(
   provider: MockFallbackProvider,
 ): MockCustomerSoulDraft {
   const key = normalizeTenantKey(tenantId)
-  if (key === 'ceo-assistant-v1') {
+  if (key === 'wechat-mp-agent') {
     const common = {
       tenantId,
       mode,

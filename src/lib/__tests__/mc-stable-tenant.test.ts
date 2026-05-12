@@ -9,17 +9,17 @@ import {
 
 const tenants = [
   { id: 1, slug: 'media-intel-v1', display_name: 'Media Intel' },
-  { id: 2, slug: 'ceo-assistant-v1', display_name: 'CEO Assistant' },
+  { id: 2, slug: 'wechat-mp-agent', display_name: 'CEO Assistant' },
   { id: 3, slug: 'web3-research-v1', display_name: 'Web3 Research' },
 ]
 
 describe('mc stable tenant defaults', () => {
-  it('uses ceo-assistant-v1 as the fixed dev preview default tenant', () => {
+  it('uses wechat-mp-agent as the fixed dev preview default tenant', () => {
     const env = { NODE_ENV: 'development' } as NodeJS.ProcessEnv
 
-    expect(FIXED_DEV_DEFAULT_TENANT_ID).toBe('ceo-assistant-v1')
-    expect(resolveDefaultCustomerTenantId(env)).toBe('ceo-assistant-v1')
-    expect(resolveCustomerTenantId(new URLSearchParams(), undefined, env)).toBe('ceo-assistant-v1')
+    expect(FIXED_DEV_DEFAULT_TENANT_ID).toBe('wechat-mp-agent')
+    expect(resolveDefaultCustomerTenantId(env)).toBe('wechat-mp-agent')
+    expect(resolveCustomerTenantId(new URLSearchParams(), undefined, env)).toBe('wechat-mp-agent')
   })
 
   it('lets URL tenant override the fixed default', () => {

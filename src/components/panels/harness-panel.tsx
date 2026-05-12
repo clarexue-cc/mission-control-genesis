@@ -776,7 +776,7 @@ export function HarnessPanel() {
 
             <MetricCard
               label="下一步"
-              value={runtimeStatus === 'pass' ? '去 P10 跑测试' : '修 ceo-assistant-v1 container'}
+              value={runtimeStatus === 'pass' ? '去 P10 跑测试' : '修 tenant container'}
               detail={runtimeStatus === 'pass'
                 ? '再回 P10 看通过、失败和反馈。'
                 : '题库已就绪，阻塞点不是测试题。'}

@@ -126,7 +126,7 @@ const HERMES_CRON_JOBS_FILE = process.env.HERMES_CRON_JOBS_FILE || path.join(HER
 const HERMES_CRON_ALLOWLIST_FILE = process.env.HERMES_CRON_ALLOWLIST_FILE || path.join(HERMES_HOME, 'cron', 'allowlist.yaml')
 const HERMES_OPENCLAW_MONITOR_JOB_ID = 'mission-control-openclaw-heartbeat'
 const HERMES_TENANT_AGENT_DIRS: Record<string, string[]> = {
-  'ceo-assistant-v1': ['Agent-Main'],
+  'wechat-mp-agent': ['Agent-Main'],
   'media-intel-v1': ['Agent-MediaIntel'],
   'web3-research-v1': ['Agent-Web3Research'],
 }

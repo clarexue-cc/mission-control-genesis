@@ -69,7 +69,7 @@ describe('GET /api/onboarding/customer/skills/inventory', () => {
   })
 
   it('returns read-only tenant Skill inventory across valid tenants', async () => {
-    await writeSkill('ceo-assistant-v1', 'course-ppt-generator', `# 课程 PPT 生成
+    await writeSkill('wechat-mp-agent', 'course-ppt-generator', `# 课程 PPT 生成
 
 > Source: P9 customer-specific Skill file
 
@@ -92,11 +92,11 @@ describe('GET /api/onboarding/customer/skills/inventory', () => {
     expect(body.total).toBe(2)
     expect(body.skills).toEqual([
       expect.objectContaining({
-        tenant_id: 'ceo-assistant-v1',
+        tenant_id: 'wechat-mp-agent',
         skill_name: 'course-ppt-generator',
         title: '课程 PPT 生成',
         vault_path: 'vault/skills/course-ppt-generator.md',
-        path: 'phase0/tenants/ceo-assistant-v1/vault/skills/course-ppt-generator.md',
+        path: 'phase0/tenants/wechat-mp-agent/vault/skills/course-ppt-generator.md',
         excerpt: '把课程大纲生成可交付 PPT。',
       }),
       expect.objectContaining({

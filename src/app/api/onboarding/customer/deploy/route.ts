@@ -41,6 +41,8 @@ export async function GET(request: NextRequest) {
       deploy_status_path: state.deployStatusPath,
       deploy_status: state.deployStatus,
       vault_tree: state.vaultTree,
+      workspace_tree: state.workspaceTree,
+      openclaw_config: state.openclawConfig,
     })
   } catch (error: any) {
     return errorResponse(error?.message || 'Failed to read OB-S4 state', 500)
@@ -76,6 +78,8 @@ export async function POST(request: NextRequest) {
       deploy_status_path: result.deployStatusPath,
       deploy_status: result.deployStatus,
       vault_tree: result.vaultTree,
+      workspace_tree: result.workspaceTree,
+      openclaw_config: result.openclawConfig,
     })
   } catch (error: any) {
     const message = error?.message || 'Failed to deploy customer tenant'

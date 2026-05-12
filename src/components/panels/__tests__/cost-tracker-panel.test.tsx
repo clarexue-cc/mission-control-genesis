@@ -54,7 +54,7 @@ function jsonResponse(body: unknown, ok = true) {
 }
 
 function setCustomerMode() {
-  window.history.pushState({}, '', '/?role=customer&tenant=ceo-assistant-v1')
+  window.history.pushState({}, '', '/?role=customer&tenant=wechat-mp-agent')
   document.cookie = 'mc-view-role=customer; path=/'
 }
 
@@ -114,7 +114,7 @@ function buildDefaultFetchMock() {
       }))
     }
 
-    if (url === '/api/langfuse/traces?tenantId=ceo-assistant-v1') {
+    if (url === '/api/langfuse/traces?tenantId=wechat-mp-agent') {
       return Promise.resolve(jsonResponse({
         traces: [
           {
@@ -140,7 +140,7 @@ function buildDefaultFetchMock() {
         output: 'tool call summary',
         metadata: {
           source: 'mock',
-          tenantId: 'ceo-assistant-v1',
+          tenantId: 'wechat-mp-agent',
         },
         observations: [
           {
@@ -191,7 +191,7 @@ describe('CostTrackerPanel', () => {
     expect(screen.getByText('892ms')).toBeInTheDocument()
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/langfuse/traces?tenantId=ceo-assistant-v1', expect.objectContaining({
+      expect(fetchMock).toHaveBeenCalledWith('/api/langfuse/traces?tenantId=wechat-mp-agent', expect.objectContaining({
         cache: 'no-store',
       }))
     })

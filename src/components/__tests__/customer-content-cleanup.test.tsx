@@ -49,7 +49,7 @@ function expectNoInternalContent(container: HTMLElement) {
 }
 
 function setCustomerRole(role: Extract<EffectiveRole, 'customer-admin' | 'customer-user'>) {
-  window.history.pushState({}, '', `/?role=${role}&tenant=ceo-assistant-v1`)
+  window.history.pushState({}, '', `/?role=${role}&tenant=wechat-mp-agent`)
   document.cookie = `mc-view-role=${role}; path=/`
 }
 
@@ -79,7 +79,7 @@ describe('customer content cleanup', () => {
       activeTab: 'overview',
       activeTenant: {
         id: 1,
-        slug: 'ceo-assistant-v1',
+        slug: 'wechat-mp-agent',
         display_name: 'CEO Assistant',
         status: 'active',
         linux_user: 'customer',

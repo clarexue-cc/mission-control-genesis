@@ -1052,7 +1052,7 @@ function normalizeCustomerProvider(raw: any): CustomerProviderOption | null {
 
 function CustomerSettingsView() {
   const { activeTenant } = useMissionControl()
-  const tenantId = activeTenant?.slug || 'ceo-assistant-v1'
+  const tenantId = activeTenant?.slug || 'wechat-mp-agent'
   const [providers, setProviders] = useState<CustomerProviderOption[]>([])
   const [modelPreference, setModelPreference] = useState('')
   const [notifications, setNotifications] = useState<CustomerNotifications>(DEFAULT_CUSTOMER_NOTIFICATIONS)

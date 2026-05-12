@@ -35,19 +35,19 @@ describe('fixed dev preview tenant seeding', () => {
     tempDir = ''
   })
 
-  it('seeds ceo-assistant-v1 and links the default workspace to it', async () => {
+  it('seeds wechat-mp-agent and links the default workspace to it', async () => {
     const { getDatabase } = await import('@/lib/db')
     const db = getDatabase()
 
-    const tenant = db.prepare('SELECT id, slug, display_name, status FROM tenants WHERE slug = ?').get('ceo-assistant-v1') as {
+    const tenant = db.prepare('SELECT id, slug, display_name, status FROM tenants WHERE slug = ?').get('wechat-mp-agent') as {
       id: number
       slug: string
       display_name: string
       status: string
     } | undefined
     expect(tenant).toMatchObject({
-      slug: 'ceo-assistant-v1',
-      display_name: 'ceo-assistant-v1',
+      slug: 'wechat-mp-agent',
+      display_name: 'wechat-mp-agent',
       status: 'active',
     })
 

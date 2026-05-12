@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   let tenant
   try {
-    tenant = normalizeBoundaryTemplateTenant(request.nextUrl.searchParams.get('tenant') || 'ceo-assistant-v1')
+    tenant = normalizeBoundaryTemplateTenant(request.nextUrl.searchParams.get('tenant') || process.env.MC_DEFAULT_TENANT || 'wechat-mp-agent')
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Invalid tenant' }, { status: 400 })
   }

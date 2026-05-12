@@ -6,11 +6,11 @@ import { TenantBillingComparison } from '@/components/panels/tenant-billing-comp
 describe('TenantBillingComparison', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn((url: string) => {
-      if (url === '/api/harness/billing/ceo-assistant-v1?month=2026-05') {
+      if (url === '/api/harness/billing/wechat-mp-agent?month=2026-05') {
         return Promise.resolve({
           ok: true,
           json: async () => ({
-            tenant: 'ceo-assistant-v1',
+            tenant: 'wechat-mp-agent',
             month: '2026-05',
             budget: { monthlyBudgetUsd: 100, actionOnExceed: 'pause' },
             totals: { calls: 6, inputTokens: 1200, outputTokens: 900, totalTokens: 2100, estimatedCostUsd: 12.5 },
@@ -33,7 +33,7 @@ describe('TenantBillingComparison', () => {
     render(<TenantBillingComparison initialMonth="2026-05" />)
 
     expect(await screen.findByRole('heading', { name: 'Tenant spend comparison', level: 2 })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Tenant' })).toHaveValue('ceo-assistant-v1')
+    expect(screen.getByRole('combobox', { name: 'Tenant' })).toHaveValue('wechat-mp-agent')
     expect(screen.getByLabelText('Month')).toHaveValue('2026-05')
     expect(screen.getByText('$12.50')).toBeInTheDocument()
     expect(screen.getByText('2,100')).toBeInTheDocument()
@@ -44,7 +44,7 @@ describe('TenantBillingComparison', () => {
     expect(screen.getByText('$4.25')).toBeInTheDocument()
 
     await waitFor(() => {
-      expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/harness/billing/ceo-assistant-v1?month=2026-05', { cache: 'no-store' })
+      expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/harness/billing/wechat-mp-agent?month=2026-05', { cache: 'no-store' })
     })
   })
 })

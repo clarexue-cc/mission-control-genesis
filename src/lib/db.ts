@@ -160,7 +160,7 @@ function ensureFixedDevPreviewTenant(dbConn: Database.Database): void {
     .get() as { ok?: number } | undefined
   if (!tenantsTable?.ok || !workspacesTable?.ok) return
 
-  const tenantSlug = 'ceo-assistant-v1'
+  const tenantSlug = process.env.MC_DEFAULT_TENANT || 'wechat-mp-agent'
   const now = Math.floor(Date.now() / 1000)
   const existing = dbConn.prepare('SELECT id FROM tenants WHERE slug = ? LIMIT 1').get(tenantSlug) as { id?: number } | undefined
   let tenantId = existing?.id ? Number(existing.id) : 0
@@ -171,7 +171,7 @@ function ensureFixedDevPreviewTenant(dbConn: Database.Database): void {
     const values: Record<string, string | number | null> = {
       slug: tenantSlug,
       display_name: tenantSlug,
-      linux_user: 'ceo_assistant_v1',
+      linux_user: tenantSlug.replace(/-/g, '_'),
       plan_tier: 'standard',
       status: 'active',
       openclaw_home: `${home}/.openclaw/tenants/${tenantSlug}`,

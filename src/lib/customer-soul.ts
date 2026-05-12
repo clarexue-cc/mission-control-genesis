@@ -215,7 +215,7 @@ function extractTableValue(section: string, field: string): string {
 
 function buildMockDraft(tenantId: string, analysis: string, mode: CustomerSoulMode, provider: CustomerSoulProvider): CustomerSoulDraft {
   const normalizedTenantId = normalizeCustomerTenantId(tenantId)
-  if (normalizedTenantId === 'ceo-assistant-v1' || normalizedTenantId === 'media-intel-v1' || normalizedTenantId === 'web3-research-v1') {
+  if (normalizedTenantId === 'wechat-mp-agent' || normalizedTenantId === 'media-intel-v1' || normalizedTenantId === 'web3-research-v1') {
     return buildMockCustomerSoulDraft(normalizedTenantId, analysis, mode, provider)
   }
   const skills = extractSkillIds(analysis)

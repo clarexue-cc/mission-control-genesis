@@ -10,7 +10,7 @@ import {
 describe('customer-aware mock fallback templates', () => {
   it.each([
     {
-      tenantId: 'ceo-assistant-v1',
+      tenantId: 'wechat-mp-agent',
       expected: ['CEO', '资讯聚合', '苏格拉底', '课程 PPT', '名人动态追踪'],
       ownIds: ['ceo-news-aggregator', 'socratic-discussion-partner', 'course-ppt-generator', 'notable-person-tracker'],
       foreignIds: ['media-intel-signal-collector', 'web3-six-step-evaluator'],
@@ -47,7 +47,7 @@ describe('customer-aware mock fallback templates', () => {
   })
 
   it.each([
-    ['ceo-assistant-v1', ['CEO 助理人格', 'Hybrid 模式', '7 步 pipeline']],
+    ['wechat-mp-agent', ['CEO 助理人格', 'Hybrid 模式', '7 步 pipeline']],
     ['media-intel-v1', ['媒体情报人格', 'Morning brief', '舆情']],
     ['web3-research-v1', ['投研专家人格', '六步法判断', '链上数据', '合规审查']],
   ])('builds $tenantId SOUL/AGENTS fallback from the tenant template', (tenantId, expected) => {
@@ -59,7 +59,7 @@ describe('customer-aware mock fallback templates', () => {
   })
 
   it.each([
-    'ceo-assistant-v1',
+    'wechat-mp-agent',
     'media-intel-v1',
     'web3-research-v1',
   ])('keeps reviewable template files for $tenantId', async (tenantId) => {

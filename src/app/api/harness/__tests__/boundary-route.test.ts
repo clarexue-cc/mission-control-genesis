@@ -65,7 +65,7 @@ describe('/api/harness boundary routes', () => {
     }
   }
 
-  function getRequest(tenant = 'ceo-assistant-v1') {
+  function getRequest(tenant = 'wechat-mp-agent') {
     return new NextRequest(`http://localhost/api/harness/boundary-rules?tenant=${encodeURIComponent(tenant)}`)
   }
 
@@ -116,16 +116,16 @@ describe('/api/harness boundary routes', () => {
 
   it('reads true full mode when OpenClaw env is configured', async () => {
     useFullModeEnv()
-    await mkdir(path.join(harnessRoot, 'phase0/templates/ceo-assistant-v1/config'), { recursive: true })
+    await mkdir(path.join(harnessRoot, 'phase0/templates/wechat-mp-agent/config'), { recursive: true })
     const { GET } = await loadRoutes()
 
-    const response = await GET(getRequest('ceo-assistant-v1'))
+    const response = await GET(getRequest('wechat-mp-agent'))
     const body = await response.json()
 
     expect(response.status).toBe(200)
     expect(body.mode).toBe('full')
     expect(body.reload_strategy).toBe('reload')
-    expect(body.path).toContain('phase0/templates/ceo-assistant-v1/config/boundary-rules.json')
+    expect(body.path).toContain('phase0/templates/wechat-mp-agent/config/boundary-rules.json')
     expect(body.note).toContain('OpenClaw full mode env')
   })
 
@@ -171,18 +171,18 @@ describe('/api/harness boundary routes', () => {
 
   it('writes the full-mode template path without mock fallback when env is configured', async () => {
     useFullModeEnv()
-    await mkdir(path.join(harnessRoot, 'phase0/templates/ceo-assistant-v1/config'), { recursive: true })
+    await mkdir(path.join(harnessRoot, 'phase0/templates/wechat-mp-agent/config'), { recursive: true })
     const content = stringifyBoundaryRules(rules('full save success'))
     const { POST } = await loadRoutes()
 
-    const response = await POST(postRequest({ tenant: 'ceo-assistant-v1', content }))
+    const response = await POST(postRequest({ tenant: 'wechat-mp-agent', content }))
     const body = await response.json()
 
     expect(response.status).toBe(200)
     expect(body.mode).toBe('full')
     expect(body.method).toBe('reload')
     expect(body.note).not.toContain('mock-fallback')
-    const outputPath = path.join(harnessRoot, 'phase0/templates/ceo-assistant-v1/config/boundary-rules.json')
+    const outputPath = path.join(harnessRoot, 'phase0/templates/wechat-mp-agent/config/boundary-rules.json')
     await expect(readFile(outputPath, 'utf8')).resolves.toContain('full save success')
   })
 

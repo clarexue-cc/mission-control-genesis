@@ -2,35 +2,35 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/mc-stable-mode', () => ({
-  resolveDefaultCustomerTenantId: () => 'ceo-assistant-v1',
+  resolveDefaultCustomerTenantId: () => 'wechat-mp-agent',
 }))
 
 import { HarnessPanel } from '@/components/panels/harness-panel'
 
 const harnessPayload = {
   status: 'blocked',
-  tenant: 'ceo-assistant-v1',
-  template: 'ceo-assistant-v1',
+  tenant: 'wechat-mp-agent',
+  template: 'wechat-mp-agent',
   total_cases: 46,
   harness_root: '/Users/clare/Desktop/genesis-harness',
   runner_path: '/Users/clare/Desktop/genesis-harness/tools/tg-test-runner.ts',
-  runtime_target: 'docker exec ceo-assistant-v1',
+  runtime_target: 'docker exec wechat-mp-agent',
   container: {
-    name: 'ceo-assistant-v1',
+    name: 'wechat-mp-agent',
     status: 'fail',
-    detail: 'No such container: ceo-assistant-v1',
+    detail: 'No such container: wechat-mp-agent',
     running: false,
     health: null,
   },
   suites: [
-    { id: 'golden', label: 'Golden', expected: 10, actual: 10, status: 'pass', file: 'phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md' },
-    { id: 'adversarial', label: 'Adversarial', expected: 25, actual: 25, status: 'pass', file: 'phase0/templates/ceo-assistant-v1/tests/adversarial-25-cc.md' },
-    { id: 'cross-session', label: 'Cross-session', expected: 3, actual: 3, status: 'pass', file: 'phase0/templates/ceo-assistant-v1/tests/cross-session-3-cc.md' },
-    { id: 'drift', label: 'Drift', expected: 8, actual: 8, status: 'pass', file: 'phase0/templates/ceo-assistant-v1/tests/drift-8-cc.md' },
+    { id: 'golden', label: 'Golden', expected: 10, actual: 10, status: 'pass', file: 'phase0/templates/wechat-mp-agent/tests/golden-10-cc.md' },
+    { id: 'adversarial', label: 'Adversarial', expected: 25, actual: 25, status: 'pass', file: 'phase0/templates/wechat-mp-agent/tests/adversarial-25-cc.md' },
+    { id: 'cross-session', label: 'Cross-session', expected: 3, actual: 3, status: 'pass', file: 'phase0/templates/wechat-mp-agent/tests/cross-session-3-cc.md' },
+    { id: 'drift', label: 'Drift', expected: 8, actual: 8, status: 'pass', file: 'phase0/templates/wechat-mp-agent/tests/drift-8-cc.md' },
   ],
   checks: [
-    { id: 'runner_parse', label: 'Runner list-cases', status: 'pass', detail: 'Parsed 46 cases for template ceo-assistant-v1' },
-    { id: 'runtime_container', label: 'Runtime container', status: 'fail', detail: 'No such container: ceo-assistant-v1', action: 'Start or map the tenant container before running P10.' },
+    { id: 'runner_parse', label: 'Runner list-cases', status: 'pass', detail: 'Parsed 46 cases for template wechat-mp-agent' },
+    { id: 'runtime_container', label: 'Runtime container', status: 'fail', detail: 'No such container: wechat-mp-agent', action: 'Start or map the tenant container before running P10.' },
   ],
   latest_report: {
     path: '/Users/clare/Desktop/genesis-harness/phase0/tests/results/latest.md',
@@ -39,8 +39,8 @@ const harnessPayload = {
 }
 
 const planPayload = {
-  tenant: 'ceo-assistant-v1',
-  template: 'ceo-assistant-v1',
+  tenant: 'wechat-mp-agent',
+  template: 'wechat-mp-agent',
   total: 46,
   harness_root: '/Users/clare/Desktop/genesis-harness',
   runner_path: '/Users/clare/Desktop/genesis-harness/tools/tg-test-runner.ts',
@@ -55,15 +55,15 @@ const planPayload = {
       sources: [
         {
           label: '测试题',
-          path: 'phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md',
-          absolute_path: '/Users/clare/Desktop/genesis-harness/phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md',
+          path: 'phase0/templates/wechat-mp-agent/tests/golden-10-cc.md',
+          absolute_path: '/Users/clare/Desktop/genesis-harness/phase0/templates/wechat-mp-agent/tests/golden-10-cc.md',
           exists: true,
           preview: '# Golden\n\nGOLDEN-CEO-01 日常资讯聚合',
         },
         {
           label: '角色要求',
-          path: 'phase0/templates/ceo-assistant-v1/SOUL.md',
-          absolute_path: '/Users/clare/Desktop/genesis-harness/phase0/templates/ceo-assistant-v1/SOUL.md',
+          path: 'phase0/templates/wechat-mp-agent/SOUL.md',
+          absolute_path: '/Users/clare/Desktop/genesis-harness/phase0/templates/wechat-mp-agent/SOUL.md',
           exists: true,
           preview: '# SOUL',
         },
@@ -93,8 +93,8 @@ const planPayload = {
       sources: [
         {
           label: '测试题',
-          path: 'phase0/templates/ceo-assistant-v1/tests/drift-8-cc.md',
-          absolute_path: '/Users/clare/Desktop/genesis-harness/phase0/templates/ceo-assistant-v1/tests/drift-8-cc.md',
+          path: 'phase0/templates/wechat-mp-agent/tests/drift-8-cc.md',
+          absolute_path: '/Users/clare/Desktop/genesis-harness/phase0/templates/wechat-mp-agent/tests/drift-8-cc.md',
           exists: true,
           preview: '# Drift\n\nDFT-TRIG-01 写代码请求',
         },
@@ -142,9 +142,9 @@ describe('HarnessPanel', () => {
     expect(screen.getByText('先修运行环境')).toBeInTheDocument()
     expect(screen.getByText('题库状态')).toBeInTheDocument()
     expect(screen.getByText('下一步')).toBeInTheDocument()
-    expect(screen.getByText('修 ceo-assistant-v1 container')).toBeInTheDocument()
+    expect(screen.getByText('修 wechat-mp-agent container')).toBeInTheDocument()
     expect(screen.getByText('四套测试方向')).toBeInTheDocument()
-    expect(screen.getAllByText('No such container: ceo-assistant-v1').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('No such container: wechat-mp-agent').length).toBeGreaterThan(0)
     expect(screen.getByText('46')).toBeInTheDocument()
     expect(screen.getByText('高级诊断')).toBeInTheDocument()
   })

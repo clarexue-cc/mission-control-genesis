@@ -95,7 +95,7 @@ interface TestPlan {
 }
 
 const tenantOptions = [
-  'ceo-assistant-v1',
+  'wechat-mp-agent',
   'media-intel-v1',
   'tenant-tg-001',
   'tenant-luo-001-dev',

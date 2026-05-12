@@ -6,7 +6,7 @@ import { HarnessProviderManager } from '@/components/panels/harness-provider-man
 describe('HarnessProviderManager', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
-      if (url === '/api/harness/providers?tenantId=ceo-assistant-v1') {
+      if (url === '/api/harness/providers?tenantId=wechat-mp-agent') {
         return Promise.resolve({
           ok: true,
           json: async () => ({
@@ -35,7 +35,7 @@ describe('HarnessProviderManager', () => {
     render(<HarnessProviderManager />)
 
     expect(await screen.findByRole('heading', { name: 'Harness providers', level: 2 })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Tenant' })).toHaveValue('ceo-assistant-v1')
+    expect(screen.getByRole('combobox', { name: 'Tenant' })).toHaveValue('wechat-mp-agent')
     expect(screen.getByText('openai')).toBeInTheDocument()
     expect(screen.getByText('•••• 1234')).toBeInTheDocument()
     expect(screen.getByText('anthropic')).toBeInTheDocument()
@@ -50,7 +50,7 @@ describe('HarnessProviderManager', () => {
       expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/harness/providers', expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
-          tenantId: 'ceo-assistant-v1',
+          tenantId: 'wechat-mp-agent',
           name: 'moonshot',
           baseUrl: 'https://api.moonshot.cn/v1',
           apiKey: 'sk-moonshot',
@@ -63,7 +63,7 @@ describe('HarnessProviderManager', () => {
     await waitFor(() => {
       expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/harness/providers/openai/test', expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ tenantId: 'ceo-assistant-v1' }),
+        body: JSON.stringify({ tenantId: 'wechat-mp-agent' }),
       }))
     })
     expect(await screen.findByText('openai OK')).toBeInTheDocument()

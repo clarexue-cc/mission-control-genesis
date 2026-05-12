@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 interface AgentRow {
@@ -82,6 +82,21 @@ export default function CustomerOnboardingPage() {
   const [result, setResult] = useState<UploadResult | null>(null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [locked, setLocked] = useState(false)
+  const [intakePreview, setIntakePreview] = useState('')
+
+  useEffect(() => {
+    fetch(`/api/onboarding/customer/analyze?tenant_id=${encodeURIComponent(tenantId)}`)
+      .then(res => res.json())
+      .then(body => {
+        if (body?.intake_raw_exists) {
+          setLocked(true)
+          setIntakePreview(body.intake_raw_preview || '')
+        }
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const fileStatus = useMemo(() => {
     if (!file) return '支持 audio/* 与 text/*，最大 100MB'
@@ -137,7 +152,35 @@ export default function CustomerOnboardingPage() {
           </div>
         </header>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {locked && (
+          <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-5 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">✅</span>
+                  <h2 className="text-sm font-semibold text-emerald-800">P3 接入已完成 — 表单已锁定</h2>
+                </div>
+                <p className="mt-1 text-xs text-emerald-700">intake-raw.md 已生成，内容已固定。如需修改，请点击右侧按钮解锁。</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setLocked(false)} className="border-emerald-500/40 text-emerald-800 hover:bg-emerald-500/15">
+                  解锁修改
+                </Button>
+                <Button asChild size="sm" className="bg-emerald-700 text-white hover:bg-emerald-800">
+                  <Link href={`/onboarding/customer/analyze?tenant=${encodeURIComponent(tenantId)}`}>进入 P4 →</Link>
+                </Button>
+              </div>
+            </div>
+            {intakePreview && (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs font-medium text-emerald-700">查看已提交的 intake-raw.md 内容</summary>
+                <pre className="mt-2 max-h-64 overflow-auto rounded-md border border-emerald-500/20 bg-white/60 p-3 text-xs leading-relaxed text-emerald-900">{intakePreview}</pre>
+              </details>
+            )}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className={`space-y-6 ${locked ? 'pointer-events-none opacity-50' : ''}`}>
           {/* Tenant */}
           <div className={card}>
             <div className="flex items-center gap-2">

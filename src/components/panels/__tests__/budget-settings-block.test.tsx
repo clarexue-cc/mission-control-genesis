@@ -6,7 +6,7 @@ import { BudgetSettingsBlock } from '@/components/panels/budget-settings-block'
 describe('BudgetSettingsBlock', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
-      if (url === '/api/harness/budget/ceo-assistant-v1') {
+      if (url === '/api/harness/budget/wechat-mp-agent') {
         return Promise.resolve({
           ok: true,
           json: async () => ({
@@ -16,17 +16,17 @@ describe('BudgetSettingsBlock', () => {
           }),
         })
       }
-      if (url === '/api/harness/billing/ceo-assistant-v1') {
+      if (url === '/api/harness/billing/wechat-mp-agent') {
         return Promise.resolve({
           ok: true,
           json: async () => ({
-            tenant: 'ceo-assistant-v1',
+            tenant: 'wechat-mp-agent',
             totals: { estimatedCostUsd: 20, totalTokens: 4000, calls: 12 },
             byAgent: [{ key: 'Agent-Main', estimatedCostUsd: 20, totalTokens: 4000 }],
           }),
         })
       }
-      if (url === '/api/harness/budget/ceo-assistant-v1' && init?.method === 'POST') {
+      if (url === '/api/harness/budget/wechat-mp-agent' && init?.method === 'POST') {
         return Promise.resolve({ ok: true, json: async () => ({ saved: true }) })
       }
       return Promise.resolve({ ok: true, json: async () => ({}) })
@@ -41,7 +41,7 @@ describe('BudgetSettingsBlock', () => {
     render(<BudgetSettingsBlock />)
 
     expect(await screen.findByRole('heading', { name: 'Tenant budget', level: 2 })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Tenant' })).toHaveValue('ceo-assistant-v1')
+    expect(screen.getByRole('combobox', { name: 'Tenant' })).toHaveValue('wechat-mp-agent')
     expect(screen.getByRole('slider', { name: 'Monthly budget' })).toHaveValue('80')
     expect(screen.getByRole('spinbutton', { name: 'Alert threshold' })).toHaveValue(75)
     expect(screen.getByRole('progressbar', { name: 'Monthly budget usage' })).toHaveAttribute('aria-valuenow', '25')
@@ -53,7 +53,7 @@ describe('BudgetSettingsBlock', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save budget' }))
 
     await waitFor(() => {
-      expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/harness/budget/ceo-assistant-v1', expect.objectContaining({
+      expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/harness/budget/wechat-mp-agent', expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
           monthly_budget_usd: 120,

@@ -44,6 +44,7 @@ export function BaseSelectionPanel() {
   const [selected, setSelected] = useState<BaseOption['id'] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isLocked, setIsLocked] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -56,7 +57,14 @@ export function BaseSelectionPanel() {
         if (!response.ok) throw new Error(body?.error || 'Failed to load base selection')
         if (!cancelled) {
           setData(body)
-          setSelected((body?.selected || activeTenant?.base || null) as BaseOption['id'] | null)
+          const initialBase = (body?.selected || activeTenant?.base || null) as BaseOption['id'] | null
+          setSelected(initialBase)
+          if (initialBase) {
+            setIsLocked(true)
+            if (activeTenant && activeTenant.base !== initialBase) {
+              setActiveTenant({ ...activeTenant, base: initialBase })
+            }
+          }
         }
       } catch (loadError) {
         if (!cancelled) setError(loadError instanceof Error ? loadError.message : String(loadError))
@@ -74,6 +82,7 @@ export function BaseSelectionPanel() {
     if (activeTenant) {
       setActiveTenant({ ...activeTenant, base: selectedOption.id })
     }
+    setIsLocked(true)
     navigateToPanel(selectedOption.id === 'hermes' ? 'onboarding/hermes/profile' : 'onboarding/customer')
   }
 
@@ -92,12 +101,28 @@ export function BaseSelectionPanel() {
             <Button variant="ghost" onClick={() => navigateToPanel('onboarding/platform-ready')}>
               平台就绪
             </Button>
-            <Button onClick={confirmSelection} disabled={!selectedOption || selectedOption.status === 'blocked'}>
-              确认底座
-            </Button>
+            {isLocked ? (
+              <Button variant="outline" onClick={() => setIsLocked(false)}>解锁修改</Button>
+            ) : (
+              <Button onClick={confirmSelection} disabled={!selectedOption || selectedOption.status === 'blocked'}>
+                确认底座
+              </Button>
+            )}
           </div>
         </div>
       </section>
+
+      {isLocked && selected && (
+        <div className="flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
+          <span className="text-lg">✅</span>
+          <div>
+            <div className="text-sm font-semibold text-emerald-200">
+              底座已确认：{data?.options.find(o => o.id === selected)?.label || (selected === 'oc' ? 'OpenClaw (OC)' : selected === 'hermes' ? 'Hermes' : '双底座')}
+            </div>
+            <div className="mt-1 text-xs text-emerald-300/70">如需更改，点击右上角「解锁修改」</div>
+          </div>
+        </div>
+      )}
 
       {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
       {!loading && data && !data.platform_ready && (
@@ -115,13 +140,15 @@ export function BaseSelectionPanel() {
               <button
                 key={option.id}
                 type="button"
-                disabled={option.status === 'blocked'}
-                onClick={() => setSelected(option.id)}
+                disabled={isLocked || option.status === 'blocked'}
+                onClick={() => !isLocked && setSelected(option.id)}
                 className={`rounded-lg border p-4 text-left transition ${
-                  active
+                  active && isLocked
+                    ? 'border-emerald-500/50 bg-emerald-500/10'
+                    : active
                     ? 'border-primary/70 bg-primary/10'
-                    : 'border-border bg-card/70 hover:border-primary/40'
-                } ${option.status === 'blocked' ? 'cursor-not-allowed opacity-60' : ''}`}
+                    : 'border-border bg-card/70'
+                } ${isLocked ? 'cursor-default' : option.status === 'blocked' ? 'cursor-not-allowed opacity-60' : 'hover:border-primary/40'}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>

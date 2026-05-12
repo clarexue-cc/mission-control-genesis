@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const tenants = ['ceo-assistant-v1', 'media-intel-v1', 'web3-research-v1'] as const
+const tenants = ['wechat-mp-agent', 'media-intel-v1', 'web3-research-v1'] as const
 
 vi.mock('@/lib/harness-boundary', () => ({
   BOUNDARY_TENANTS: tenants,
@@ -66,7 +66,7 @@ describe('harness vault helpers', () => {
   it('reads a normal vault file and uses the tenant dedicated agent directory', async () => {
     const { readVaultFile, readVaultTree } = await loadVaultModule()
 
-    const file = await readVaultFile('ceo-assistant-v1', 'Agent-Shared/project-state.md')
+    const file = await readVaultFile('wechat-mp-agent', 'Agent-Shared/project-state.md')
     expect(file.content).toContain('Project State')
     expect(file.obsidian_deeplink).toBe('obsidian://open?vault=test-vault&file=Agent-Shared%2Fproject-state.md')
 
@@ -78,14 +78,14 @@ describe('harness vault helpers', () => {
   it('rejects parent-directory traversal in logical paths', async () => {
     const { readVaultFile } = await loadVaultModule()
 
-    await expect(readVaultFile('ceo-assistant-v1', 'Agent-Shared/../project-state.md')).rejects.toThrow('Invalid vault path')
+    await expect(readVaultFile('wechat-mp-agent', 'Agent-Shared/../project-state.md')).rejects.toThrow('Invalid vault path')
   })
 
   it('rejects absolute filesystem paths', async () => {
     const { readVaultFile } = await loadVaultModule()
     const absolutePath = path.join(vaultRoot, 'Agent-Shared/project-state.md')
 
-    await expect(readVaultFile('ceo-assistant-v1', absolutePath)).rejects.toThrow('Invalid vault path')
+    await expect(readVaultFile('wechat-mp-agent', absolutePath)).rejects.toThrow('Invalid vault path')
   })
 
   it('rejects tenants outside BOUNDARY_TENANTS', async () => {

@@ -79,7 +79,7 @@ export interface ReadyToShipReport {
   checks: ReadyToShipCheckResult[]
 }
 
-export const READY_TO_SHIP_TENANTS = ['media-intel-v1', 'ceo-assistant-v1', 'web3-research-v1'] as const
+export const READY_TO_SHIP_TENANTS = ['media-intel-v1', 'wechat-mp-agent', 'web3-research-v1'] as const
 
 export type ReadyToShipRuntimeMode = 'full' | 'mock-fallback'
 export type RuntimeHealthTarget =

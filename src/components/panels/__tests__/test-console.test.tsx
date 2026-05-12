@@ -2,15 +2,15 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/mc-stable-mode', () => ({
-  resolveDefaultCustomerTenantId: () => 'ceo-assistant-v1',
-  resolveCustomerTenantId: (searchParams: URLSearchParams) => searchParams.get('tenant') || searchParams.get('tenant_id') || 'ceo-assistant-v1',
+  resolveDefaultCustomerTenantId: () => 'wechat-mp-agent',
+  resolveCustomerTenantId: (searchParams: URLSearchParams) => searchParams.get('tenant') || searchParams.get('tenant_id') || 'wechat-mp-agent',
 }))
 
 import { TestConsolePanel } from '@/components/panels/test-console'
 
 const planPayload = {
-  tenant: 'ceo-assistant-v1',
-  template: 'ceo-assistant-v1',
+  tenant: 'wechat-mp-agent',
+  template: 'wechat-mp-agent',
   total: 46,
   harness_root: '/Users/clare/Desktop/genesis-harness',
   runner_path: '/Users/clare/Desktop/genesis-harness/tools/tg-test-runner.ts',
@@ -23,8 +23,8 @@ const planPayload = {
       checkpoint: 'P7 SOUL/AGENTS + P9 Skills',
       objective: '验证 CEO Assistant 的允许业务能力和 skill routing。',
       sources: [
-        { label: '测试题', path: 'phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md', exists: true, preview: '# Golden' },
-        { label: '技能要求', path: 'phase0/templates/ceo-assistant-v1/skills/news-aggregation/SKILL.md', exists: true, preview: '# Skill' },
+        { label: '测试题', path: 'phase0/templates/wechat-mp-agent/tests/golden-10-cc.md', exists: true, preview: '# Golden' },
+        { label: '技能要求', path: 'phase0/templates/wechat-mp-agent/skills/news-aggregation/SKILL.md', exists: true, preview: '# Skill' },
       ],
       criteria: ['回答必须匹配对应 skill 的输出要求。'],
       failure_modes: ['skill 路由错。'],
@@ -48,7 +48,7 @@ const planPayload = {
       case_count: 25,
       checkpoint: 'P8 Boundary forbidden rules',
       objective: '验证越权、泄密、注入类测试。',
-      sources: [{ label: '测试题', path: 'phase0/templates/ceo-assistant-v1/tests/adversarial-25-cc.md', exists: true, preview: '# Adversarial' }],
+      sources: [{ label: '测试题', path: 'phase0/templates/wechat-mp-agent/tests/adversarial-25-cc.md', exists: true, preview: '# Adversarial' }],
       criteria: ['该 block 就 block。'],
       failure_modes: ['放过攻击。'],
       optimization_targets: ['修 P8 boundary pattern。'],
@@ -61,7 +61,7 @@ const planPayload = {
       case_count: 3,
       checkpoint: 'Recall 监控 + SOUL memory_policy',
       objective: '验证跨 session 记忆。',
-      sources: [{ label: '测试题', path: 'phase0/templates/ceo-assistant-v1/tests/cross-session-3-cc.md', exists: true, preview: '# Cross' }],
+      sources: [{ label: '测试题', path: 'phase0/templates/wechat-mp-agent/tests/cross-session-3-cc.md', exists: true, preview: '# Cross' }],
       criteria: ['记得准。'],
       failure_modes: ['召回错记忆。'],
       optimization_targets: ['修 Recall。'],
@@ -74,7 +74,7 @@ const planPayload = {
       case_count: 8,
       checkpoint: 'P8 Boundary drift patterns',
       objective: '验证 agent 不跑偏角色。',
-      sources: [{ label: '测试题', path: 'phase0/templates/ceo-assistant-v1/tests/drift-8-cc.md', exists: true, preview: '# Drift' }],
+      sources: [{ label: '测试题', path: 'phase0/templates/wechat-mp-agent/tests/drift-8-cc.md', exists: true, preview: '# Drift' }],
       criteria: ['反向 DFT-TRIG 应触发角色引导。'],
       failure_modes: ['接受越界请求。'],
       optimization_targets: ['修 P8 drift_patterns。'],
@@ -121,7 +121,7 @@ describe('TestConsolePanel', () => {
       expect(screen.getByText('测试维度与出处')).toBeInTheDocument()
     })
     expect(screen.getAllByText('P7 SOUL/AGENTS + P9 Skills').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('phase0/templates/ceo-assistant-v1/tests/golden-10-cc.md').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('phase0/templates/wechat-mp-agent/tests/golden-10-cc.md').length).toBeGreaterThan(0)
     expect(screen.getAllByText('回答必须匹配对应 skill 的输出要求。').length).toBeGreaterThan(0)
     expect(screen.getAllByText('优化 P9 skills / AGENTS routing。').length).toBeGreaterThan(0)
   })
@@ -136,7 +136,7 @@ describe('TestConsolePanel', () => {
     expect(screen.getByText('Harness runner')).toBeInTheDocument()
     expect(screen.getByText('/Users/clare/Desktop/genesis-harness/tools/tg-test-runner.ts')).toBeInTheDocument()
     expect(screen.getByText('Runtime target')).toBeInTheDocument()
-    expect(screen.getByText('docker exec ceo-assistant-v1')).toBeInTheDocument()
+    expect(screen.getByText('docker exec wechat-mp-agent')).toBeInTheDocument()
   })
 
   it('keeps the four-dimension workspace with suite details on P10', async () => {

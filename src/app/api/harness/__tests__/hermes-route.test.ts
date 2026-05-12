@@ -239,18 +239,18 @@ describe('GET /api/harness/hermes', () => {
       '- 2026-05-05T10:00:00Z | Agent-Kid | ALERT | 卡死告警: stale',
       '',
     ].join('\n'), 'utf8')
-    const dockerError = Object.assign(new Error('No such container: ceo-assistant-v1'), {
-      stderr: 'No such container: ceo-assistant-v1',
+    const dockerError = Object.assign(new Error('No such container: wechat-mp-agent'), {
+      stderr: 'No such container: wechat-mp-agent',
       code: 1,
     })
     commandMock.runCommand.mockRejectedValue(dockerError)
     const GET = await loadGet()
 
-    const response = await GET(request(undefined, '?tenant=ceo-assistant-v1'))
+    const response = await GET(request(undefined, '?tenant=wechat-mp-agent'))
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body.tenant_filter).toBe('ceo-assistant-v1')
+    expect(body.tenant_filter).toBe('wechat-mp-agent')
     expect(body.targets).toHaveLength(1)
     expect(body.targets[0]).toMatchObject({
       agent_dir: 'Agent-Main',

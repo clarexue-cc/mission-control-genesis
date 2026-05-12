@@ -294,7 +294,7 @@ export function CustomerConfirmClient({ username }: { username: string }) {
   }
 
   return (
-    <main className="min-h-screen overflow-auto bg-[#f7f7f2] text-slate-950">
+    <main className="h-screen overflow-y-auto bg-[#f7f7f2] text-slate-950">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
         <header className="border-b border-slate-300 pb-5">
           <div className="flex items-start justify-between gap-4">

@@ -38,7 +38,7 @@ type VaultFileResponse = {
   error?: string
 }
 
-const fallbackTenants = ['ceo-assistant-v1', 'media-intel-v1', 'web3-research-v1']
+const fallbackTenants = ['wechat-mp-agent']
 const panelClassName = 'rounded-lg border border-border bg-card/70'
 
 function formatBytes(value?: number) {
@@ -119,7 +119,7 @@ function VaultTree({
 }
 
 export function VaultBrowserPanel() {
-  const [tenant, setTenant] = useState('ceo-assistant-v1')
+  const [tenant, setTenant] = useState('wechat-mp-agent')
   const [availableTenants, setAvailableTenants] = useState(fallbackTenants)
   const [tree, setTree] = useState<VaultNode[]>([])
   const [selectedPath, setSelectedPath] = useState<string | null>(null)

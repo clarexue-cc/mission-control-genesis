@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
     templateId ? path.join(phase0Dir, 'templates', templateId, 'tests') : null,
     path.join(phase0Dir, 'templates', tenantId, 'tests'),
     path.join(phase0Dir, 'templates', 'media-intel-v1', 'tests'),
-    path.join(phase0Dir, 'templates', 'ceo-assistant-v1', 'tests'),
+    path.join(phase0Dir, 'tenants', tenantId, 'tests'),
   ].filter((value): value is string => Boolean(value))
   const tenantTestsDir = tenantDir ? path.join(tenantDir, 'tests') : ''
 

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { customerCheckpointNavItems } from '@/lib/customer-checkpoint-navigation'
 import { useNavigateToPanel } from '@/lib/navigation'
+import { useMissionControl } from '@/store'
 
 type PhaseStatus = 'done' | 'current' | 'pending' | 'blocked'
 
@@ -24,6 +25,20 @@ interface PhaseResponse {
   checkpoints: typeof customerCheckpointNavItems
 }
 
+interface DeployStateSlim {
+  vault_tree: { name: string; type: string; children?: DeployStateSlim['vault_tree'] }[]
+  confirmation_exists: boolean
+  deploy_status: { status: string; mode: string } | null
+}
+
+function treeHasFile(tree: DeployStateSlim['vault_tree'] | undefined, name: string): boolean {
+  for (const node of tree || []) {
+    if (node.name === name) return true
+    if (node.children && treeHasFile(node.children, name)) return true
+  }
+  return false
+}
+
 const cardClass = 'rounded-lg border border-border bg-card/70'
 
 function statusClass(status: PhaseStatus) {
@@ -42,9 +57,12 @@ function statusLabel(status: PhaseStatus) {
 
 export function OnboardingOverviewPanel() {
   const navigateToPanel = useNavigateToPanel()
+  const { activeTenant } = useMissionControl()
   const [data, setData] = useState<PhaseResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deployState, setDeployState] = useState<DeployStateSlim | null>(null)
+  const [baseFromApi, setBaseFromApi] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -65,6 +83,56 @@ export function OnboardingOverviewPanel() {
     loadPhase().catch(() => {})
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    fetch('/api/harness/base-selection', { cache: 'no-store' })
+      .then(res => res.ok ? res.json() : null)
+      .then(body => { if (body?.selected) setBaseFromApi(body.selected) })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!activeTenant?.slug) return
+    let cancelled = false
+    fetch(`/api/onboarding/customer/deploy?tenant_id=${encodeURIComponent(activeTenant.slug)}`, { cache: 'no-store' })
+      .then(res => res.ok ? res.json() : null)
+      .then(body => { if (!cancelled && body?.ok) setDeployState(body) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [activeTenant?.slug])
+
+  const effectiveBase = activeTenant?.base || baseFromApi
+
+  const cpStatus = useMemo(() => {
+    const s: Record<string, { done: boolean; current: boolean; summary: string }> = {}
+    const base = effectiveBase
+    const hasIntake = treeHasFile(deployState?.vault_tree, 'intake-raw.md')
+    const hasBlueprint = treeHasFile(deployState?.vault_tree, 'intake-analysis.md')
+    const hasConfirm = !!deployState?.confirmation_exists
+    const deployed = deployState?.deploy_status?.status === 'success' || deployState?.deploy_status?.status === 'mock-success'
+    const isMock = deployState?.deploy_status?.mode === 'mock-fallback'
+
+    s['onboarding-overview'] = { done: true, current: false, summary: '全景面板' }
+    s['platform-ready'] = { done: !!data?.platform_ready, current: !data?.platform_ready, summary: data?.platform_ready ? 'phase0 就绪' : '检查中' }
+    s['base-selection'] = { done: !!base, current: !base && !!data?.platform_ready, summary: base ? (base === 'oc' ? 'OpenClaw' : base === 'hermes' ? 'Hermes' : '双底座') : '待选择' }
+
+    s['p3-intake'] = { done: hasIntake, current: !hasIntake && base === 'oc', summary: hasIntake ? 'intake-raw.md 已收集' : '待收集' }
+    s['p4-blueprint'] = { done: hasBlueprint, current: !hasBlueprint && hasIntake, summary: hasBlueprint ? '蓝图已生成' : '待生成' }
+    s['p5-approval'] = { done: hasConfirm, current: !hasConfirm && hasBlueprint, summary: hasConfirm ? '签字确认' : '待签字' }
+    s['p6-deploy'] = { done: deployed, current: !deployed && hasConfirm, summary: deployed ? (isMock ? 'Mock 部署完成' : '部署完成') : '待部署' }
+    s['p7-soul-agents'] = { done: false, current: deployed, summary: deployed ? '待定稿' : '待部署先' }
+    s['p8-boundary'] = { done: false, current: false, summary: '待配置' }
+    s['p9-skills'] = { done: false, current: false, summary: '待配置' }
+
+    for (const id of ['h01-profile-setup', 'h02-boundary-watchdog', 'h03-skill-curator', 'h04-memory-curator', 'h05-output-checker', 'h06-guardian', 'h07-cron-governance']) {
+      s[id] = { done: false, current: false, summary: '待开始' }
+    }
+    s['gate-testing'] = { done: false, current: false, summary: '待测试' }
+    s['pre-launch-oc'] = { done: false, current: false, summary: '待准备' }
+    s['pre-launch-hermes'] = { done: false, current: false, summary: '待准备' }
+    s['onboarding-delivery'] = { done: false, current: false, summary: '待交付' }
+    return s
+  }, [data, deployState, effectiveBase])
 
   const checkpoints = useMemo(() => data?.checkpoints || customerCheckpointNavItems, [data?.checkpoints])
   const grouped = useMemo(() => ({
@@ -140,8 +208,8 @@ export function OnboardingOverviewPanel() {
               </div>
               <div className="rounded-lg border border-border bg-background p-3">
                 <div className="text-xs text-muted-foreground">底座</div>
-                <div className={data?.base_selected ? 'mt-1 text-sm font-semibold text-emerald-300' : 'mt-1 text-sm font-semibold text-amber-200'}>
-                  {data?.base_selected ? 'Selected' : 'Pending'}
+                <div className={effectiveBase ? 'mt-1 text-sm font-semibold text-emerald-300' : 'mt-1 text-sm font-semibold text-amber-200'}>
+                  {effectiveBase ? (effectiveBase === 'oc' ? '✅ OpenClaw' : effectiveBase === 'hermes' ? '✅ Hermes' : '✅ 双底座') : 'Pending'}
                 </div>
               </div>
             </div>
@@ -164,17 +232,32 @@ export function OnboardingOverviewPanel() {
               <div key={label as string} className="p-4">
                 <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label as string}</div>
                 <div className="grid gap-2 md:grid-cols-2">
-                  {(items as typeof customerCheckpointNavItems).map(item => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => navigateToPanel(item.panel)}
-                      className="rounded-lg border border-border bg-background px-3 py-2 text-left transition hover:border-primary/40 hover:bg-primary/5"
-                    >
-                      <div className="text-sm font-medium text-foreground">{item.label}</div>
-                      <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.description}</div>
-                    </button>
-                  ))}
+                  {(items as typeof customerCheckpointNavItems).map(item => {
+                    const cs = cpStatus[item.id]
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => navigateToPanel(item.panel)}
+                        className={`rounded-lg border px-3 py-2 text-left transition hover:border-primary/40 hover:bg-primary/5 ${
+                          cs?.done ? 'border-emerald-500/30 bg-emerald-500/5' : cs?.current ? 'border-cyan-400/30 bg-cyan-400/5' : 'border-border bg-background'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm font-medium text-foreground">{item.label}</div>
+                          {cs && (
+                            <span className={`shrink-0 text-[11px] ${cs.done ? 'text-emerald-400' : cs.current ? 'text-cyan-300' : 'text-muted-foreground/60'}`}>
+                              {cs.done ? '✅' : cs.current ? '⏳' : '⬜'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-2">
+                          <span className="line-clamp-1 text-xs text-muted-foreground">{item.description}</span>
+                          {cs && <span className={`shrink-0 text-[10px] ${cs.done ? 'text-emerald-400/80' : cs.current ? 'text-cyan-300/80' : 'text-muted-foreground/50'}`}>{cs.summary}</span>}
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             ))}
