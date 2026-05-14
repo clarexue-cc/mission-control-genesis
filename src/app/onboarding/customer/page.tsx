@@ -29,15 +29,15 @@ const S6_HINTS: Record<string, string> = {
 
 const INIT_C4: AgentRow[] = [
   { name: '公众号 Agent', scenario: '媒体运营', base: 'OC', priority: 'P1 — 涵盖媒体全流程，技能复用最高' },
-  { name: '情报搜索 Agent', scenario: '投研', base: 'Hermes', priority: 'P2 — 除客服外所有 agent 都需要搜索能力' },
-  { name: 'CEO 助理', scenario: 'CEO 专属', base: 'Hermes', priority: 'P2 — 非定型业务，动态生成 skill' },
-  { name: '短视频 Agent', scenario: '媒体运营', base: 'OC', priority: 'P3 — 复用公众号内容能力' },
-  { name: '小红书 Agent', scenario: '媒体运营', base: 'OC', priority: 'P3 — 复用公众号内容能力' },
-  { name: '知乎 Agent', scenario: '媒体运营', base: 'OC', priority: 'P4 — 复用搜索+内容能力' },
-  { name: '社群 Agent', scenario: '媒体运营', base: 'OC', priority: 'P4 — 复用内容能力' },
-  { name: '销售线索 Agent', scenario: '销售转化', base: 'OC', priority: 'P4 — 需搜索能力就绪' },
-  { name: '播客 Agent', scenario: '媒体运营', base: 'OC', priority: 'P5 — 音频场景独立' },
-  { name: '客服 Agent', scenario: '销售转化', base: 'Hermes', priority: 'P5 — 应答速度苛刻，用 Hermes' },
+  { name: '情报搜集 Agent', scenario: '媒体运营', base: 'Hermes', priority: 'P2 — 竞对监控、热点追踪、评论挖掘' },
+  { name: '选题问答 Agent', scenario: '媒体运营', base: 'OC', priority: '— 选题融合(30+/天)、问答框架' },
+  { name: '爆款复刻改写 Agent', scenario: '媒体运营', base: 'OC', priority: '— 爆款拆解、行业适配改写、对口型脚本' },
+  { name: '精品深度 Agent', scenario: '媒体运营', base: 'OC', priority: '— 深度调研、思维导图、讲课大纲' },
+  { name: '数据复盘 Agent', scenario: '媒体运营', base: 'OC', priority: '— 11账号数据汇总、爆款归因分析' },
+  { name: 'CEO 助理 Agent', scenario: 'CEO 专属', base: 'Hermes', priority: 'P2 — 资讯推送、深度讨论、课程PPT生成' },
+  { name: 'Web3 投研 Agent', scenario: '投研', base: 'OC', priority: '— 自动化筛选、六步法研报、PDF导出' },
+  { name: '客服 Agent（一转）', scenario: '销售转化', base: 'OC', priority: '— 企微标准化问答、一转话术执行' },
+  { name: '客服 Agent（二转）', scenario: '销售转化', base: 'Hermes', priority: '— Lark群知识库问答、转人工判断' },
 ]
 
 function formatBytes(bytes: number): string {
@@ -67,8 +67,8 @@ export default function CustomerOnboardingPage() {
   const [c2AgentCount, setC2AgentCount] = useState('10')
   const [c3, setC3] = useState('不能以罗老师名义发布未经审批的内容\n不能产生法律风险（版权、隐私、虚假信息）\n不能泄露商业机密和客户信息')
   const [c4Agents, setC4Agents] = useState<AgentRow[]>(INIT_C4)
-  const [c5, setC5] = useState('vault-罗老师-媒体运营（公众号+短视频+小红书+知乎+社群+播客 共 6 个 agent 共享）\nvault-罗老师-CEO（CEO 助理独立）\nvault-罗老师-投研（情报搜索独立）\nvault-罗老师-销售（销售线索 + 客服共享）')
-  const [c6, setC6] = useState('① 先公众号：涵盖媒体全流程（热点→选题→写作→配图→排版→发布），完成后其他 5 个媒体 agent 直接复用 80% 能力\n② 第二做情报搜索：除客服外所有 agent 都需要搜索能力，集中建设避免并发限制和重复成本\n③ CEO 助理可与搜索并行：Hermes 底座独立路径\n④ 其他媒体 agent 按渠道依次上线，复用公众号 + 搜索能力')
+  const [c5, setC5] = useState('vault-原力探索-媒体运营（公众号+情报搜集+选题问答+爆款复刻改写+精品深度+数据复盘 共 6 个 agent 共享）\nvault-罗老师-CEO（CEO 助理独立）\nvault-罗老师-投研（Web3 投研独立）\nvault-罗老师-销售（客服一转 + 二转，待定是否共享）')
+  const [c6, setC6] = useState('① 先公众号：涵盖媒体全流程（热点→选题→写作→配图→排版→发布），完成后其他 5 个媒体 agent 直接复用 80% 能力\n② 第二做情报搜集（Hermes）：为所有媒体 agent 提供数据源\n③ CEO 助理（Hermes）可与情报搜集并行：独立底座独立路径\n④ 媒体运营其他 4 agent（选题问答/爆款复刻改写/精品深度/数据复盘）按需上线')
 
   // Layer 2: Agent Profile (S1-S6) — 公众号 Agent 真实数据
   const [s1, setS1] = useState('媒体运营')

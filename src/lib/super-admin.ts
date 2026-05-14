@@ -286,10 +286,14 @@ export function listTenants() {
     ORDER BY t.created_at DESC, t.id DESC
   `).all() as Array<Tenant & { latest_job_id: number | null; latest_job_status: string | null; latest_job_created_at: number | null }>
 
-  return rows.map((row) => ({
-    ...row,
-    config: parseJsonField(row.config, {}),
-  }))
+  return rows.map((row) => {
+    const config = parseJsonField(row.config, {}) as Record<string, unknown>
+    return {
+      ...row,
+      config,
+      base: (config.base as string) || undefined,
+    }
+  })
 }
 
 export function listProvisionJobs(filters: { tenant_id?: number; status?: string; limit?: number } = {}) {

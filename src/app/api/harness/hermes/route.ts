@@ -129,6 +129,7 @@ const HERMES_TENANT_AGENT_DIRS: Record<string, string[]> = {
   'wechat-mp-agent': ['Agent-Main'],
   'media-intel-v1': ['Agent-MediaIntel'],
   'web3-research-v1': ['Agent-Web3Research'],
+  'media-intel-agent': ['Agent-情报搜集'],
 }
 
 function scriptPath(name: string): string {

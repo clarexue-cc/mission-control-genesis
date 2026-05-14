@@ -14,15 +14,19 @@ interface P7FileInfo {
 }
 
 interface P7FilesData {
+  base?: TenantBase
   total: number
   exists_count: number
   missing_count: number
   files: P7FileInfo[]
 }
 
+type TenantBase = 'oc' | 'hermes'
+
 interface SoulState {
   ok: boolean
   tenant_id: string
+  base?: TenantBase
   analysis_path: string
   analysis_exists: boolean
   analysis_preview: string
@@ -117,6 +121,31 @@ export function CustomerSoulClient({ username }: { username: string }) {
   const boundaryContent = state?.content.boundary || ''
   const mode = result?.mode || state?.mode || null
   const placeholders = result?.unresolved_placeholders || state?.unresolved_placeholders || []
+  const base = state?.base || state?.p7_files?.base || 'oc'
+  const isHermes = base === 'hermes'
+  const docLabels = useMemo(() => isHermes ? {
+    pageDesc: '4 个核心文档：SOUL（身份定义）、USER（用户画像）、MEMORY（记忆索引）、Config（Hermes 主配置）。逐个确认内容后进入下一步。',
+    generateBtn: '生成 SOUL/USER',
+    soulTitle: 'SOUL.md — 身份定义',
+    soulPlaceholder: '尚未生成 SOUL.md。请先完成 intake-analysis 后生成。',
+    agentsTitle: 'USER.md — 用户画像（L1 冻结记忆）',
+    agentsPlaceholder: '尚未创建 USER.md。Hermes L1 冻结记忆文件。',
+    memoryTitle: 'MEMORY.md — 记忆索引（L1 冻结记忆）',
+    memoryPlaceholder: '尚未创建 MEMORY.md。Hermes L1 冻结记忆，控制在 ~1300 tokens。',
+    boundaryTitle: 'config.yaml — Hermes 主配置',
+    boundaryPlaceholder: '尚未创建 config.yaml。Hermes 模型/网关/记忆路径主配置。',
+  } : {
+    pageDesc: '4 个核心文档：SOUL（身份定义）、AGENTS（操作系统）、MEMORY（记忆索引）、Boundary（红线配置）。逐个确认内容后进入 P8。',
+    generateBtn: '生成 SOUL/AGENTS',
+    soulTitle: 'SOUL.md — 身份定义',
+    soulPlaceholder: '尚未生成 SOUL.md。请先完成 intake-analysis 后点击「生成 SOUL/AGENTS」。',
+    agentsTitle: 'AGENTS.md — 操作系统',
+    agentsPlaceholder: '尚未生成 AGENTS.md。',
+    memoryTitle: 'MEMORY.md — 记忆索引',
+    memoryPlaceholder: '尚未创建 MEMORY.md。P7 阶段需要初始化记忆索引。',
+    boundaryTitle: 'boundary-rules.json — 红线配置',
+    boundaryPlaceholder: '尚未创建 boundary-rules.json。P7 阶段需要从蓝图红线生成 JSON 配置。',
+  }, [isHermes])
 
   async function loadState(nextTenantId = tenantId) {
     const normalizedTenantId = nextTenantId.trim() || DEFAULT_TENANT_ID
@@ -191,7 +220,14 @@ export function CustomerSoulClient({ username }: { username: string }) {
         <header className="border-b border-border pb-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P7</p>
+              <div className="flex items-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P7</p>
+                {isHermes && (
+                  <span className="ml-2 rounded-full border border-purple-400/40 bg-purple-400/15 px-2 py-0.5 text-[10px] font-medium text-purple-400">
+                    HERMES
+                  </span>
+                )}
+              </div>
               <h1 className="mt-2 text-3xl font-semibold tracking-normal">核心文档定稿</h1>
             </div>
             <div className="flex items-center gap-3">
@@ -215,7 +251,7 @@ export function CustomerSoulClient({ username }: { username: string }) {
             </div>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            P7 定稿的 4 个核心文档：SOUL（身份定义）、AGENTS（操作系统）、MEMORY（记忆索引）、Boundary（红线配置）。逐个确认内容后进入 P8。
+            {docLabels.pageDesc}
           </p>
         </header>
 
@@ -252,7 +288,7 @@ export function CustomerSoulClient({ username }: { username: string }) {
                 </span>
               )}
               <Button type="submit" disabled={loading || !state?.analysis_exists}>
-                {progress === 'generating' ? '生成中...' : '生成 SOUL/AGENTS'}
+                {progress === 'generating' ? '生成中...' : docLabels.generateBtn}
               </Button>
             </div>
           </form>
@@ -263,7 +299,7 @@ export function CustomerSoulClient({ username }: { username: string }) {
           )}
           {result?.already_exists && (
             <div className="mt-3 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm text-primary">
-              SOUL.md 与 AGENTS.md 已存在，本次未覆盖原文件。
+              {isHermes ? 'SOUL.md 与 USER.md 已存在，本次未覆盖原文件。' : 'SOUL.md 与 AGENTS.md 已存在，本次未覆盖原文件。'}
             </div>
           )}
         </section>
@@ -279,38 +315,38 @@ export function CustomerSoulClient({ username }: { username: string }) {
 
         {/* ── SOUL.md 全宽 ── */}
         <DocSection
-          title="SOUL.md — 身份定义"
+          title={docLabels.soulTitle}
           path={state?.paths.soul}
           content={soulContent}
           exists={state?.soul_exists ?? false}
-          placeholder="尚未生成 SOUL.md。请先完成 intake-analysis 后点击「生成 SOUL/AGENTS」。"
+          placeholder={docLabels.soulPlaceholder}
         />
 
         {/* ── AGENTS.md 全宽 ── */}
         <DocSection
-          title="AGENTS.md — 操作系统"
+          title={docLabels.agentsTitle}
           path={state?.paths.agents}
           content={agentsContent}
           exists={state?.agents_exists ?? false}
-          placeholder="尚未生成 AGENTS.md。"
+          placeholder={docLabels.agentsPlaceholder}
         />
 
         {/* ── MEMORY.md 全宽 ── */}
         <DocSection
-          title="MEMORY.md — 记忆索引"
+          title={docLabels.memoryTitle}
           path={state?.paths.memory}
           content={memoryContent}
           exists={state?.memory_exists ?? false}
-          placeholder="尚未创建 MEMORY.md。P7 阶段需要初始化记忆索引。"
+          placeholder={docLabels.memoryPlaceholder}
         />
 
         {/* ── boundary-rules.json 全宽 ── */}
         <DocSection
-          title="boundary-rules.json — 红线配置"
+          title={docLabels.boundaryTitle}
           path={state?.paths.boundary}
           content={boundaryContent}
           exists={state?.boundary_exists ?? false}
-          placeholder="尚未创建 boundary-rules.json。P7 阶段需要从蓝图红线生成 JSON 配置。"
+          placeholder={docLabels.boundaryPlaceholder}
         />
 
       </div>

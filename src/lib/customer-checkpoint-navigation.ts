@@ -246,8 +246,11 @@ export const customerCheckpointNavItems: CustomerCheckpointNavItem[] = [
 ]
 
 export function getCustomerCheckpointNavItems(
-  _options: CustomerCheckpointNavOptions = {},
+  options: CustomerCheckpointNavOptions = {},
 ): CustomerCheckpointNavItem[] {
-  // Always show all items — filtering by base/platform is deferred to panel content
-  return customerCheckpointNavItems
+  const { selectedBase } = options
+  if (!selectedBase || selectedBase === 'both') {
+    return customerCheckpointNavItems
+  }
+  return customerCheckpointNavItems.filter(item => !item.base || item.base === selectedBase)
 }

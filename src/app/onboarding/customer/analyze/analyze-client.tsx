@@ -533,7 +533,7 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
 
                     <div className="mt-3 rounded border border-border bg-background px-4 py-3 font-mono text-xs leading-[1.9]">
                       <div className="font-sans text-[11px] font-semibold text-primary mb-1">① Workspace — 运行环境（每个 Agent 独立一套）</div>
-                      <VaultTreeLine icon="📂" name="workspace-wechat-mp-agent/" label="公众号主编的运行环境" phase="" />
+                      <VaultTreeLine icon="📂" name="workspace-wechat-mp-agent/" label="公众号的运行环境" phase="" />
                       <VaultTreeLine icon="💡" name="SOUL.md" label="人格 + 红线" phase="⏳ P7 生成" indent={1} />
                       <VaultTreeLine icon="⚙️" name="AGENTS.md" label="操作系统 SOP + workflow" phase="⏳ P7 生成" indent={1} />
                       <VaultTreeLine icon="🪪" name="IDENTITY.md" label="身份卡" phase="✅ P4 草稿" indent={1} />
@@ -565,14 +565,17 @@ export function CustomerAnalyzeClient({ username }: { username: string }) {
                       <VaultTreeLine icon="🔐" name="00-permissions.yaml" label="权限矩阵" phase="✅ P4" indent={1} />
 
                       <div className="mt-1 ml-4 mb-1 font-sans text-[11px] text-muted-foreground/70">── Agent 私有记忆（每个 Agent 一个目录） ──</div>
-                      <VaultTreeLine icon="📁" name="Agent-主编/" label="主编的私有记忆" phase="✅ P4" indent={1} />
+                      <VaultTreeLine icon="📁" name="Agent-公众号/" label="公众号的私有记忆" phase="✅ P4" indent={1} />
                       <VaultTreeLine icon="📄" name="working-context.md" label="上次做到哪了" phase="✅ P4 骨架，运行时填充" indent={2} />
                       <VaultTreeLine icon="📄" name="mistakes.md" label="错误学习" phase="✅ P4 骨架，运行时填充" indent={2} />
-                      <VaultTreeLine icon="📄" name="agent-guide.md" label="主编专有行为准则" phase="⏳ P7 生成" indent={2} />
+                      <VaultTreeLine icon="📄" name="agent-guide.md" label="公众号专有行为准则" phase="⏳ P7 生成" indent={2} />
                       <VaultTreeLine icon="📁" name="daily/" label="日志（按日期）" phase="✅ P4 空目录，运行时填充" indent={2} />
                       <VaultTreeLine icon="📁" name="published/" label="发布档案（标题/链接/数据/复盘）" phase="⏳ 运行时积累" indent={2} last />
-                      <VaultTreeLine icon="📁" name="Agent-搜索/" label="搜索 Agent 的私有记忆" phase="⏳ 后续入驻时创建" indent={1} />
-                      <VaultTreeLine icon="📁" name="Agent-.../" label="更多 Agent" phase="⏳ 按需扩展" indent={1} />
+                      <VaultTreeLine icon="📁" name="Agent-情报搜集/" label="竞对监控、热点追踪、评论挖掘" phase="⏳ 预留" indent={1} />
+                      <VaultTreeLine icon="📁" name="Agent-选题问答/" label="选题融合、问答框架" phase="⏳ 预留" indent={1} />
+                      <VaultTreeLine icon="📁" name="Agent-爆款复刻改写/" label="爆款拆解、行业适配改写" phase="⏳ 预留" indent={1} />
+                      <VaultTreeLine icon="📁" name="Agent-精品深度/" label="深度调研、思维导图、讲课大纲" phase="⏳ 预留" indent={1} />
+                      <VaultTreeLine icon="📁" name="Agent-数据复盘/" label="11账号数据汇总、爆款归因" phase="⏳ 预留" indent={1} />
 
                       <div className="mt-1 ml-4 mb-1 font-sans text-[11px] text-muted-foreground/70">── 跨 Agent 共享层 ──</div>
                       <VaultTreeLine icon="📁" name="Agent-Shared/" label="所有 Agent 共享的知识和规则" phase="✅ P4" indent={1} />

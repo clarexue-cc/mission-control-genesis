@@ -10,9 +10,11 @@ import { resolveWithin } from '@/lib/paths'
 
 export type CustomerSoulMode = 'llm-anthropic' | 'llm-openai' | 'mock-fallback'
 export type CustomerSoulProvider = 'anthropic' | 'openai' | 'mock'
+export type TenantBase = 'oc' | 'hermes'
 
 export interface CustomerSoulState {
   tenantId: string
+  base: TenantBase
   analysisPath: string
   analysisExists: boolean
   analysisPreview: string
@@ -47,6 +49,7 @@ export interface CustomerSoulResult {
 
 interface CustomerSoulPaths {
   tenantId: string
+  base: TenantBase
   analysisRelativePath: string
   analysisPhysicalPath: string
   agentMainPhysicalPath: string
@@ -157,13 +160,52 @@ export function selectCustomerSoulProvider(env: NodeJS.ProcessEnv = process.env)
   return selectCustomerAnalysisProvider(env)
 }
 
+export async function detectTenantBase(tenantId: string): Promise<TenantBase> {
+  const normalizedTenantId = normalizeCustomerTenantId(tenantId)
+  const harnessRoot = await resolveHarnessRoot()
+  const statePath = resolveWithin(
+    harnessRoot,
+    `phase0/tenants/${normalizedTenantId}/workspace/.openclaw/workspace-state.json`,
+  )
+  try {
+    const raw = await readFile(statePath, 'utf8')
+    const state = JSON.parse(raw) as { base?: unknown }
+    if (state.base === 'hermes') return 'hermes'
+  } catch {
+    // Missing or invalid workspace state defaults to the existing OC behavior.
+  }
+  return 'oc'
+}
+
 export async function resolveCustomerSoulPaths(tenantId: string): Promise<CustomerSoulPaths> {
   const normalizedTenantId = normalizeCustomerTenantId(tenantId)
   const harnessRoot = await resolveHarnessRoot()
+  const base = await detectTenantBase(normalizedTenantId)
   const vaultRelativePath = `phase0/tenants/${normalizedTenantId}/vault`
+
+  if (base === 'hermes') {
+    const profileRelativePath = `phase0/tenants/${normalizedTenantId}/profile`
+    return {
+      tenantId: normalizedTenantId,
+      base: 'hermes',
+      analysisRelativePath: `${vaultRelativePath}/intake-analysis.md`,
+      analysisPhysicalPath: resolveWithin(harnessRoot, `${vaultRelativePath}/intake-analysis.md`),
+      agentMainPhysicalPath: resolveWithin(harnessRoot, profileRelativePath),
+      soulRelativePath: `${profileRelativePath}/identity/SOUL.md`,
+      soulPhysicalPath: resolveWithin(harnessRoot, `${profileRelativePath}/identity/SOUL.md`),
+      agentsRelativePath: `${profileRelativePath}/USER.md`,
+      agentsPhysicalPath: resolveWithin(harnessRoot, `${profileRelativePath}/USER.md`),
+      memoryRelativePath: `${profileRelativePath}/MEMORY.md`,
+      memoryPhysicalPath: resolveWithin(harnessRoot, `${profileRelativePath}/MEMORY.md`),
+      boundaryRelativePath: `${profileRelativePath}/identity/config.yaml`,
+      boundaryPhysicalPath: resolveWithin(harnessRoot, `${profileRelativePath}/identity/config.yaml`),
+    }
+  }
+
   const workspaceRelativePath = `phase0/tenants/${normalizedTenantId}/workspace`
   return {
     tenantId: normalizedTenantId,
+    base: 'oc',
     analysisRelativePath: `${vaultRelativePath}/intake-analysis.md`,
     analysisPhysicalPath: resolveWithin(harnessRoot, `${vaultRelativePath}/intake-analysis.md`),
     agentMainPhysicalPath: resolveWithin(harnessRoot, workspaceRelativePath),
@@ -193,6 +235,7 @@ export async function readCustomerSoulState(tenantId: string, previewLines = 18)
 
   return {
     tenantId: paths.tenantId,
+    base: paths.base,
     analysisPath: paths.analysisRelativePath,
     analysisExists,
     analysisPreview: analysisContent.split('\n').slice(0, previewLines).join('\n'),
@@ -533,26 +576,48 @@ export interface P7FileInfo {
 
 export interface P7FilesStatus {
   tenantId: string
+  base: TenantBase
   total: number
   existsCount: number
   missingCount: number
   files: P7FileInfo[]
 }
 
-const P7_CORE_DEFS = [
+interface P7CoreDef {
+  name: string
+  displayName: string
+  basePath?: string
+}
+
+const OC_P7_CORE_DEFS: P7CoreDef[] = [
   { name: 'SOUL.md', displayName: 'SOUL — 身份定义' },
   { name: 'AGENTS.md', displayName: 'AGENTS — 操作系统' },
   { name: 'MEMORY.md', displayName: 'MEMORY — 记忆索引' },
   { name: 'boundary-rules.json', displayName: 'Boundary — 红线配置' },
 ]
 
+const HERMES_P7_CORE_DEFS: P7CoreDef[] = [
+  { name: 'identity/SOUL.md', displayName: 'SOUL — 身份定义', basePath: 'profile' },
+  { name: 'USER.md', displayName: 'USER — 用户画像（L1 冻结记忆）', basePath: 'profile' },
+  { name: 'MEMORY.md', displayName: 'MEMORY — 记忆索引（L1 冻结记忆）', basePath: 'profile' },
+  { name: 'identity/config.yaml', displayName: 'Config — Hermes 主配置', basePath: 'profile' },
+]
+
+function getP7CoreDefs(base: TenantBase): P7CoreDef[] {
+  return base === 'hermes' ? HERMES_P7_CORE_DEFS : OC_P7_CORE_DEFS
+}
+
 export async function readP7FilesStatus(tenantId: string): Promise<P7FilesStatus> {
   const normalizedTenantId = normalizeCustomerTenantId(tenantId)
   const harnessRoot = await resolveHarnessRoot()
-  const wsBase = `phase0/tenants/${normalizedTenantId}/workspace`
+  const base = await detectTenantBase(normalizedTenantId)
+  const defs = getP7CoreDefs(base)
+  const tenantRoot = `phase0/tenants/${normalizedTenantId}`
 
-  const files = await Promise.all(P7_CORE_DEFS.map(async (f) => {
-    const relativePath = `${wsBase}/${f.name}`
+  const files = await Promise.all(defs.map(async (f) => {
+    const relativePath = f.basePath
+      ? `${tenantRoot}/${f.basePath}/${f.name}`
+      : `${tenantRoot}/workspace/${f.name}`
     const physicalPath = resolveWithin(harnessRoot, relativePath)
     try {
       const info = await fsStat(physicalPath)
@@ -565,6 +630,7 @@ export async function readP7FilesStatus(tenantId: string): Promise<P7FilesStatus
   const existsCount = files.filter(f => f.exists).length
   return {
     tenantId: normalizedTenantId,
+    base,
     total: files.length,
     existsCount,
     missingCount: files.length - existsCount,

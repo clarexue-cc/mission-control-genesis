@@ -235,7 +235,7 @@ export async function readCustomerAnalysisState(tenantId: string, previewLines =
   ])
 
   const vaultDirs = await Promise.all([
-    readVaultDir('Agent-主编'),
+    readVaultDir('Agent-公众号'),
     readVaultDir('Agent-Shared'),
     readVaultDir('Bulletin'),
     readVaultDir('Archive'),
@@ -243,9 +243,9 @@ export async function readCustomerAnalysisState(tenantId: string, previewLines =
 
   const templateFiles = await Promise.all([
     readVaultFile('00-permissions.yaml'),
-    readVaultFile('Agent-主编/working-context.md'),
-    readVaultFile('Agent-主编/mistakes.md'),
-    readVaultFile('Agent-主编/agent-guide.md'),
+    readVaultFile('Agent-公众号/working-context.md'),
+    readVaultFile('Agent-公众号/mistakes.md'),
+    readVaultFile('Agent-公众号/agent-guide.md'),
     readVaultFile('Agent-Shared/decisions-log.md'),
     readVaultFile('Agent-Shared/project-state.md'),
     readVaultFile('Agent-Shared/user-profile.md'),

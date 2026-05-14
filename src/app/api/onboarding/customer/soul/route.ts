@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       ok: true,
       tenant_id: state.tenantId,
+      base: state.base || 'oc',
       analysis_path: state.analysisPath,
       analysis_exists: state.analysisExists,
       analysis_preview: state.analysisPreview,
@@ -61,6 +62,7 @@ export async function GET(request: NextRequest) {
       unresolved_placeholders: state.unresolvedPlaceholders,
       content_hashes: state.contentHashes,
       p7_files: {
+        base: p7Status.base || 'oc',
         total: p7Status.total,
         exists_count: p7Status.existsCount,
         missing_count: p7Status.missingCount,
