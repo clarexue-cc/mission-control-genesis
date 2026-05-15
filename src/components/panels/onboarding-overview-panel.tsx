@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { customerCheckpointNavItems } from '@/lib/customer-checkpoint-navigation'
+import { customerCheckpointNavItems, getCustomerCheckpointNavItems } from '@/lib/customer-checkpoint-navigation'
 import { useNavigateToPanel } from '@/lib/navigation'
 import { useMissionControl } from '@/store'
 
@@ -133,15 +133,21 @@ export function OnboardingOverviewPanel() {
     return s
   }, [data, deployState, effectiveBase])
 
-  const checkpoints = useMemo(() => data?.checkpoints || customerCheckpointNavItems, [data?.checkpoints])
-  const grouped = useMemo(() => ({
-    setup: checkpoints.filter(item => item.phase === 'setup'),
-    ocBuild: checkpoints.filter(item => item.phase === 'oc-build'),
-    hermesBuild: checkpoints.filter(item => item.phase === 'hermes-build'),
-    gateTesting: checkpoints.filter(item => item.phase === 'gate-testing'),
-    preLaunch: checkpoints.filter(item => item.phase === 'pre-launch'),
-    delivery: checkpoints.filter(item => item.phase === 'delivery'),
-  }), [checkpoints])
+  const checkpoints = useMemo(() => {
+    const base = effectiveBase as 'oc' | 'hermes' | 'both' | undefined
+    return getCustomerCheckpointNavItems({ selectedBase: base })
+  }, [effectiveBase])
+  const grouped = useMemo(() => {
+    const groups = [
+      { key: 'setup', label: 'S 共享前置', items: checkpoints.filter(item => item.phase === 'setup') },
+      { key: 'ocBuild', label: 'OC 构建路径', items: checkpoints.filter(item => item.phase === 'oc-build') },
+      { key: 'hermesBuild', label: 'Hermes 构建路径', items: checkpoints.filter(item => item.phase === 'hermes-build') },
+      { key: 'gateTesting', label: '闸门测试', items: checkpoints.filter(item => item.phase === 'gate-testing') },
+      { key: 'preLaunch', label: '上线准备', items: checkpoints.filter(item => item.phase === 'pre-launch') },
+      { key: 'delivery', label: '验收交付', items: checkpoints.filter(item => item.phase === 'delivery') },
+    ]
+    return groups.filter(g => g.items.length > 0)
+  }, [checkpoints])
 
   return (
     <div className="flex h-full flex-col gap-4 px-1 pb-6">
@@ -220,18 +226,11 @@ export function OnboardingOverviewPanel() {
             <h2 className="text-sm font-semibold text-foreground">Checkpoint</h2>
           </div>
           <div className="divide-y divide-border">
-            {[
-              ['S 共享前置', grouped.setup],
-              ['OC 构建路径', grouped.ocBuild],
-              ['Hermes 构建路径', grouped.hermesBuild],
-              ['闸门测试', grouped.gateTesting],
-              ['上线准备', grouped.preLaunch],
-              ['验收交付', grouped.delivery],
-            ].map(([label, items]) => (
-              <div key={label as string} className="p-4">
-                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label as string}</div>
+            {grouped.map(({ key, label, items }) => (
+              <div key={key} className="p-4">
+                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
                 <div className="grid gap-2 md:grid-cols-2">
-                  {(items as typeof customerCheckpointNavItems).map(item => {
+                  {items.map(item => {
                     const cs = cpStatus[item.id]
                     return (
                       <button
