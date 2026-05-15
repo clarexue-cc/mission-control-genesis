@@ -57,7 +57,9 @@ export function BaseSelectionPanel() {
         if (!response.ok) throw new Error(body?.error || 'Failed to load base selection')
         if (!cancelled) {
           setData(body)
-          const initialBase = (body?.selected || activeTenant?.base || null) as BaseOption['id'] | null
+          // 优先读 activeTenant.base（来自 workspace-state.json per-tenant 检测）
+          const tenantBase = activeTenant?.base as BaseOption['id'] | undefined
+          const initialBase = (tenantBase || body?.selected || null) as BaseOption['id'] | null
           setSelected(initialBase)
           if (initialBase) {
             setIsLocked(true)
@@ -83,7 +85,7 @@ export function BaseSelectionPanel() {
       setActiveTenant({ ...activeTenant, base: selectedOption.id })
     }
     setIsLocked(true)
-    navigateToPanel(selectedOption.id === 'hermes' ? 'onboarding/hermes/profile' : 'onboarding/customer')
+    navigateToPanel('onboarding/customer')
   }
 
   return (

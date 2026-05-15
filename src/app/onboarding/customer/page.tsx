@@ -151,10 +151,10 @@ export default function CustomerOnboardingPage() {
         <header className="border-b border-border pb-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P3 / 客户接入</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">S4 / 客户接入</p>
               <h1 className="mt-2 text-3xl font-semibold tracking-normal">新客户接入：Forcing Questions</h1>
               <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                两层结构：第一层定客户全景（C1-C6，签约后填一次，所有 Agent 复用），第二层定单 Agent 画像（S1-S6，每做一个 Agent 填一次）。填完后 P4 由 AI 自动生成蓝图。
+                两层结构：第一层定客户全景（C1-C6，签约后填一次，所有 Agent 复用），第二层定单 Agent 画像（S1-S6，每做一个 Agent 填一次）。填完后由 AI 自动生成蓝图。
               </p>
             </div>
             <Button asChild variant="outline" size="sm"><Link href="/">返回 MC 主页面</Link></Button>
@@ -167,7 +167,7 @@ export default function CustomerOnboardingPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-lg">✅</span>
-                  <h2 className="text-sm font-semibold text-emerald-800">P3 接入已完成 — 表单已锁定</h2>
+                  <h2 className="text-sm font-semibold text-emerald-800">S4 接入已完成 — 表单已锁定</h2>
                 </div>
                 <p className="mt-1 text-xs text-emerald-700">intake-raw.md 已生成，内容已固定。如需修改，请点击右侧按钮解锁。</p>
               </div>
@@ -176,7 +176,7 @@ export default function CustomerOnboardingPage() {
                   解锁修改
                 </Button>
                 <Button asChild size="sm" className="bg-emerald-700 text-white hover:bg-emerald-800">
-                  <Link href={`/onboarding/customer/analyze?tenant=${encodeURIComponent(tenantId)}`}>进入 P4 →</Link>
+                  <Link href={`/onboarding/customer/analyze?tenant=${encodeURIComponent(tenantId)}`}>进入蓝图 →</Link>
                 </Button>
               </div>
             </div>
@@ -276,7 +276,7 @@ export default function CustomerOnboardingPage() {
             <div>
               <label className={lbl}>C6 · 优先级与复用逻辑 <Tag color="gray">→ 交付节奏</Tag></label>
               <textarea value={c6} onChange={(e) => setC6(e.target.value)} className={`${inp} min-h-20`} placeholder="为什么先做 A？..." />
-              <p className={hint}>决定交付节奏、客户预期管理，贯穿 P3→P16 全流程</p>
+              <p className={hint}>决定交付节奏、客户预期管理，贯穿全流程</p>
             </div>
           </div>
 
