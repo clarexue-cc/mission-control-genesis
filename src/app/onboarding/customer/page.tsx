@@ -61,25 +61,25 @@ export default function CustomerOnboardingPage() {
   const { activeTenant } = useMissionControl()
   const activeTenantSlug = activeTenant?.slug || 'wechat-mp-agent'
   const [tenantId, setTenantId] = useState(activeTenantSlug)
-  const [tenantName, setTenantName] = useState('罗老师 · 公众号 Agent')
+  const [tenantName, setTenantName] = useState(activeTenant?.display_name || '')
 
-  // Layer 1: Customer Profile (C1-C6) — 罗老师真实数据
-  const [c1, setC1] = useState('教育行业，罗老师个人 IP + 小团队（~5人），技术水平低（不懂代码），关键对接人：Vinson（媒体运营负责人），陈晓（投研负责人）')
-  const [c2Budget, setC2Budget] = useState('15万/3个月')
-  const [c2Timeline, setC2Timeline] = useState('2026 Q2（5-7月）')
-  const [c2AgentCount, setC2AgentCount] = useState('10')
-  const [c3, setC3] = useState('不能以罗老师名义发布未经审批的内容\n不能产生法律风险（版权、隐私、虚假信息）\n不能泄露商业机密和客户信息')
-  const [c4Agents, setC4Agents] = useState<AgentRow[]>(INIT_C4)
-  const [c5, setC5] = useState('vault-原力探索-媒体运营（公众号+情报搜集+选题问答+爆款复刻改写+精品深度+数据复盘 共 6 个 agent 共享）\nvault-罗老师-CEO（CEO 助理独立）\nvault-罗老师-投研（Web3 投研独立）\nvault-罗老师-销售（客服一转 + 二转，待定是否共享）')
-  const [c6, setC6] = useState('① 先公众号：涵盖媒体全流程（热点→选题→写作→配图→排版→发布），完成后其他 5 个媒体 agent 直接复用 80% 能力\n② 第二做情报搜集（Hermes）：为所有媒体 agent 提供数据源\n③ CEO 助理（Hermes）可与情报搜集并行：独立底座独立路径\n④ 媒体运营其他 4 agent（选题问答/爆款复刻改写/精品深度/数据复盘）按需上线')
+  // Layer 1: Customer Profile (C1-C6) — 动态加载，不硬编码
+  const [c1, setC1] = useState('')
+  const [c2Budget, setC2Budget] = useState('')
+  const [c2Timeline, setC2Timeline] = useState('')
+  const [c2AgentCount, setC2AgentCount] = useState('')
+  const [c3, setC3] = useState('')
+  const [c4Agents, setC4Agents] = useState<AgentRow[]>([{ name: '', scenario: '', base: 'OC', priority: '' }])
+  const [c5, setC5] = useState('')
+  const [c6, setC6] = useState('')
 
-  // Layer 2: Agent Profile (S1-S6) — 公众号 Agent 真实数据
-  const [s1, setS1] = useState('媒体运营')
-  const [s2, setS2] = useState('微信公众号')
+  // Layer 2: Agent Profile (S1-S6) — 动态加载，不硬编码
+  const [s1, setS1] = useState('')
+  const [s2, setS2] = useState('')
   const [s3, setS3] = useState('能力补充')
-  const [s4, setS4] = useState('原 3 人媒体团队全部离职/转岗，公众号停更 3 个月，用 Agent 恢复并超越原产出')
-  const [s5, setS5] = useState('每周至少 3 篇原创内容，质量不低于原团队水平\n包含完整流程：热点追踪→选题→正文→配图→排版→发布\n支持审批网关，发布前必须人工确认')
-  const [s6, setS6] = useState('① 原来 3 人负责（2 编辑 + 1 设计）\n② 月薪合计约 3-4 万\n③ 原来月产出约 12 篇\n④ 现在 Vinson 一人顶，月产出约 2 篇\n⑤ 停更 3 个月，粉丝流失约 15%')
+  const [s4, setS4] = useState('')
+  const [s5, setS5] = useState('')
+  const [s6, setS6] = useState('')
 
   const [file, setFile] = useState<File | null>(null)
   const [result, setResult] = useState<UploadResult | null>(null)
@@ -89,10 +89,21 @@ export default function CustomerOnboardingPage() {
   const [intakePreview, setIntakePreview] = useState('')
 
   useEffect(() => {
-    if (activeTenant?.slug) setTenantId(activeTenant.slug)
-  }, [activeTenant?.slug])
+    if (activeTenant?.slug) {
+      setTenantId(activeTenant.slug)
+      setTenantName(activeTenant.display_name || activeTenant.slug)
+      // 切换 tenant 时清空所有表单字段
+      setC1(''); setC2Budget(''); setC2Timeline(''); setC2AgentCount('')
+      setC3(''); setC4Agents([{ name: '', scenario: '', base: 'OC', priority: '' }])
+      setC5(''); setC6('')
+      setS1(''); setS2(''); setS3('能力补充'); setS4(''); setS5(''); setS6('')
+      setLocked(false); setIntakePreview('')
+      setResult(null); setError('')
+    }
+  }, [activeTenant?.slug, activeTenant?.display_name])
 
   useEffect(() => {
+    if (!tenantId) return
     fetch(`/api/onboarding/customer/analyze?tenant_id=${encodeURIComponent(tenantId)}`)
       .then(res => res.json())
       .then(body => {
