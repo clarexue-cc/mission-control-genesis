@@ -112,25 +112,24 @@ export function OnboardingOverviewPanel() {
     const deployed = deployState?.deploy_status?.status === 'success' || deployState?.deploy_status?.status === 'mock-success'
     const isMock = deployState?.deploy_status?.mode === 'mock-fallback'
 
-    s['onboarding-overview'] = { done: true, current: false, summary: '全景面板' }
-    s['platform-ready'] = { done: !!data?.platform_ready, current: !data?.platform_ready, summary: data?.platform_ready ? 'phase0 就绪' : '检查中' }
-    s['base-selection'] = { done: !!base, current: !base && !!data?.platform_ready, summary: base ? (base === 'oc' ? 'OpenClaw' : base === 'hermes' ? 'Hermes' : '双底座') : '待选择' }
+    s['s1-overview'] = { done: true, current: false, summary: '全景面板' }
+    s['s2-platform-ready'] = { done: !!data?.platform_ready, current: !data?.platform_ready, summary: data?.platform_ready ? 'phase0 就绪' : '检查中' }
+    s['s3-base-selection'] = { done: !!base, current: !base && !!data?.platform_ready, summary: base ? (base === 'oc' ? 'OpenClaw' : base === 'hermes' ? 'Hermes' : '双底座') : '待选择' }
+    s['s4-intake'] = { done: hasIntake, current: !hasIntake && !!base, summary: hasIntake ? 'intake-raw.md 已收集' : '待收集' }
 
-    s['p3-intake'] = { done: hasIntake, current: !hasIntake && base === 'oc', summary: hasIntake ? 'intake-raw.md 已收集' : '待收集' }
-    s['p4-blueprint'] = { done: hasBlueprint, current: !hasBlueprint && hasIntake, summary: hasBlueprint ? '蓝图已生成' : '待生成' }
-    s['p5-approval'] = { done: hasConfirm, current: !hasConfirm && hasBlueprint, summary: hasConfirm ? '签字确认' : '待签字' }
-    s['p6-deploy'] = { done: deployed, current: !deployed && hasConfirm, summary: deployed ? (isMock ? 'Mock 部署完成' : '部署完成') : '待部署' }
-    s['p7-soul-agents'] = { done: false, current: deployed, summary: deployed ? '待定稿' : '待部署先' }
-    s['p8-boundary'] = { done: false, current: false, summary: '待配置' }
-    s['p9-skills'] = { done: false, current: false, summary: '待配置' }
+    s['p1-blueprint'] = { done: hasBlueprint, current: base === 'oc' && !hasBlueprint && hasIntake, summary: hasBlueprint ? '蓝图已生成' : '待生成' }
+    s['p2-approval'] = { done: hasConfirm, current: base === 'oc' && !hasConfirm && hasBlueprint, summary: hasConfirm ? '签字确认' : '待签字' }
+    s['p3-deploy'] = { done: deployed, current: base === 'oc' && !deployed && hasConfirm, summary: deployed ? (isMock ? 'Mock 部署完成' : '部署完成') : '待部署' }
+    s['p4-soul-agents'] = { done: false, current: base === 'oc' && deployed, summary: deployed ? '待定稿' : '待部署先' }
+    s['p5-boundary'] = { done: false, current: false, summary: '待配置' }
+    s['p6-skills'] = { done: false, current: false, summary: '待配置' }
+    s['p7-gate-testing'] = { done: false, current: false, summary: '待测试' }
+    s['p8-pre-launch'] = { done: false, current: false, summary: '待准备' }
+    s['p9-delivery'] = { done: false, current: false, summary: '待交付' }
 
-    for (const id of ['h01-profile-setup', 'h02-boundary-watchdog', 'h03-skill-curator', 'h04-memory-curator', 'h05-output-checker', 'h06-guardian', 'h07-cron-governance']) {
+    for (const id of ['h1-blueprint', 'h2-approval', 'h3-deploy', 'h4-identity', 'h5-skills', 'h6-governance-config', 'h7-governance-verify', 'h8-gate-tests', 'h9-guardian', 'h10-rts', 'h11-delivery']) {
       s[id] = { done: false, current: false, summary: '待开始' }
     }
-    s['gate-testing'] = { done: false, current: false, summary: '待测试' }
-    s['pre-launch-oc'] = { done: false, current: false, summary: '待准备' }
-    s['pre-launch-hermes'] = { done: false, current: false, summary: '待准备' }
-    s['onboarding-delivery'] = { done: false, current: false, summary: '待交付' }
     return s
   }, [data, deployState, effectiveBase])
 
@@ -222,12 +221,12 @@ export function OnboardingOverviewPanel() {
           </div>
           <div className="divide-y divide-border">
             {[
-              ['阶段 0-1', grouped.setup],
+              ['S 共享前置', grouped.setup],
               ['OC 构建路径', grouped.ocBuild],
               ['Hermes 构建路径', grouped.hermesBuild],
-              ['阶段 3', grouped.gateTesting],
-              ['阶段 4', grouped.preLaunch],
-              ['阶段 5-6', grouped.delivery],
+              ['闸门测试', grouped.gateTesting],
+              ['上线准备', grouped.preLaunch],
+              ['验收交付', grouped.delivery],
             ].map(([label, items]) => (
               <div key={label as string} className="p-4">
                 <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label as string}</div>

@@ -43,13 +43,21 @@ function customerCheckpointIcon(panel: string) {
   if (panel === 'onboarding/overview') return <OverviewIcon />
   if (panel === 'onboarding/platform-ready') return <ShieldIcon />
   if (panel === 'onboarding/base-selection') return <GatewaysIcon />
+  if (panel === 'onboarding/hermes/blueprint') return <OverviewIcon />
+  if (panel === 'onboarding/hermes/approval') return <ApprovalsIcon />
+  if (panel === 'onboarding/hermes/deploy') return <OrganizationsIcon />
   if (panel === 'onboarding/hermes/profile') return <CronIcon />
   if (panel === 'onboarding/hermes/boundary') return <ShieldIcon />
   if (panel === 'onboarding/hermes/skills') return <SkillsIcon />
+  if (panel === 'onboarding/hermes/governance-config') return <ShieldIcon />
+  if (panel === 'onboarding/hermes/governance-verify') return <DebugIcon />
+  if (panel === 'onboarding/hermes/gate-tests') return <DebugIcon />
   if (panel === 'onboarding/hermes/memory') return <MemoryIcon />
   if (panel === 'onboarding/hermes/output') return <DebugIcon />
   if (panel === 'onboarding/hermes/guardian') return <SecurityIcon />
   if (panel === 'onboarding/hermes/cron') return <CronIcon />
+  if (panel === 'onboarding/hermes/rts') return <ApprovalsIcon />
+  if (panel === 'onboarding/hermes/delivery') return <TasksIcon />
   if (panel === 'onboarding/gate-testing') return <DebugIcon />
   if (panel === 'onboarding/pre-launch') return <ApprovalsIcon />
   if (panel === 'onboarding/delivery') return <TasksIcon />

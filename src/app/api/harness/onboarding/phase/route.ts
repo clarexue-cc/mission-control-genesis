@@ -80,32 +80,32 @@ export async function GET(request: NextRequest) {
 
   const phases: PhaseSummary[] = [
     {
-      id: 'onboarding-overview',
-      label: '全景总览',
+      id: 's1-overview',
+      label: 'S1 全景总览',
       status: 'done',
       panel: 'onboarding/overview',
       detail: tenant ? `当前 tenant: ${tenant}` : '等待选择或创建 tenant',
     },
     {
-      id: 'platform-ready',
-      label: '平台就绪',
+      id: 's2-platform-ready',
+      label: 'S2 平台就绪',
       status: platformReady ? 'done' : 'current',
       panel: 'onboarding/platform-ready',
       detail: platformReady ? 'phase0、tenants、templates 已就绪' : '平台就绪检查未全部通过',
     },
     {
-      id: 'base-selection',
-      label: '底座选型',
+      id: 's3-base-selection',
+      label: 'S3 底座选型',
       status: !platformReady ? 'blocked' : baseSelected ? 'done' : 'current',
       panel: 'onboarding/base-selection',
       detail: platformReady ? '可选择 OC、Hermes 或双底座' : '需先完成平台就绪',
     },
     {
-      id: 'build-and-delivery',
-      label: '双底座构建 + 验收交付',
+      id: 's4-intake',
+      label: 'S4 客户接入',
       status: platformReady && baseSelected ? 'current' : 'pending',
       panel: 'onboarding/customer',
-      detail: 'OC/Hermes 构建、三道闸门、上线准备、UAT、交付',
+      detail: '收集客户访谈、原始需求和业务上下文',
     },
   ]
 
