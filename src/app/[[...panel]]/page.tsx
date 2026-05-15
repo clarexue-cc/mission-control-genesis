@@ -596,6 +596,7 @@ function ContentRouter({ tab }: { tab: string }) {
       return <HermesProfileSetupPanel />
     case 'onboarding/hermes/boundary':
       return <HermesBoundaryPanel />
+    case 'onboarding/hermes/skill-curator':
     case 'onboarding/hermes/skills':
       return <HermesSkillCuratorPanel />
     case 'onboarding/hermes/memory':

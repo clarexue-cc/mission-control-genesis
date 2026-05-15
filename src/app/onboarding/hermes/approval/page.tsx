@@ -1,11 +1,7 @@
-import { HermesPlaceholderPage } from '@/app/onboarding/hermes/_components/hermes-placeholder-page'
+import { requireHermesAdmin } from '@/app/onboarding/hermes/_lib/auth'
+import { HermesApprovalClient } from './approval-client'
 
-export default function HermesApprovalPage() {
-  return (
-    <HermesPlaceholderPage
-      title="H2 审批 Approval"
-      description="Clare 确认 Hermes 蓝图后，才能进入部署配置。"
-      pending="待实现 - 将对接 Hermes 蓝图审批与退回逻辑"
-    />
-  )
+export default async function HermesApprovalPage() {
+  await requireHermesAdmin('/onboarding/hermes/approval')
+  return <HermesApprovalClient />
 }

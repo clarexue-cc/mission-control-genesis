@@ -124,6 +124,8 @@ export function CustomerSoulClient({ username }: { username: string }) {
   const base = state?.base || state?.p7_files?.base || 'oc'
   const isHermes = base === 'hermes'
   const docLabels = useMemo(() => isHermes ? {
+    step: 'Hermes Core Identity',
+    title: 'H4 核心身份',
     pageDesc: '4 个核心文档：SOUL（身份定义）、USER（用户画像）、MEMORY（记忆索引）、Config（Hermes 主配置）。逐个确认内容后进入下一步。',
     generateBtn: '生成 SOUL/USER',
     soulTitle: 'SOUL.md — 身份定义',
@@ -135,6 +137,8 @@ export function CustomerSoulClient({ username }: { username: string }) {
     boundaryTitle: 'config.yaml — Hermes 主配置',
     boundaryPlaceholder: '尚未创建 config.yaml。Hermes 模型/网关/记忆路径主配置。',
   } : {
+    step: 'P7',
+    title: '核心文档定稿',
     pageDesc: '4 个核心文档：SOUL（身份定义）、AGENTS（操作系统）、MEMORY（记忆索引）、Boundary（红线配置）。逐个确认内容后进入 P8。',
     generateBtn: '生成 SOUL/AGENTS',
     soulTitle: 'SOUL.md — 身份定义',
@@ -221,14 +225,14 @@ export function CustomerSoulClient({ username }: { username: string }) {
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="flex items-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">P7</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{docLabels.step}</p>
                 {isHermes && (
                   <span className="ml-2 rounded-full border border-purple-400/40 bg-purple-400/15 px-2 py-0.5 text-[10px] font-medium text-purple-400">
                     HERMES
                   </span>
                 )}
               </div>
-              <h1 className="mt-2 text-3xl font-semibold tracking-normal">核心文档定稿</h1>
+              <h1 className="mt-2 text-3xl font-semibold tracking-normal">{docLabels.title}</h1>
             </div>
             <div className="flex items-center gap-3">
               {state?.p7_files && (

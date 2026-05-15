@@ -1,11 +1,7 @@
-import { HermesPlaceholderPage } from '@/app/onboarding/hermes/_components/hermes-placeholder-page'
+import { requireHermesAdmin } from '@/app/onboarding/hermes/_lib/auth'
+import { HermesGovernanceConfigClient } from './governance-config-client'
 
-export default function HermesGovernanceConfigPage() {
-  return (
-    <HermesPlaceholderPage
-      title="H6 治理配置"
-      description="配置 cron-schedule、approved-skills、boundary 和 output-checker。"
-      pending="待实现 - 将对接 Hermes 治理配置生成逻辑"
-    />
-  )
+export default async function HermesGovernanceConfigPage() {
+  await requireHermesAdmin('/onboarding/hermes/governance-config')
+  return <HermesGovernanceConfigClient />
 }

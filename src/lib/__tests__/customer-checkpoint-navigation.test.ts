@@ -176,24 +176,27 @@ describe('customer checkpoint navigation', () => {
     ])
   })
 
-  it('creates placeholder pages for new Hermes build checkpoints', () => {
+  it('creates guarded real pages for new Hermes build checkpoints', () => {
     const repoRoot = process.cwd()
     const expectedPages = [
-      ['src/app/onboarding/hermes/blueprint/page.tsx', 'H1 蓝图 Blueprint'],
-      ['src/app/onboarding/hermes/approval/page.tsx', 'H2 审批 Approval'],
-      ['src/app/onboarding/hermes/deploy/page.tsx', 'H3 部署配置 Deploy'],
-      ['src/app/onboarding/hermes/skills/page.tsx', 'H5 Skills 填充'],
-      ['src/app/onboarding/hermes/governance-config/page.tsx', 'H6 治理配置'],
-      ['src/app/onboarding/hermes/governance-verify/page.tsx', 'H7 治理验证'],
-      ['src/app/onboarding/hermes/gate-tests/page.tsx', 'H8 闸门测试'],
-      ['src/app/onboarding/hermes/rts/page.tsx', 'H10 Hermes 上线'],
-      ['src/app/onboarding/hermes/delivery/page.tsx', 'H11 验收交付'],
+      ['src/app/onboarding/hermes/blueprint/page.tsx', 'src/app/onboarding/hermes/blueprint/blueprint-client.tsx', 'H1 蓝图 Blueprint'],
+      ['src/app/onboarding/hermes/approval/page.tsx', 'src/app/onboarding/hermes/approval/approval-client.tsx', 'H2 审批 Approval'],
+      ['src/app/onboarding/hermes/deploy/page.tsx', 'src/app/onboarding/hermes/deploy/deploy-client.tsx', 'H3 部署配置 Deploy'],
+      ['src/app/onboarding/hermes/skills/page.tsx', 'src/app/onboarding/hermes/skills/skills-client.tsx', 'H5 Skills 填充'],
+      ['src/app/onboarding/hermes/governance-config/page.tsx', 'src/app/onboarding/hermes/governance-config/governance-config-client.tsx', 'H6 治理配置'],
+      ['src/app/onboarding/hermes/governance-verify/page.tsx', 'src/app/onboarding/hermes/governance-verify/page.tsx', 'H7 治理验证'],
+      ['src/app/onboarding/hermes/gate-tests/page.tsx', 'src/app/onboarding/hermes/gate-tests/page.tsx', 'H8 闸门测试'],
+      ['src/app/onboarding/hermes/rts/page.tsx', 'src/app/onboarding/hermes/rts/page.tsx', 'H10 Hermes 上线'],
+      ['src/app/onboarding/hermes/delivery/page.tsx', 'src/app/onboarding/hermes/delivery/page.tsx', 'H11 验收交付'],
     ] as const
 
-    for (const [relativePath, heading] of expectedPages) {
-      const absolutePath = path.join(repoRoot, relativePath)
-      expect(existsSync(absolutePath)).toBe(true)
-      expect(readFileSync(absolutePath, 'utf8')).toContain(heading)
+    for (const [pagePath, contentPath, heading] of expectedPages) {
+      const absolutePagePath = path.join(repoRoot, pagePath)
+      const absoluteContentPath = path.join(repoRoot, contentPath)
+      expect(existsSync(absolutePagePath)).toBe(true)
+      expect(existsSync(absoluteContentPath)).toBe(true)
+      expect(readFileSync(absolutePagePath, 'utf8')).toContain('requireHermesAdmin')
+      expect(readFileSync(absoluteContentPath, 'utf8')).toContain(heading)
     }
   })
 })
