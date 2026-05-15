@@ -1,17 +1,21 @@
 'use client'
 
 import { HermesOperationPanel } from '@/components/panels/hermes-operation-panel'
+import { useMissionControl } from '@/store'
 
 export function HermesMemoryPanel() {
+  const { activeTenant } = useMissionControl()
+  const tenantSlug = activeTenant?.slug || 'tenant-test-001'
+
   return (
     <HermesOperationPanel
       stage="H-04"
       title="Hermes Memory Curator"
       endpoint="/api/harness/hermes/memory"
       defaultValues={{
-        memoriesDir: 'phase0/tenants/tenant-test-001/memory/memories',
-        configPath: 'phase0/tenants/tenant-test-001/memory/memory-config.json',
-        tenantId: 'tenant-test-001',
+        memoriesDir: `phase0/tenants/${tenantSlug}/memory/memories`,
+        configPath: `phase0/tenants/${tenantSlug}/memory/memory-config.json`,
+        tenantId: tenantSlug,
       }}
       fields={[
         { name: 'memoriesDir', label: 'Memories dir' },

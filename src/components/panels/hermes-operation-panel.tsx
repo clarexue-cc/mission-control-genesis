@@ -65,6 +65,11 @@ export function HermesOperationPanel({
   const [runningAction, setRunningAction] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<unknown>(null)
+  const defaultValuesKey = useMemo(() => JSON.stringify(defaultValues), [defaultValues])
+
+  useEffect(() => {
+    setValues(defaultValues)
+  }, [defaultValues, defaultValuesKey])
 
   const statusTone = useMemo(() => {
     if (!status) return 'border-border bg-secondary text-muted-foreground'

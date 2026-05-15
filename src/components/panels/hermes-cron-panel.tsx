@@ -1,17 +1,21 @@
 'use client'
 
 import { HermesOperationPanel } from '@/components/panels/hermes-operation-panel'
+import { useMissionControl } from '@/store'
 
 export function HermesCronPanel() {
+  const { activeTenant } = useMissionControl()
+  const tenantSlug = activeTenant?.slug || 'tenant-test-001'
+
   return (
     <HermesOperationPanel
       stage="H-07"
       title="Hermes Cron Governance"
       endpoint="/api/harness/hermes/cron"
       defaultValues={{
-        cronDir: 'phase0/tenants/tenant-test-001/cron',
+        cronDir: `phase0/tenants/${tenantSlug}/cron`,
         cronName: 'daily-search',
-        budgetFile: 'phase0/tenants/tenant-test-001/budget.json',
+        budgetFile: `phase0/tenants/${tenantSlug}/budget.json`,
         status: 'success',
         tokens: '3200',
         durationMs: '45000',

@@ -1,8 +1,12 @@
 'use client'
 
 import { HermesOperationPanel } from '@/components/panels/hermes-operation-panel'
+import { useMissionControl } from '@/store'
 
 export function HermesGuardianPanel() {
+  const { activeTenant } = useMissionControl()
+  const tenantSlug = activeTenant?.slug || 'tenant-test-001'
+
   return (
     <HermesOperationPanel
       stage="H-06"
@@ -10,10 +14,10 @@ export function HermesGuardianPanel() {
       endpoint="/api/harness/hermes/guardian"
       defaultValues={{
         gatewayUrl: 'http://localhost:3000/health',
-        profileDir: 'phase0/tenants/tenant-test-001',
-        haltSignal: 'phase0/tenants/tenant-test-001/halt-signal.json',
-        budgetFile: 'phase0/tenants/tenant-test-001/budget.json',
-        usageLog: 'phase0/tenants/tenant-test-001/logs/token-usage.jsonl',
+        profileDir: `phase0/tenants/${tenantSlug}`,
+        haltSignal: `phase0/tenants/${tenantSlug}/halt-signal.json`,
+        budgetFile: `phase0/tenants/${tenantSlug}/budget.json`,
+        usageLog: `phase0/tenants/${tenantSlug}/logs/token-usage.jsonl`,
         tokens: '1500',
         model: 'claude-sonnet-4-20250514',
       }}

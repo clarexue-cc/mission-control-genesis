@@ -275,6 +275,35 @@ function ensureProvisionArtifacts(job: any) {
   fs.writeFileSync(path.join(artifactDir, 'openclaw-gateway.env'), gatewayEnv, { mode: 0o600 })
 }
 
+function getHarnessRoot() {
+  return process.env.MC_HARNESS_ROOT || path.join(process.env.HOME || '', 'Desktop/genesis-harness')
+}
+
+function normalizeTenantBase(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const normalized = value.trim().toLowerCase()
+  if (!normalized) return undefined
+  if (normalized === 'openclaw') return 'oc'
+  if (normalized === 'oc' || normalized === 'hermes' || normalized === 'both') return normalized
+  return undefined
+}
+
+function detectTenantBaseFromWorkspace(slug: string): string | undefined {
+  try {
+    const wsStatePath = path.join(
+      getHarnessRoot(),
+      'phase0/tenants',
+      slug,
+      'workspace/.openclaw/workspace-state.json',
+    )
+    if (!fs.existsSync(wsStatePath)) return undefined
+    const wsState = JSON.parse(fs.readFileSync(wsStatePath, 'utf-8')) as Record<string, unknown>
+    return normalizeTenantBase(wsState.base)
+  } catch {
+    return undefined
+  }
+}
+
 export function listTenants() {
   const db = getDatabase()
   const rows = db.prepare(`
@@ -288,10 +317,11 @@ export function listTenants() {
 
   return rows.map((row) => {
     const config = parseJsonField(row.config, {}) as Record<string, unknown>
+    const configBase = normalizeTenantBase(config.base)
     return {
       ...row,
       config,
-      base: (config.base as string) || undefined,
+      base: configBase || detectTenantBaseFromWorkspace(row.slug),
     }
   })
 }

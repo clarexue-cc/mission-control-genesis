@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { useMissionControl } from '@/store'
 
 interface AgentRow {
   name: string
@@ -57,7 +58,9 @@ function Tag({ children, color = 'gray' }: { children: React.ReactNode; color?: 
 }
 
 export default function CustomerOnboardingPage() {
-  const [tenantId, setTenantId] = useState('wechat-mp-agent')
+  const { activeTenant } = useMissionControl()
+  const activeTenantSlug = activeTenant?.slug || 'wechat-mp-agent'
+  const [tenantId, setTenantId] = useState(activeTenantSlug)
   const [tenantName, setTenantName] = useState('罗老师 · 公众号 Agent')
 
   // Layer 1: Customer Profile (C1-C6) — 罗老师真实数据
@@ -86,17 +89,23 @@ export default function CustomerOnboardingPage() {
   const [intakePreview, setIntakePreview] = useState('')
 
   useEffect(() => {
+    if (activeTenant?.slug) setTenantId(activeTenant.slug)
+  }, [activeTenant?.slug])
+
+  useEffect(() => {
     fetch(`/api/onboarding/customer/analyze?tenant_id=${encodeURIComponent(tenantId)}`)
       .then(res => res.json())
       .then(body => {
         if (body?.intake_raw_exists) {
           setLocked(true)
           setIntakePreview(body.intake_raw_preview || '')
+        } else {
+          setLocked(false)
+          setIntakePreview('')
         }
       })
       .catch(() => {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [tenantId])
 
   const fileStatus = useMemo(() => {
     if (!file) return '支持 audio/* 与 text/*，最大 100MB'
